@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Texture POT Resizer Pro (Blender Prop Studio 連動版)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    :root {
+      --bg: #121215;
+      --card-bg: #1e1e24;
+      --card-border: #32323c;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-purple: #8b5cf6;
+      --text: #f4f4f5;
+      --text-muted: #9ca3af;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 20px;
+    }
+    .container {
+      width: 1080px;
+      max-width: 95vw;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    header p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Top Action & Paste Toast */
+    .paste-banner {
+      background: linear-gradient(90deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.15));
+      border: 1px solid var(--accent-purple);
+      border-radius: 8px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #ddd6fe;
+    }
+    .paste-banner kbd {
+      background: #2e1065;
+      border: 1px solid #7c3aed;
+      color: #fff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-weight: bold;
+    }
+
+    /* Toolbar Controls */
+    .toolbar {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+    .tool-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .tool-group label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    select, input[type="text"], input[type="number"] {
+      background: #121216;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+    input[type="text"], input[type="number"] {
+      user-select: text;
+    }
+    select:focus, input:focus { border-color: var(--accent); }
+
+    /* Drop Zone */
+    #drop-zone {
+      border: 2px dashed #4b5563;
+      border-radius: 12px;
+      padding: 30px 20px;
+      text-align: center;
+      background: #16161c;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    #drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.14);
+      transform: scale(1.01);
+    }
+    .drop-icon { font-size: 32px; }
+    .drop-text { font-size: 14px; font-weight: 600; color: #e4e4e7; }
+    .drop-subtext { font-size: 12px; color: var(--text-muted); }
+
+    /* Action Buttons Row */
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #18181f;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+    }
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn-green { background: var(--accent-green); }
+    .btn-green:hover { background: #059669; }
+    .btn-amber { background: var(--accent-amber); color: #18181f; }
+    .btn-amber:hover { background: #d97706; color: white; }
+    .btn-danger { background: #dc2626; padding: 6px 10px; font-size: 11px; }
+
+    /* Image Grid */
+    #preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .card-thumb-wrap {
+      width: 100%;
+      height: 180px;
+      background: #09090b;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #27272a;
+    }
+    .card-thumb {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .card-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 11px;
+    }
+    .card-filename {
+      font-weight: 700;
+      color: #93c5fd;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      user-select: text;
+    }
+    .card-meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+    }
+    .card-badge {
+      color: #6ee7b7;
+      font-weight: bold;
+      background: rgba(16, 185, 129, 0.15);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .card-actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+    }
+    .card-btn {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .card-btn:hover { background: var(--accent); border-color: var(--accent); }
+    .card-btn-del {
+      background: transparent;
+      border: 1px solid #3f3f46;
+      color: #ef4444;
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .card-btn-del:hover { background: #dc2626; color: white; border-color: #dc2626; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>📐 Game Texture POT Resizer Pro</h1>
+      <p>Blender Prop Studio プリセット（岩・床・壁・柱・木目梁）と完全連動したテクスチャ成型ツール</p>
+    </header>
+
+    <!-- Paste Toast Banner -->
+    <div class="paste-banner">
+      <div>📋 <strong>クリップボード対応:</strong> Webブラウザやスクショで画像をコピー後、この画面上で <kbd>Ctrl + V</kbd> を押すだけで直接読み込まれます！</div>
+      <div style="font-size: 11px; color: #a78bfa;">※Blender側とカテゴリ・フォルダが完全連動</div>
+    </div>
+
+    <!-- Toolbar Settings -->
+    <div class="toolbar">
+      <!-- 1. Naming Rule (Fully aligned with Blender Studio Presets) -->
+      <div class="tool-group">
+        <label for="prefix-preset">Category Preset (Blender連動)</label>
+        <select id="prefix-preset">
+          <option value="Rock" selected>🪨 岩 (Rock) ➔ textures/Rock/</option>
+          <option value="Grass">🌿 草原・草地 (Grass) ➔ textures/Grass/</option>
+          <option value="Floor">🟫 床・タイル (Floor) ➔ textures/Floor/</option>
+          <option value="Wall">🧱 壁・レンガ (Wall) ➔ textures/Wall/</option>
+          <option value="Pillar">🏛️ 柱・石柱 (Pillar) ➔ textures/Pillar/</option>
+          <option value="Wood">🪵 木目・梁 (Wood) ➔ textures/Wood/</option>
+          <option value="Metal">⚙️ 金属・錆 (Metal) ➔ textures/Metal/</option>
+          <option value="custom">🛠️ カスタム手動入力</option>
+        </select>
+      </div>
+
+      <div class="tool-group">
+        <label for="name-prefix">Asset Base Name</label>
+        <input type="text" id="name-prefix" value="Rock">
+      </div>
+
+      <div class="tool-group">
+        <label for="start-index">Start Number (開始番号)</label>
+        <input type="number" id="start-index" min="1" max="999" value="1">
+      </div>
+
+      <!-- 2. Sizing & POT Mode (Smart Independent POT) -->
+      <div class="tool-group">
+        <label for="size-mode">Target Size (成型モード)</label>
+        <select id="size-mode">
+          <option value="smart_auto" selected>⚡ Smart Auto (縦横独立判定: 870x480 ➔ 1024x512等)</option>
+          <option value="square_auto">⬛ Square Auto (常に正方形POT: 512x512 / 1024x1024)</option>
+          <option value="512x512">512 x 512 (正方形固定)</option>
+          <option value="1024x1024">1024 x 1024 (正方形固定)</option>
+          <option value="1024x512">1024 x 512 (2:1 横長固定)</option>
+          <option value="512x1024">512 x 1024 (1:2 縦長固定)</option>
+          <option value="256x256">256 x 256 (超軽量)</option>
+        </select>
+      </div>
+
+      <!-- 3. Fit Mode -->
+      <div class="tool-group">
+        <label for="fit-mode">Fit Mode (アスペクト成型方式)</label>
+        <select id="fit-mode">
+          <option value="stretch" selected>🔄 欠けなし全体伸縮 (Stretch to Full)</option>
+          <option value="crop">✂️ 余剰カット (Crop & Center)</option>
+          <option value="edge_extend">🪄 エッジ引き伸ばし充填 (Edge Extend)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Drop Zone -->
+    <div id="drop-zone">
+      <div class="drop-icon">📁</div>
+      <div class="drop-text">画像ファイルをここにドラッグ＆ドロップ または <kbd style="background:#27272a; padding:2px 6px; border-radius:4px; border:1px solid #4b5563;">Ctrl + V</kbd> で貼り付け</div>
+      <div class="drop-subtext">870x480 ➔ 1024x512、460x480 ➔ 512x512 など最も近い2の累乗へ自動成型します</div>
+      <input type="file" id="file-input" multiple accept="image/*" style="display: none;">
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar" id="action-bar" style="display: none;">
+      <div style="font-size: 13px; font-weight: 600;">
+        登録画像: <span id="count-badge" style="color: #93c5fd; font-weight: 700;">0</span> 枚
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button id="btn-save-to-folder" class="btn btn-amber" title="ブラウザのフォルダ選択で指定フォルダへ直接一括書き出し保存">
+          📂 フォルダへ直接一括保存 (Direct Save)
+        </button>
+        <button id="btn-download-all" class="btn btn-green">
+          📦 一括 ZIP ダウンロード
+        </button>
+        <button id="btn-clear-all" class="btn btn-danger">
+          🗑️ 全消去
+        </button>
+      </div>
+    </div>
+
+    <!-- Preview List -->
+    <div id="preview-grid"></div>
+  </div>
+
+  <script>
+    const POT_SIZES = [64, 128, 256, 512, 1024, 2048, 4096];
+
+    function findNearestPOT(val) {
+      let closest = POT_SIZES[0];
+      let minDiff = Math.abs(val - closest);
+      for (let size of POT_SIZES) {
+        const diff = Math.abs(val - size);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = size;
+        }
+      }
+      return closest;
+    }
+
+    function calculateTargetDimensions(w, h, mode) {
+      if (mode === 'smart_auto') {
+        return { targetW: findNearestPOT(w), targetH: findNearestPOT(h) };
+      } else if (mode === 'square_auto') {
+        const avg = (w + h) / 2;
+        const pot = findNearestPOT(avg);
+        return { targetW: pot, targetH: pot };
+      } else if (mode.includes('x')) {
+        const parts = mode.split('x');
+        return { targetW: parseInt(parts[0], 10), targetH: parseInt(parts[1], 10) };
+      }
+      return { targetW: 512, targetH: 512 };
+    }
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const previewGrid = document.getElementById('preview-grid');
+    const actionBar = document.getElementById('action-bar');
+    const countBadge = document.getElementById('count-badge');
+    const btnDownloadAll = document.getElementById('btn-download-all');
+    const btnSaveToFolder = document.getElementById('btn-save-to-folder');
+    const btnClearAll = document.getElementById('btn-clear-all');
+
+    const prefixPresetSelect = document.getElementById('prefix-preset');
+    const namePrefixInput = document.getElementById('name-prefix');
+    const startIndexInput = document.getElementById('start-index');
+    const sizeModeSelect = document.getElementById('size-mode');
+    const fitModeSelect = document.getElementById('fit-mode');
+
+    let processedItems = [];
+
+    prefixPresetSelect.addEventListener('change', () => {
+      if (prefixPresetSelect.value !== 'custom') {
+        namePrefixInput.value = prefixPresetSelect.value;
+      }
+      renameAllItems();
+    });
+    namePrefixInput.addEventListener('input', () => {
+      renameAllItems();
+    });
+    startIndexInput.addEventListener('input', () => {
+      renameAllItems();
+    });
+
+    [sizeModeSelect, fitModeSelect].forEach(elem => {
+      elem.addEventListener('change', () => {
+        if (processedItems.length > 0) {
+          reprocessAll();
+        }
+      });
+    });
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFiles(e.dataTransfer.files);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFiles(e.target.files);
+      }
+    });
+
+    window.addEventListener('paste', (e) => {
+      const items = e.clipboardData.items;
+      let pastedAny = false;
+      for (let item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            handleImageFile(file, `Clipboard_${Date.now()}`);
+            pastedAny = true;
+          }
+        }
+      }
+      if (pastedAny) {
+        e.preventDefault();
+      }
+    });
+
+    function handleFiles(files) {
+      for (let file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        handleImageFile(file, file.name);
+      }
+    }
+
+    function handleImageFile(file, defaultName) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const img = new Image();
+        img.onload = () => {
+          processAndAddItem(img, defaultName);
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function generateFormattedName(index) {
+      const prefix = namePrefixInput.value.trim() || 'Texture';
+      const start = parseInt(startIndexInput.value, 10) || 1;
+      const num = String(start + index).padStart(2, '0');
+      return `${prefix}_${num}.png`;
+    }
+
+    function processAndAddItem(img, originalName) {
+      const mode = sizeModeSelect.value;
+      const fit = fitModeSelect.value;
+
+      const srcW = img.naturalWidth, srcH = img.naturalHeight;
+      const { targetW, targetH } = calculateTargetDimensions(srcW, srcH, mode);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+
+      if (fit === 'stretch') {
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+      } else if (fit === 'crop') {
+        const scale = Math.max(targetW / srcW, targetH / srcH);
+        const nw = srcW * scale, nh = srcH * scale;
+        const ox = (targetW - nw) / 2, oy = (targetH - nh) / 2;
+        ctx.drawImage(img, ox, oy, nw, nh);
+      } else if (fit === 'edge_extend') {
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+        const scale = Math.min(targetW / srcW, targetH / srcH);
+        const nw = srcW * scale, nh = srcH * scale;
+        const ox = (targetW - nw) / 2, oy = (targetH - nh) / 2;
+        ctx.drawImage(img, ox, oy, nw, nh);
+      }
+
+      const formattedName = generateFormattedName(processedItems.length);
+
+      canvas.toBlob((blob) => {
+        const item = {
+          originalName: originalName,
+          outName: formattedName,
+          origW: srcW,
+          origH: srcH,
+          targetW: targetW,
+          targetH: targetH,
+          blob: blob,
+          dataUrl: canvas.toDataURL('image/png'),
+          imgElem: img
+        };
+        processedItems.push(item);
+        renderCard(item, processedItems.length - 1);
+        updateActionBar();
+      }, 'image/png');
+    }
+
+    function renameAllItems() {
+      processedItems.forEach((item, idx) => {
+        item.outName = generateFormattedName(idx);
+        const nameElem = document.querySelector(`#card-${idx} .card-filename`);
+        if (nameElem) nameElem.textContent = "📄 " + item.outName;
+      });
+    }
+
+    function reprocessAll() {
+      const existing = [...processedItems];
+      processedItems = [];
+      previewGrid.innerHTML = '';
+      existing.forEach(item => {
+        processAndAddItem(item.imgElem, item.originalName);
+      });
+    }
+
+    function renderCard(item, index) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.id = `card-${index}`;
+
+      card.innerHTML = `
+        <div class="card-thumb-wrap">
+          <img class="card-thumb" src="${item.dataUrl}" alt="thumb">
+        </div>
+        <div class="card-info">
+          <div class="card-filename" title="${item.outName}">📄 ${item.outName}</div>
+          <div class="card-meta">
+            <span>元: ${item.origW} x ${item.origH}</span>
+            <span class="card-badge">➔ ${item.targetW} x ${item.targetH}</span>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="card-btn" onclick="downloadSingle(${index})">💾 保存 (${item.outName})</button>
+          <button class="card-btn-del" onclick="deleteSingle(${index})" title="削除">✕</button>
+        </div>
+      `;
+      previewGrid.appendChild(card);
+    }
+
+    window.downloadSingle = function(index) {
+      const item = processedItems[index];
+      if (item && item.blob) {
+        saveAs(item.blob, item.outName);
+      }
+    };
+
+    window.deleteSingle = function(index) {
+      processedItems.splice(index, 1);
+      previewGrid.innerHTML = '';
+      const existing = [...processedItems];
+      processedItems = [];
+      existing.forEach((item, idx) => {
+        item.outName = generateFormattedName(idx);
+        processedItems.push(item);
+        renderCard(item, idx);
+      });
+      updateActionBar();
+    };
+
+    function updateActionBar() {
+      if (processedItems.length > 0) {
+        actionBar.style.display = 'flex';
+        countBadge.textContent = processedItems.length;
+      } else {
+        actionBar.style.display = 'none';
+      }
+    }
+
+    btnClearAll.addEventListener('click', () => {
+      processedItems = [];
+      previewGrid.innerHTML = '';
+      updateActionBar();
+    });
+
+    btnDownloadAll.addEventListener('click', () => {
+      if (processedItems.length === 0) return;
+      const zip = new JSZip();
+      processedItems.forEach(item => {
+        zip.file(item.outName, item.blob);
+      });
+      zip.generateAsync({ type: 'blob' }).then(zipBlob => {
+        const prefix = namePrefixInput.value.trim() || 'Textures';
+        saveAs(zipBlob, `${prefix}_POT_Textures_${Date.now()}.zip`);
+      });
+    });
+
+    btnSaveToFolder.addEventListener('click', async () => {
+      if (processedItems.length === 0) return;
+      if (!window.showDirectoryPicker) {
+        alert("お使いのブラウザはフォルダ直接書き込みに対応していません。一括ZIPダウンロードをご利用ください。");
+        return;
+      }
+      try {
+        const dirHandle = await window.showDirectoryPicker();
+        for (let item of processedItems) {
+          const fileHandle = await dirHandle.getFileHandle(item.outName, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(item.blob);
+          await writable.close();
+        }
+        alert(`✅ 選択したフォルダへ ${processedItems.length} 枚のテクスチャを直接保存しました！`);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error(err);
+          alert("保存中にエラーが発生しました: " + err.message);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

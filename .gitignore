@@ -1,0 +1,15 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# AI archives & logs
+ai_archives/
+.ignore
+
+# Blender backup files
+*.blend1
+*.blend2
+
+# Exports
+exports/*.fbx
+exports/*.png

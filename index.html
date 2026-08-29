@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Mesh & Texture Studio Pro v4.0 (Modular Edition)</title>
+  
+  <!-- External Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- 3D Viewport -->
+  <div id="viewport-container">
+    <div id="stats-panel">
+      <div>Asset: <span id="stat-asset">-</span></div>
+      <div>Shape: <span id="stat-shape">-</span> <span class="badge" id="stat-mat-mode-badge">Unique Mat</span></div>
+      <div>Texture: <span id="stat-pattern">Foliage/Cell</span> | Dim: <span id="stat-dim">0 x 0 x 0</span></div>
+      <div>Vertices: <span id="stat-verts">0</span> | Triangles: <span id="stat-tris">0</span></div>
+    </div>
+    <canvas id="viewport"></canvas>
+  </div>
+
+  <!-- Control Sidebar -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <h1>🔷 3D Mesh & Texture Studio Pro</h1>
+      <p>Modular 3D Architecture • 35+ Procedural Geometries • Custom D&D Texture</p>
+    </div>
+
+    <div class="sidebar-content">
+      <!-- 1. Asset & Presets -->
+      <div class="section-title">Asset Identity & Presets</div>
+      <div class="grid-2">
+        <div class="control-group">
+          <label for="asset-name"><span>Asset Name</span></label>
+          <input type="text" id="asset-name" value="Rock_01">
+        </div>
+        <div class="control-group">
+          <label for="mat-mode"><span>Material Mode</span></label>
+          <select id="mat-mode">
+            <option value="unique" selected>固有 (Unique)</option>
+            <option value="shared">共有 (Shared)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="shape-type"><span>Shape Preset (35+種)</span></label>
+        <div class="btn-row">
+          <select id="shape-type"></select>
+          <button id="btn-randomize-shape" class="btn-dice" title="形状をランダム生成">🎲 形状</button>
+        </div>
+      </div>
+
+      <!-- 2. Custom Texture Drop & Studio -->
+      <div class="section-title">
+        <span>Custom Texture & Shader Studio</span>
+        <button id="btn-randomize-mat" class="btn-dice" style="padding: 2px 8px; font-size: 11px;">🎨 色ランダム</button>
+      </div>
+
+      <!-- Drop Zone for Custom Images -->
+      <div id="drop-zone">
+        📁 画像ファイル (PNG / JPG) をここにドラッグ＆ドロップ
+        <input type="file" id="file-input" accept="image/*" style="display:none">
+        <div id="custom-tex-preview">
+          <img id="tex-thumb" src="" alt="preview">
+          <span id="tex-filename" style="flex:1; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">custom.png</span>
+          <button id="btn-clear-tex" class="btn" style="padding: 2px 6px; font-size: 10px;">✕ 解除</button>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="control-group">
+          <label for="tex-pattern"><span>Pattern Style (模様)</span></label>
+          <select id="tex-pattern">
+            <option value="foliage" selected>🍃 葉・セル (Foliage Cell)</option>
+            <option value="rock">🪨 岩肌・スレート (Rock Slate)</option>
+            <option value="wood">🌲 樹皮・木目 (Wood Grain)</option>
+            <option value="straw">🌾 藁・イネ科 (Straw & Thatch)</option>
+            <option value="metal">⚙️ 金属・ヘアライン (Brushed Metal)</option>
+            <option value="water">🌊 波紋・コースティクス (Water Wave)</option>
+            <option value="grid">📐 グリッド (Dev Grid)</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="mat-theme-preset"><span>Color Theme Preset</span></label>
+          <select id="mat-theme-preset">
+            <option value="custom">🛠️ カスタム手動調整</option>
+            <option value="spring">🌲 新緑・春 (Spring)</option>
+            <option value="autumn">🍁 紅葉・秋 (Autumn)</option>
+            <option value="sakura">🌸 桜・春霞 (Sakura)</option>
+            <option value="winter">❄️ 雪景色・冬 (Winter)</option>
+            <option value="desert">🏜️ 砂漠・枯木 (Desert)</option>
+            <option value="mystic">🔮 神秘・魔力 (Mystic)</option>
+            <option value="volcano">🌋 溶岩・火山 (Volcano)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="control-group">
+          <label for="col-top"><span>Top / Foliage Color</span></label>
+          <input type="color" id="col-top" value="#2d8832">
+        </div>
+        <div class="control-group">
+          <label for="col-bot"><span>Bottom / Trunk Color</span></label>
+          <input type="color" id="col-bot" value="#5a351e">
+        </div>
+      </div>
+
+      <!-- Texture Mapping & Tiling Controls -->
+      <div class="grid-2">
+        <div class="control-group">
+          <label for="tex-tiling-x"><span>Texture Tiling X</span><span class="val" id="val-tex-tiling-x">1.0</span></label>
+          <input type="range" id="tex-tiling-x" min="0.5" max="8.0" step="0.5" value="1.0">
+        </div>
+        <div class="control-group">
+          <label for="tex-tiling-y"><span>Texture Tiling Y</span><span class="val" id="val-tex-tiling-y">1.0</span></label>
+          <input type="range" id="tex-tiling-y" min="0.5" max="8.0" step="0.5" value="1.0">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="control-group">
+          <label for="tex-noise-scale"><span>Noise Scale</span><span class="val" id="val-tex-noise-scale">6.0</span></label>
+          <input type="range" id="tex-noise-scale" min="1.0" max="24.0" step="0.5" value="6.0">
+        </div>
+        <div class="control-group">
+          <label for="tex-noise-str"><span>Noise Contrast</span><span class="val" id="val-tex-noise-str">0.5</span></label>
+          <input type="range" id="tex-noise-str" min="0.0" max="1.5" step="0.05" value="0.5">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="control-group">
+          <label for="pbr-roughness"><span>Roughness</span><span class="val" id="val-pbr-roughness">0.6</span></label>
+          <input type="range" id="pbr-roughness" min="0.0" max="1.0" step="0.05" value="0.6">
+        </div>
+        <div class="control-group">
+          <label for="pbr-metalness"><span>Metallic</span><span class="val" id="val-pbr-metalness">0.05</span></label>
+          <input type="range" id="pbr-metalness" min="0.0" max="1.0" step="0.05" value="0.05">
+        </div>
+      </div>
+
+      <!-- 3. Shading Toggles -->
+      <div class="section-title">Viewport Display</div>
+      <div class="checkbox-grid">
+        <div class="checkbox-group">
+          <input type="checkbox" id="chk-texture" checked>
+          <label for="chk-texture">テクスチャ表示</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="chk-flatshading">
+          <label for="chk-flatshading">フラットシェード</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="chk-wireframe">
+          <label for="chk-wireframe">ワイヤーフレーム</label>
+        </div>
+      </div>
+
+      <!-- 4. Shape Parameters in 2-Column Grid -->
+      <div class="section-title">Shape Geometry Parameters</div>
+      <div id="dynamic-params" class="grid-2"></div>
+
+      <!-- 5. Export -->
+      <div class="section-title">Export (Unity 完全対応)</div>
+      <button id="btn-export-unity-zip" class="btn btn-unity" style="width: 100%; margin-bottom: 6px;">
+        📦 Unity Ready ZIP (OBJ + MTL + Atlasテクスチャ一括)
+      </button>
+      <div class="btn-group">
+        <button id="btn-export-obj" class="btn btn-primary">💾 .OBJ のみ</button>
+        <button id="btn-show-code" class="btn">📋 Code 出力</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Code Modal -->
+  <div id="code-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-tabs">
+          <button class="tab-btn active" data-tab="unity">Unity (C#)</button>
+          <button class="tab-btn" data-tab="cocos">Cocos Creator (TS)</button>
+          <button class="tab-btn" data-tab="json">Raw JSON</button>
+        </div>
+        <button id="btn-close-modal" class="btn" style="padding: 4px 10px;">✕</button>
+      </div>
+      <div class="modal-body">
+        <pre><code id="code-output"></code></pre>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-copy-code" class="btn btn-primary">📋 コードをコピー</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden texture generation canvas -->
+  <canvas id="tex-canvas" width="512" height="512" style="display: none;"></canvas>
+
+  <!-- Modular Scripts (Loaded in dependency order) -->
+  <script src="js/noise.js"></script>
+  <script src="js/shapes/registry.js"></script>
+  <script src="js/shapes/nature.js"></script>
+  <script src="js/shapes/props.js"></script>
+  <script src="js/shapes/rocks.js"></script>
+  <script src="js/shapes/architecture.js"></script>
+  <script src="js/shapes/terrain.js"></script>
+  <script src="js/shapes/effects.js"></script>
+  <script src="js/shapes/primitives.js"></script>
+  <script src="js/textureStudio.js"></script>
+  <script src="js/exporter.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
