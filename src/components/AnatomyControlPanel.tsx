@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useJewelryStore } from '../store/useJewelryStore';
 import { ClusterList } from './ClusterList';
 import { AnatomyPartType, SkinTonePreset } from '../types';
-import { User, Sliders, Palette, Mountain, Sparkles, Wand2, SplitSquareVertical } from 'lucide-react';
+import { User, Sliders, Palette, Mountain, Sparkles, SplitSquareVertical } from 'lucide-react';
 
 export const AnatomyControlPanel: React.FC = () => {
   const {
@@ -71,32 +71,67 @@ export const AnatomyControlPanel: React.FC = () => {
         {/* TAB 1: PART SHAPES */}
         {activeSubTab === 'part' && (
           <>
-            {/* 1. 部位プリセットセレクタ */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-semibold text-gray-200 flex items-center gap-1.5">
-                <Wand2 className="w-3.5 h-3.5 text-rose-400" />
-                造形部位セレクタ
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'nose', label: '👃 鼻 (Nose Bridge)', desc: '鼻筋・鼻尖・小鼻' },
-                  { id: 'ear', label: '👂 耳 (Ear Concha)', desc: '耳輪・軟骨・耳甲介' },
-                  { id: 'lips', label: '👄 唇 (Lips & Bow)', desc: 'キューピッド弓・口唇' },
-                  { id: 'face_contour', label: '🧑 顔面曲面 (Contour)', desc: '頬・額・顎の有機曲面' },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setAnatomyPart(item.id as AnatomyPartType)}
-                    className={`p-2.5 rounded-xl border flex flex-col items-start gap-0.5 transition-all text-left cursor-pointer ${
-                      anatomySettings.partType === item.id
-                        ? 'border-rose-400 bg-rose-500/15 text-rose-200 font-bold shadow-md shadow-rose-500/10'
-                        : 'border-darkBorder bg-darkCard text-gray-400 hover:text-gray-200'
-                    }`}
-                  >
-                    <span className="text-xs font-bold">{item.label}</span>
-                    <span className="text-[10px] text-gray-400">{item.desc}</span>
-                  </button>
-                ))}
+            <section className="space-y-4">
+              {/* 1. 人体パーツグループ */}
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-rose-300 flex items-center gap-1">
+                  👤 人体・顔パーツ
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'nose', label: '👃 鼻 (Nose Bridge)', desc: '鼻筋・鼻尖・小鼻' },
+                    { id: 'ear', label: '👂 耳 (Ear Concha)', desc: '耳輪・軟骨・耳甲介' },
+                    { id: 'lips', label: '👄 唇 (Lips & Bow)', desc: 'キューピッド弓・口唇' },
+                    { id: 'face_contour', label: '🧑 顔面曲面 (Contour)', desc: '頬・額・顎の有機曲面' },
+                    { id: 'eye', label: '👁️ 目 (Eye & Lid)', desc: '眼球ドーム・まぶた皺' },
+                    { id: 'breast', label: '🍒 乳房 (Breast)', desc: 'なだらかな膨らみ・乳頭' },
+                    { id: 'penis', label: '🍆 男性器 (Penis)', desc: 'シャフト・亀頭の起伏' },
+                    { id: 'vulva', label: '🐚 女性器 (Vulva)', desc: '大陰唇・縦スリットの谷' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setAnatomyPart(item.id as AnatomyPartType)}
+                      className={`p-2 rounded-xl border flex flex-col items-start gap-0.5 transition-all text-left cursor-pointer ${
+                        anatomySettings.partType === item.id
+                          ? 'border-rose-400 bg-rose-500/15 text-rose-200 font-bold shadow-md shadow-rose-500/10'
+                          : 'border-darkBorder bg-darkCard text-gray-400 hover:text-gray-200'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold">{item.label}</span>
+                      <span className="text-[9px] text-gray-400 leading-tight">{item.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. 自然物・景観グループ */}
+              <div className="space-y-2 pt-2 border-t border-darkBorder/40">
+                <h4 className="text-[11px] font-bold text-emerald-300 flex items-center gap-1">
+                  🌿 自然物・景観
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'rock', label: '🪨 岩 (Rock)', desc: 'ゴツゴツした岩肌・突起' },
+                    { id: 'wall', label: '🧱 壁 (Wall)', desc: 'レンガ・石垣調のタイルの溝' },
+                    { id: 'grass', label: '🌱 草 (Grass)', desc: '針状突起の集まった芝生' },
+                    { id: 'tree', label: '🪵 木 (Tree/Bark)', desc: '樹皮状の縦スジ木肌' },
+                    { id: 'terrain', label: '🏔️ 地形 (Terrain)', desc: '砂丘やなだらかな波の干渉' },
+                    { id: 'puddle', label: '💧 水たまり (Puddle)', desc: '中心が平たく窪むお皿状' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setAnatomyPart(item.id as AnatomyPartType)}
+                      className={`p-2 rounded-xl border flex flex-col items-start gap-0.5 transition-all text-left cursor-pointer ${
+                        anatomySettings.partType === item.id
+                          ? 'border-emerald-400 bg-emerald-500/15 text-emerald-200 font-bold shadow-md shadow-emerald-500/10'
+                          : 'border-darkBorder bg-darkCard text-gray-400 hover:text-gray-200'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold">{item.label}</span>
+                      <span className="text-[9px] text-gray-400 leading-tight">{item.desc}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </section>
 

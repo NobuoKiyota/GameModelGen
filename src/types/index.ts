@@ -1,5 +1,5 @@
 export type StudioMode = 'jewelry' | 'anatomy';
-export type AnatomyPartType = 'nose' | 'ear' | 'lips' | 'face_contour';
+export type AnatomyPartType = 'nose' | 'ear' | 'lips' | 'face_contour' | 'eye' | 'breast' | 'penis' | 'vulva' | 'rock' | 'wall' | 'grass' | 'tree' | 'terrain' | 'puddle';
 export type SkinTonePreset = 'fair' | 'natural' | 'tan' | 'deep' | 'sculpt_clay' | 'custom';
 
 export interface ImageInfo {

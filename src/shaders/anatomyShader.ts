@@ -18,7 +18,7 @@ export const AnatomyShader = {
     uSymmetry: { value: 0.0 }, // 1.0 for mirror symmetry
     uLightDir: { value: new THREE.Vector3(0.5, 0.8, 1.0).normalize() },
     uLightColor: { value: new THREE.Color('#ffffff') },
-    uAmbientColor: { value: new THREE.Color('#382824') },
+    uAmbientColor: { value: new THREE.Color('#786864') },
   },
 
   vertexShader: `

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useJewelryStore } from '../store/useJewelryStore';
-import { UploadCloud, ZoomIn, ZoomOut, Maximize2, Crosshair, HelpCircle, Eye, EyeOff, Loader2, Pipette } from 'lucide-react';
+import { UploadCloud, ZoomIn, ZoomOut, Maximize2, Crosshair, HelpCircle, Eye, EyeOff, Loader2, Pipette, RotateCw } from 'lucide-react';
 
 export const ImageEditor2D: React.FC = () => {
   const {
@@ -21,7 +21,19 @@ export const ImageEditor2D: React.FC = () => {
     setOverlayOpacity,
     selectClusterAtUv,
     selectedClusterId,
+    rotateImageAbsolute,
+    imageRotation,
   } = useJewelryStore();
+
+  const [tempRotation, setTempRotation] = useState<number>(0);
+
+  useEffect(() => {
+    if (image) {
+      setTempRotation(imageRotation);
+    } else {
+      setTempRotation(0);
+    }
+  }, [image, imageRotation]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDraggingPan, setIsDraggingPan] = useState(false);
@@ -160,14 +172,46 @@ export const ImageEditor2D: React.FC = () => {
     setIsDraggingPan(false);
   }, []);
 
+  const handlePaste = useCallback(
+    (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (!file) continue;
+
+          const url = URL.createObjectURL(file);
+          const img = new Image();
+          img.onload = () => {
+            setImage({
+              url,
+              width: img.naturalWidth,
+              height: img.naturalHeight,
+              name: file.name || `clipboard-${Date.now()}.png`,
+            });
+          };
+          img.src = url;
+          e.preventDefault();
+          break;
+        }
+      }
+    },
+    [setImage]
+  );
+
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('paste', handlePaste);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('paste', handlePaste);
     };
-  }, [handleMouseMove, handleMouseUp]);
+  }, [handleMouseMove, handleMouseUp, handlePaste]);
 
   return (
     <div
@@ -227,7 +271,10 @@ export const ImageEditor2D: React.FC = () => {
               transform: `translate(${viewport2D.panX}px, ${viewport2D.panY}px) scale(${viewport2D.zoom})`,
             }}
           >
-            <div className="relative shadow-2xl border border-darkBorder/60 rounded-sm bg-black/40 overflow-visible">
+            <div 
+              className="relative shadow-2xl border border-darkBorder/60 rounded-sm bg-black/40 overflow-visible will-change-transform"
+              style={{ transform: `rotate(${tempRotation - imageRotation}deg)` }}
+            >
               <img
                 src={image.url}
                 alt={image.name}
@@ -357,6 +404,39 @@ export const ImageEditor2D: React.FC = () => {
               <Crosshair className="w-3.5 h-3.5" />
               中央
             </button>
+            <div className="h-3 w-px bg-darkBorder mx-1" />
+            <div className="flex items-center gap-1.5 px-1.5">
+              <RotateCw className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <span className="text-[10px] text-gray-400 shrink-0">回転</span>
+              <input
+                type="range"
+                min="0"
+                max="360"
+                step="1"
+                value={tempRotation}
+                disabled={isClustering}
+                onChange={(e) => setTempRotation(parseInt(e.target.value))}
+                onMouseUp={() => {
+                  if (tempRotation !== imageRotation) {
+                    rotateImageAbsolute(tempRotation);
+                  }
+                }}
+                onTouchEnd={() => {
+                  if (tempRotation !== imageRotation) {
+                    rotateImageAbsolute(tempRotation);
+                  }
+                }}
+                onKeyUp={(e) => {
+                  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    rotateImageAbsolute(tempRotation);
+                  }
+                }}
+                className="w-24 accent-indigo-400 cursor-pointer h-1.5 bg-darkBorder rounded disabled:opacity-50"
+              />
+              <span className="text-[10px] font-mono text-indigo-300 w-8 text-right font-semibold">
+                {tempRotation}°
+              </span>
+            </div>
             <span className="text-[11px] font-mono text-gray-400 ml-1">
               {Math.round(viewport2D.zoom * 100)}%
             </span>

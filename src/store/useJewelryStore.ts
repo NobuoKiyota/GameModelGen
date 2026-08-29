@@ -23,6 +23,9 @@ export interface JewelryState {
 
   image: ImageInfo | null;
   setImage: (img: ImageInfo | null) => void;
+  originalImage: ImageInfo | null;
+  originalAnchor: AnchorPoint;
+  imageRotation: number;
 
   anchor: AnchorPoint;
   setAnchor: (anchor: AnchorPoint) => void;
@@ -79,6 +82,8 @@ export interface JewelryState {
   updateAnatomySettings: (settings: Partial<AnatomySettings>) => void;
   applySkinTonePreset: (preset: SkinTonePreset) => void;
   setAnatomyPart: (part: AnatomyPartType) => void;
+
+  rotateImageAbsolute: (angle: number) => Promise<void>;
 
   activeTab: 'image' | 'cluster' | '3d';
   setActiveTab: (tab: 'image' | 'cluster' | '3d') => void;
@@ -146,9 +151,15 @@ const storeCreator: StateCreator<JewelryState> = (set, get) => ({
   setStudioMode: (studioMode: StudioMode) => set({ studioMode }),
 
   image: null,
+  originalImage: null,
+  originalAnchor: { u: 0.5, v: 0.5 },
+  imageRotation: 0,
   setImage: (image: ImageInfo | null) => {
     set({
       image,
+      originalImage: image,
+      originalAnchor: { u: 0.5, v: 0.5 },
+      imageRotation: 0,
       anchor: { u: 0.5, v: 0.5 },
       viewport2D: { zoom: 1, panX: 0, panY: 0 },
       clusters: [],
@@ -167,12 +178,37 @@ const storeCreator: StateCreator<JewelryState> = (set, get) => ({
   },
 
   anchor: { u: 0.5, v: 0.5 },
-  setAnchor: (anchor: AnchorPoint) => set({
-    anchor: {
-      u: Math.max(0, Math.min(1, anchor.u)),
-      v: Math.max(0, Math.min(1, anchor.v)),
+  setAnchor: (anchor: AnchorPoint) => {
+    const { imageRotation, originalImage, image } = get();
+    const u = Math.max(0, Math.min(1, anchor.u));
+    const v = Math.max(0, Math.min(1, anchor.v));
+    
+    let originalAnchor = { u, v };
+    
+    if (imageRotation !== 0 && originalImage && image) {
+      const rad = -(imageRotation * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      const xRot = (u - 0.5) * image.width;
+      const yRot = (v - 0.5) * image.height;
+
+      const xOrig = xRot * cos - yRot * sin;
+      const yOrig = xRot * sin + yRot * cos;
+
+      originalAnchor = {
+        u: Math.max(0, Math.min(1, 0.5 + xOrig / originalImage.width)),
+        v: Math.max(0, Math.min(1, 0.5 + yOrig / originalImage.height)),
+      };
+    } else {
+      originalAnchor = { u, v };
     }
-  }),
+
+    set({
+      anchor: { u, v },
+      originalAnchor,
+    });
+  },
   resetAnchor: () => set({ anchor: { u: 0.5, v: 0.5 } }),
 
   viewport2D: { zoom: 1, panX: 0, panY: 0 },
@@ -420,6 +456,83 @@ const storeCreator: StateCreator<JewelryState> = (set, get) => ({
 
   setAnatomyPart: (partType: AnatomyPartType) => {
     get().updateAnatomySettings({ partType });
+  },
+
+  rotateImageAbsolute: async (angle: number) => {
+    const { originalImage, originalAnchor } = get();
+    if (!originalImage) return;
+
+    const normalizedAngle = ((angle % 360) + 360) % 360;
+
+    set({ isClustering: true, imageRotation: normalizedAngle });
+
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = originalImage.url;
+      });
+
+      const rad = (normalizedAngle * Math.PI) / 180;
+      const absSin = Math.abs(Math.sin(rad));
+      const absCos = Math.abs(Math.cos(rad));
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const newW = w * absCos + h * absSin;
+      const newH = w * absSin + h * absCos;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(newW);
+      canvas.height = Math.round(newH);
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Failed to get 2D context');
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rad);
+      ctx.drawImage(img, -w / 2, -h / 2);
+
+      const rotatedUrl = canvas.toDataURL();
+
+      const xOrig = (originalAnchor.u - 0.5) * w;
+      const yOrig = (originalAnchor.v - 0.5) * h;
+
+      const xRot = xOrig * Math.cos(rad) - yOrig * Math.sin(rad);
+      const yRot = xOrig * Math.sin(rad) + yOrig * Math.cos(rad);
+
+      const newAnchor = {
+        u: Math.max(0, Math.min(1, 0.5 + xRot / canvas.width)),
+        v: Math.max(0, Math.min(1, 0.5 + yRot / canvas.height)),
+      };
+
+      set({
+        image: {
+          url: rotatedUrl,
+          width: canvas.width,
+          height: canvas.height,
+          name: originalImage.name,
+        },
+        anchor: newAnchor,
+        clusters: [],
+        clusterMap: null,
+        clusterMapWidth: 0,
+        clusterMapHeight: 0,
+        clusterOverlayUrl: null,
+        selectedClusterId: null,
+        hoveredClusterId: null,
+        heightMapTexture: null,
+        heightMapUrl: null,
+      });
+
+      await get().runClustering();
+    } catch (err) {
+      console.error('Failed to rotate image absolutely:', err);
+      set({ isClustering: false });
+    }
   },
 
   activeTab: '3d',

@@ -14,7 +14,7 @@ export const JewelryShader = {
     uCustomRimColor: { value: new THREE.Color('#d4af37') },
     uLightDir: { value: new THREE.Vector3(0.5, 0.8, 1.0).normalize() },
     uLightColor: { value: new THREE.Color('#ffffff') },
-    uAmbientColor: { value: new THREE.Color('#2a2d3d') },
+    uAmbientColor: { value: new THREE.Color('#686c7d') },
     uRoughness: { value: 0.15 },
     uMetalness: { value: 0.2 },
     uClearcoat: { value: 0.8 },
