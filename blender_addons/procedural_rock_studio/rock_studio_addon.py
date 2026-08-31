@@ -760,13 +760,67 @@ def build_grass_tuft_clump(bm, size_x, size_y, size_z, blade_count=4, seed=0):
         bm.faces.new((v_bl, v_br, v_tr, v_tl))
     return bm.verts[:]
 
-def build_rock_base(bm, size_x, size_y, size_z, style):
-    if style in ("SHARP", "FRACTURED", "CLIFF"):
-        verts = bmesh.ops.create_cube(bm, size=1.0)['verts']
-    else:
-        verts = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)['verts']
-    bmesh.ops.scale(bm, vec=(size_x, size_y, size_z), verts=verts)
-    return verts
+def build_rock_base(bm, size_x, size_y, size_z, style="JAGGED_CRAG", chisel_cuts=8, seed=0):
+    """Generates ultra-rugged craggy jagged rocks via multi-plane bisect slicing and sharp voronoi facets"""
+    random.seed(seed)
+    
+    # 1. Base Mesh Seed
+    if style in ("SHARP", "FRACTURED", "COLUMNAR_CLIFF"):
+        res = bmesh.ops.create_cube(bm, size=1.0)
+        verts = res['verts']
+        bmesh.ops.scale(bm, vec=(size_x, size_y, size_z), verts=verts)
+    elif style == "VOLCANIC_SPIKE":
+        res = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=8,
+            radius1=max(size_x, size_y) * 0.6, radius2=0.08, depth=size_z * 1.3
+        )
+        verts = res['verts']
+    else: # JAGGED_CRAG (Default Rugged)
+        res = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
+        verts = res['verts']
+        # Random non-uniform initial stretching
+        sx = size_x * random.uniform(0.85, 1.15)
+        sy = size_y * random.uniform(0.85, 1.15)
+        sz = size_z * random.uniform(0.9, 1.25)
+        bmesh.ops.scale(bm, vec=(sx, sy, sz), verts=verts)
+
+    # 2. 🔪 Multi-Plane Bisect Chisel Slicing (豪快な多面体ランダム鋭角スライス)
+    num_cuts = max(4, min(16, chisel_cuts))
+    max_dim = max(size_x, size_y, size_z) * 0.55
+    
+    for i in range(num_cuts):
+        # Random cut plane normal
+        theta = random.uniform(0, math.pi * 2)
+        phi = random.uniform(-math.pi * 0.45, math.pi * 0.45)
+        nx = math.cos(phi) * math.cos(theta)
+        ny = math.cos(phi) * math.sin(theta)
+        nz = math.sin(phi)
+        
+        # Plane distance from center (cut off 15% ~ 45% from edges)
+        dist = random.uniform(max_dim * 0.35, max_dim * 0.78)
+        px = nx * dist
+        py = ny * dist
+        pz = nz * dist
+        
+        # Bisect and clear outer half
+        try:
+            bmesh.ops.bisect_plane(
+                bm,
+                geom=bm.verts[:] + bm.edges[:] + bm.faces[:],
+                plane_co=(px, py, pz),
+                plane_no=(nx, ny, nz),
+                clear_outer=True,
+                clear_inner=False
+            )
+        except Exception:
+            pass
+
+    # 3. Micro-vertex sharp jitter
+    for v in bm.verts:
+        jit = (random.random() - 0.5) * (max_dim * 0.08)
+        v.co += v.normal * jit
+
+    return bm.verts[:]
 
 def build_floor_base(bm, size_x, size_y, size_z, shape="SQUARE", seed=0):
     random.seed(seed)
@@ -992,7 +1046,7 @@ def generate_procedural_prop_mesh(
     elif category == "BEAM_ARCH":
         build_beam_arch_base(bm, size_x, size_y, size_z)
     else: # ROCK
-        build_rock_base(bm, size_x, size_y, size_z, style)
+        build_rock_base(bm, size_x, size_y, size_z, style=style, chisel_cuts=big_chunk_cuts * 3 + 4, seed=seed)
 
     # Debris (Rock only)
     if create_debris and debris_count > 0 and category == "ROCK":
@@ -1024,45 +1078,57 @@ def generate_procedural_prop_mesh(
         except Exception:
             pass
 
-    # 3. Subdivision & Displacements (Rock / Pillar / Beam Architecture)
+    # 3. Subdivision & Sharp Displacements (Rock / Pillar / Beam Architecture)
     if category in ("ROCK", "PILLAR", "BEAM", "BEAM_ARCH"):
         subsurf = obj.modifiers.new(name="Subsurf_Base", type='SUBSURF')
-        subsurf.render_levels = detail_level + 1
-        subsurf.levels = detail_level + 1
+        subsurf.render_levels = 1 if category == "ROCK" else (detail_level + 1)
+        subsurf.levels = 1 if category == "ROCK" else (detail_level + 1)
 
-        tex_large = bpy.data.textures.new(name + "_Tex_Large", type='CLOUDS')
-        tex_large.noise_scale = 1.6 if category in ("BEAM", "BEAM_ARCH") else 1.2
-        tex_large.noise_depth = 2 if category in ("BEAM", "BEAM_ARCH") else 3
+        # Sharp Voronoi Chisel Noise for Rocks
+        tex_large = bpy.data.textures.new(name + "_Tex_Large", type='VORONOI' if category == "ROCK" else 'CLOUDS')
+        if category == "ROCK":
+            tex_large.noise_scale = 0.95
+            tex_large.distance_metric = 'DISTANCE_SQUARED'
+        else:
+            tex_large.noise_scale = 1.6 if category in ("BEAM", "BEAM_ARCH") else 1.2
+            tex_large.noise_depth = 2 if category in ("BEAM", "BEAM_ARCH") else 3
         
         disp_large = obj.modifiers.new(name="Disp_Large", type='DISPLACE')
         disp_large.texture = tex_large
-        disp_large.strength = roughness * (0.22 if category in ("BEAM", "BEAM_ARCH") else 0.8)
+        disp_large.strength = roughness * (0.45 if category == "ROCK" else 0.8)
         disp_large.mid_level = 0.5
 
         if chisel_strength > 0.05:
             tex_voronoi = bpy.data.textures.new(name + "_Tex_Chisel", type='VORONOI' if category not in ("BEAM", "BEAM_ARCH") else 'WOOD')
-            tex_voronoi.noise_scale = 0.8
+            tex_voronoi.noise_scale = 0.65
             disp_voronoi = obj.modifiers.new(name="Disp_Chisel", type='DISPLACE')
             disp_voronoi.texture = tex_voronoi
-            disp_voronoi.strength = chisel_strength * (0.18 if category in ("BEAM", "BEAM_ARCH") else 0.5)
+            disp_voronoi.strength = chisel_strength * (0.35 if category == "ROCK" else 0.5)
             disp_voronoi.mid_level = 0.5
 
         if crack_depth > 0.05:
             tex_crack = bpy.data.textures.new(name + "_Tex_Crack", type='VORONOI')
-            tex_crack.noise_scale = 0.5
+            tex_crack.noise_scale = 0.4
             tex_crack.distance_metric = 'DISTANCE_SQUARED'
             disp_crack = obj.modifiers.new(name="Disp_Crack", type='DISPLACE')
             disp_crack.texture = tex_crack
-            disp_crack.strength = -crack_depth * (0.12 if category in ("BEAM", "BEAM_ARCH") else 0.4)
+            disp_crack.strength = -crack_depth * (0.25 if category == "ROCK" else 0.4)
             disp_crack.mid_level = 0.85
 
-    # 4. Apply Modifiers & Smooth
+    # 4. Apply Modifiers & Auto Smooth for hard rocky facets
     for p in mesh.polygons:
         p.use_smooth = True
 
     for mod in list(obj.modifiers):
         try:
             bpy.ops.object.modifier_apply(modifier=mod.name)
+        except Exception:
+            pass
+
+    if category == "ROCK":
+        try:
+            mesh.use_auto_smooth = True
+            mesh.auto_smooth_angle = math.radians(40.0)
         except Exception:
             pass
 
@@ -1113,7 +1179,7 @@ def cleanup_old_debris(context, parent_name):
 # =============================================================
 def resolve_prop_parameters(props):
     cat = props.prop_category
-    types = ['FRACTURED', 'SHARP', 'CLIFF', 'BOULDER', 'WEATHERED']
+    types = ['JAGGED_CRAG', 'COLUMNAR_CLIFF', 'VOLCANIC_SPIKE', 'FRACTURED', 'SHARP', 'BOULDER']
     final_type = random.choice(types) if props.rand_type else props.rock_type
     
     if props.rand_dimensions:
@@ -1735,13 +1801,14 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     rock_type: bpy.props.EnumProperty(
         name="Type",
         items=[
-            ('FRACTURED', "Fractured (大破砕・巨岩)", "Heavily fractured rock with large broken chunks"),
-            ('SHARP', "Sharp Slate (鋭利な割れ石)", "Chiseled slate rock"),
-            ('CLIFF', "Cliff Slab (断崖・板状岩)", "Terraced layered cliff block"),
-            ('BOULDER', "Boulder (丸岩・巨石)", "Weathered rounded massive boulder"),
-            ('WEATHERED', "Weathered (風化岩)", "Soft organic eroded stone")
+            ('JAGGED_CRAG', "🏔️ Jagged Crag (ごつごつ鋭岩)", "多面体スライスカットによる荒々しい鋭利な岩"),
+            ('COLUMNAR_CLIFF', "🧱 Columnar Cliff (柱状断崖岩)", "水平・垂直の鋭角テラス段差を持つ巨岩"),
+            ('VOLCANIC_SPIKE', "🌋 Volcanic Spike (溶岩・尖角岩)", "上に向かって尖るスパイク状の鋭利な岩"),
+            ('FRACTURED', "🪨 Fractured (大破砕・巨岩)", "Heavily fractured rock with large broken chunks"),
+            ('SHARP', "🔪 Sharp Slate (鋭利な割れ石)", "Chiseled slate rock"),
+            ('BOULDER', "🥔 Boulder (丸岩・巨石)", "Weathered rounded massive boulder")
         ],
-        default='FRACTURED'
+        default='JAGGED_CRAG'
     )
     rand_type: bpy.props.BoolProperty(name="🎲 形状ランダム", default=True)
 

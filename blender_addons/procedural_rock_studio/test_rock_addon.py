@@ -9,109 +9,69 @@ with open(addon_path, 'r', encoding='utf-8') as f:
     code = f.read()
     exec(code, globals())
 
-print("=== Testing Chair Overhaul & New Leg Layouts (v6.2) ===")
+print("=== Testing Ultra-Rugged Jagged Craggy Rock Generator (v6.3) ===")
 
-# 1. Dining Chair: Leather Cushion + Solid Backrest + 4 Legs
-chair_1 = generate_procedural_prop_mesh(
+# 1. Test Jagged Crag (Default Rugged)
+rock_jagged = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
-    category="CHAIR",
-    name="Test_Chair_Cushion_Solid",
-    chair_type="DINING_CHAIR",
-    chair_seat_style="CUSHION",
-    chair_back_style="SOLID",
-    chair_leg_layout="FOUR_LEGS",
-    table_leg_style="ORNAMENTAL",
-    size_x=0.55,
-    size_y=0.55,
-    size_z=0.95,
-    tex_folder=r"Z:\MeshCreator\textures\Wood",
+    category="ROCK",
+    name="Test_Rock_Jagged_Crag",
+    style="JAGGED_CRAG",
+    size_x=2.4,
+    size_y=2.2,
+    size_z=1.8,
+    roughness=0.85,
+    chisel_strength=0.9,
+    crack_depth=0.6,
+    big_chunk_cuts=3,
+    create_debris=True,
+    debris_count=6,
+    tex_folder=r"Z:\MeshCreator\textures\Rock",
     use_folder_tex=True,
     selected_tex="",
-    seed=601
+    seed=701
 )
-print(f"-> 1. Dining Chair (Cushion + Solid Back): Verts={len(chair_1.data.vertices)}, Polys={len(chair_1.data.polygons)}")
+print(f"-> 1. Jagged Crag generated: Verts={len(rock_jagged.data.vertices)}, Polys={len(rock_jagged.data.polygons)}")
 
-# 2. Armchair: Natural Armrests + Oval Backrest + 4 Legs
-chair_2 = generate_procedural_prop_mesh(
+# 2. Test Columnar Cliff
+rock_cliff = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
-    category="CHAIR",
-    name="Test_Chair_Armchair_Oval",
-    chair_type="ARMCHAIR",
-    chair_seat_style="CUSHION",
-    chair_back_style="OVAL",
-    chair_leg_layout="FOUR_LEGS",
-    table_leg_style="TWISTED",
-    size_x=0.65,
-    size_y=0.60,
-    size_z=0.98,
-    tex_folder=r"Z:\MeshCreator\textures\Wood",
+    category="ROCK",
+    name="Test_Rock_Columnar_Cliff",
+    style="COLUMNAR_CLIFF",
+    size_x=3.0,
+    size_y=1.5,
+    size_z=2.5,
+    roughness=0.8,
+    chisel_strength=0.95,
+    big_chunk_cuts=4,
+    tex_folder=r"Z:\MeshCreator\textures\Rock",
     use_folder_tex=True,
     selected_tex="",
-    seed=602
+    seed=702
 )
-print(f"-> 2. Armchair (Full Armrests + Oval Back): Verts={len(chair_2.data.vertices)}, Polys={len(chair_2.data.polygons)}")
+print(f"-> 2. Columnar Cliff generated: Verts={len(rock_cliff.data.vertices)}, Polys={len(rock_cliff.data.polygons)}")
 
-# 3. Pedestal 1-Leg Chair (Central Column + 4 Claw Feet)
-chair_3 = generate_procedural_prop_mesh(
+# 3. Test Volcanic Spike
+rock_spike = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
-    category="CHAIR",
-    name="Test_Chair_Pedestal_1Leg",
-    chair_type="DINING_CHAIR",
-    chair_seat_style="CUSHION",
-    chair_back_style="SPINDLE",
-    chair_leg_layout="PEDESTAL_ONE",
-    table_leg_style="ORNAMENTAL",
-    size_x=0.55,
-    size_y=0.55,
-    size_z=0.95,
-    tex_folder=r"Z:\MeshCreator\textures\Wood",
+    category="ROCK",
+    name="Test_Rock_Volcanic_Spike",
+    style="VOLCANIC_SPIKE",
+    size_x=1.6,
+    size_y=1.6,
+    size_z=3.2,
+    roughness=0.9,
+    chisel_strength=0.9,
+    big_chunk_cuts=3,
+    tex_folder=r"Z:\MeshCreator\textures\Rock",
     use_folder_tex=True,
     selected_tex="",
-    seed=603
+    seed=703
 )
-print(f"-> 3. Pedestal 1-Leg Chair: Verts={len(chair_3.data.vertices)}, Polys={len(chair_3.data.polygons)}")
+print(f"-> 3. Volcanic Spike generated: Verts={len(rock_spike.data.vertices)}, Polys={len(rock_spike.data.polygons)}")
 
-# 4. X-Cross Legs Chair
-chair_4 = generate_procedural_prop_mesh(
-    context=bpy.context,
-    target_obj=None,
-    category="CHAIR",
-    name="Test_Chair_XCross",
-    chair_type="DINING_CHAIR",
-    chair_seat_style="WOOD_FLAT",
-    chair_back_style="SOLID",
-    chair_leg_layout="X_CROSS",
-    size_x=0.55,
-    size_y=0.55,
-    size_z=0.95,
-    tex_folder=r"Z:\MeshCreator\textures\Wood",
-    use_folder_tex=True,
-    selected_tex="",
-    seed=604
-)
-print(f"-> 4. X-Cross Legs Chair: Verts={len(chair_4.data.vertices)}, Polys={len(chair_4.data.polygons)}")
-
-# 5. Round Stool (Tripod 3-Legs perfectly inside seat radius)
-stool_5 = generate_procedural_prop_mesh(
-    context=bpy.context,
-    target_obj=None,
-    category="CHAIR",
-    name="Test_Round_Stool_Tripod",
-    chair_type="ROUND_STOOL",
-    chair_seat_style="CUSHION",
-    chair_leg_layout="TRIPOD_THREE",
-    table_leg_style="REINFORCED",
-    size_x=0.5,
-    size_y=0.5,
-    size_z=0.48,
-    tex_folder=r"Z:\MeshCreator\textures\Wood",
-    use_folder_tex=True,
-    selected_tex="",
-    seed=605
-)
-print(f"-> 5. Round Stool (Tripod 3-Legs): Verts={len(stool_5.data.vertices)}, Polys={len(stool_5.data.polygons)}")
-
-print("=== ALL CHAIR OVERHAUL & STRUCTURAL TESTS PASSED PERFECTLY! ===")
+print("=== ALL RUGGED CRAGGY ROCK TESTS PASSED PERFECTLY! ===")
