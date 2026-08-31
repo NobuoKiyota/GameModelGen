@@ -251,6 +251,7 @@ def generate_procedural_prop_mesh(
             has_leaves=tree_has_leaves,
             leaf_count=tree_leaf_count,
             branch_levels=tree_branch_levels,
+            leaf_style=tree_leaf_style,
             mat_mode=tree_mat_mode,
             seed=seed,
             size_z=size_z
