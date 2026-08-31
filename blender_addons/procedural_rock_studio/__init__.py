@@ -1,5 +1,5 @@
 bl_info = {
-    "name": "Procedural Prop Studio Pro",
+    "name": "Procedural Prop Studio Pro (Modular)",
     "author": "Antigravity & User",
     "version": (2, 5, 0),
     "blender": (3, 6, 0),
@@ -8,21 +8,9 @@ bl_info = {
     "category": "Add Mesh",
 }
 
-import os
-import sys
 import bpy
-
-# アドオン自身のディレクトリを sys.path に追加してモジュールインポートを可能にする
-addon_dir = os.path.dirname(os.path.abspath(__file__))
-if addon_dir not in sys.path:
-    sys.path.insert(0, addon_dir)
-
-try:
-    from .properties import PropStudioProperties
-    from .ui import classes as ui_classes
-except ImportError:
-    from properties import PropStudioProperties
-    from ui import classes as ui_classes
+from .properties import PropStudioProperties
+from .ui import classes as ui_classes
 
 classes = (
     PropStudioProperties,
