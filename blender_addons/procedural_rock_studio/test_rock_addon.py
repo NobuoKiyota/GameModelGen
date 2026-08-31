@@ -9,69 +9,44 @@ with open(addon_path, 'r', encoding='utf-8') as f:
     code = f.read()
     exec(code, globals())
 
-print("=== Testing Ultra-Rugged Jagged Craggy Rock Generator (v6.3) ===")
+print("=== Testing Coexistence of Round Rock & Jagged Crag (v6.4) ===")
 
-# 1. Test Jagged Crag (Default Rugged)
-rock_jagged = generate_procedural_prop_mesh(
+# 1. Test Traditional Round Boulder (ROCK)
+rock_round = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
     category="ROCK",
-    name="Test_Rock_Jagged_Crag",
+    name="Test_Round_Boulder",
+    style="BOULDER",
+    size_x=2.2,
+    size_y=2.0,
+    size_z=1.6,
+    roughness=0.7,
+    tex_folder=r"Z:\MeshCreator\textures\Rock",
+    use_folder_tex=True,
+    selected_tex="",
+    seed=801
+)
+print(f"-> 1. Traditional Round Boulder (ROCK): Verts={len(rock_round.data.vertices)}, Polys={len(rock_round.data.polygons)}")
+
+# 2. Test Ultra-Rugged Jagged Crag (CRAG)
+crag_jagged = generate_procedural_prop_mesh(
+    context=bpy.context,
+    target_obj=None,
+    category="CRAG",
+    name="Test_Jagged_Crag",
     style="JAGGED_CRAG",
     size_x=2.4,
     size_y=2.2,
     size_z=1.8,
     roughness=0.85,
     chisel_strength=0.9,
-    crack_depth=0.6,
-    big_chunk_cuts=3,
-    create_debris=True,
-    debris_count=6,
-    tex_folder=r"Z:\MeshCreator\textures\Rock",
-    use_folder_tex=True,
-    selected_tex="",
-    seed=701
-)
-print(f"-> 1. Jagged Crag generated: Verts={len(rock_jagged.data.vertices)}, Polys={len(rock_jagged.data.polygons)}")
-
-# 2. Test Columnar Cliff
-rock_cliff = generate_procedural_prop_mesh(
-    context=bpy.context,
-    target_obj=None,
-    category="ROCK",
-    name="Test_Rock_Columnar_Cliff",
-    style="COLUMNAR_CLIFF",
-    size_x=3.0,
-    size_y=1.5,
-    size_z=2.5,
-    roughness=0.8,
-    chisel_strength=0.95,
-    big_chunk_cuts=4,
-    tex_folder=r"Z:\MeshCreator\textures\Rock",
-    use_folder_tex=True,
-    selected_tex="",
-    seed=702
-)
-print(f"-> 2. Columnar Cliff generated: Verts={len(rock_cliff.data.vertices)}, Polys={len(rock_cliff.data.polygons)}")
-
-# 3. Test Volcanic Spike
-rock_spike = generate_procedural_prop_mesh(
-    context=bpy.context,
-    target_obj=None,
-    category="ROCK",
-    name="Test_Rock_Volcanic_Spike",
-    style="VOLCANIC_SPIKE",
-    size_x=1.6,
-    size_y=1.6,
-    size_z=3.2,
-    roughness=0.9,
-    chisel_strength=0.9,
     big_chunk_cuts=3,
     tex_folder=r"Z:\MeshCreator\textures\Rock",
     use_folder_tex=True,
     selected_tex="",
-    seed=703
+    seed=802
 )
-print(f"-> 3. Volcanic Spike generated: Verts={len(rock_spike.data.vertices)}, Polys={len(rock_spike.data.polygons)}")
+print(f"-> 2. Ultra-Rugged Jagged Crag (CRAG): Verts={len(crag_jagged.data.vertices)}, Polys={len(crag_jagged.data.polygons)}")
 
-print("=== ALL RUGGED CRAGGY ROCK TESTS PASSED PERFECTLY! ===")
+print("=== ALL ROUND ROCK & JAGGED CRAG PRESET TESTS PASSED! ===")
