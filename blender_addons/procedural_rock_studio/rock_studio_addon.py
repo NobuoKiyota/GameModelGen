@@ -2786,7 +2786,186 @@ def resolve_prop_parameters(props):
     }
 
 # =============================================================
-# 7. Clean Unity FBX Exporter
+# 7. Auto PBR Texture Baker Core (Unity ベタ塗り完全解消)
+# =============================================================
+def apply_baked_pbr_material(obj, baked_textures):
+    """ベイクした BaseColor / Normal テクスチャを標準 PBR マテリアルとしてアタッチ"""
+    mat_name = f"{obj.name}_Baked_PBR_Mat"
+    mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (650, 0)
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (350, 0)
+    node_bsdf.inputs['Roughness'].default_value = 0.6
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    # 1. BaseColor Texture
+    if 'BaseColor' in baked_textures:
+        tex_path = baked_textures['BaseColor']
+        img = bpy.data.images.load(tex_path, check_existing=True)
+        node_col = nodes.new(type='ShaderNodeTexImage')
+        node_col.location = (50, 100)
+        node_col.image = img
+        links.new(node_col.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+    # 2. Normal Map Texture (Non-Color)
+    if 'Normal' in baked_textures:
+        tex_path = baked_textures['Normal']
+        img = bpy.data.images.load(tex_path, check_existing=True)
+        img.colorspace_settings.name = 'Non-Color'
+        node_norm_tex = nodes.new(type='ShaderNodeTexImage')
+        node_norm_tex.location = (-200, -150)
+        node_norm_tex.image = img
+        node_norm_map = nodes.new(type='ShaderNodeNormalMap')
+        node_norm_map.location = (80, -150)
+        node_norm_map.inputs['Strength'].default_value = 1.0
+        links.new(node_norm_tex.outputs['Color'], node_norm_map.inputs['Color'])
+        links.new(node_norm_map.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    # オブジェクトのマテリアルを差し替え
+    obj.data.materials.clear()
+    obj.data.materials.append(mat)
+    return mat
+
+
+def bake_procedural_material_to_pbr(obj, output_dir, res=1024, bake_diffuse=True, bake_normal=True):
+    """プロシージャルシェーダーを Cycles で一発画像ベイク (BaseColor + Tangent Normal)"""
+    if not obj or obj.type != 'MESH':
+        return {}
+
+    scene = bpy.context.scene
+    old_engine = scene.render.engine
+    scene.render.engine = 'CYCLES'
+    scene.cycles.bake_type = 'DIFFUSE'
+    scene.cycles.samples = 16 # 高速ベイク
+    try:
+        scene.cycles.use_denoising = False
+    except Exception:
+        pass
+
+    # オブジェクトのアクティブ化
+    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+
+    os.makedirs(output_dir, exist_ok=True)
+    base_name = obj.name
+    baked_textures = {}
+
+    # 1. BaseColor (DIFFUSE pass: COLOR only, no direct/indirect lighting)
+    if bake_diffuse:
+        diff_img_name = f"{base_name}_BaseColor"
+        diff_img = bpy.data.images.new(diff_img_name, width=res, height=res, alpha=True)
+        
+        bake_nodes = []
+        for mat in obj.data.materials:
+            if mat and mat.use_nodes:
+                node = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
+                node.image = diff_img
+                mat.node_tree.nodes.active = node
+                bake_nodes.append((mat, node))
+        
+        try:
+            bpy.ops.object.bake(type='DIFFUSE', pass_filter={'COLOR'}, use_clear=True, margin=4)
+            diff_path = os.path.join(output_dir, f"{diff_img_name}.png")
+            diff_img.filepath_raw = diff_path
+            diff_img.file_format = 'PNG'
+            diff_img.save()
+            baked_textures['BaseColor'] = diff_path
+        except Exception as e:
+            print("DIFFUSE BAKE ERROR:", e)
+        finally:
+            for mat, node in bake_nodes:
+                try:
+                    mat.node_tree.nodes.remove(node)
+                except Exception:
+                    pass
+
+    # 2. Normal Map (TANGENT Space Normal)
+    if bake_normal:
+        norm_img_name = f"{base_name}_Normal"
+        norm_img = bpy.data.images.new(norm_img_name, width=res, height=res, alpha=False)
+        try:
+            norm_img.colorspace_settings.name = 'Non-Color'
+        except Exception:
+            pass
+
+        bake_nodes = []
+        for mat in obj.data.materials:
+            if mat and mat.use_nodes:
+                node = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
+                node.image = norm_img
+                mat.node_tree.nodes.active = node
+                bake_nodes.append((mat, node))
+
+        try:
+            bpy.ops.object.bake(type='NORMAL', normal_space='TANGENT', use_clear=True, margin=4)
+            norm_path = os.path.join(output_dir, f"{norm_img_name}.png")
+            norm_img.filepath_raw = norm_path
+            norm_img.file_format = 'PNG'
+            norm_img.save()
+            baked_textures['Normal'] = norm_path
+        except Exception as e:
+            print("NORMAL BAKE ERROR:", e)
+        finally:
+            for mat, node in bake_nodes:
+                try:
+                    mat.node_tree.nodes.remove(node)
+                except Exception:
+                    pass
+
+    # レンダラー復帰
+    scene.render.engine = old_engine
+
+    # マテリアル差し替え
+    if baked_textures:
+        apply_baked_pbr_material(obj, baked_textures)
+
+    return baked_textures
+
+
+class MESH_OT_bake_prop_textures(bpy.types.Operator):
+    """Bake procedural shaders into PBR Image Textures (BaseColor + Normal) for Unity"""
+    bl_idname = "mesh.bake_prop_textures"
+    bl_label = "Bake Procedural to PBR Textures"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        active_obj = context.active_object
+        if not active_obj or active_obj.type != 'MESH':
+            self.report({'WARNING'}, "Please select a prop mesh to bake")
+            return {'CANCELLED'}
+
+        export_dir = props.export_folder.strip() or r"Z:\MeshCreator\exports"
+        tex_out_dir = os.path.join(export_dir, "textures")
+        res = int(props.bake_resolution)
+
+        self.report({'INFO'}, f"🔥 PBRベイク開始 ({res}x{res})...")
+        baked = bake_procedural_material_to_pbr(
+            active_obj,
+            output_dir=tex_out_dir,
+            res=res,
+            bake_diffuse=props.bake_diffuse,
+            bake_normal=props.bake_normal
+        )
+
+        if baked:
+            self.report({'INFO'}, f"✅ ベイク成功! 画像保存先: {tex_out_dir}")
+            return {'FINISHED'}
+        else:
+            self.report({'WARNING'}, "ベイクに失敗しました。UV展開やマテリアルを確認してください。")
+            return {'CANCELLED'}
+
+
+# =============================================================
+# 7b. Clean Unity FBX Exporter
 # =============================================================
 def get_next_available_fbx_path(export_dir, base_name):
     os.makedirs(export_dir, exist_ok=True)
@@ -2802,7 +2981,7 @@ def get_next_available_fbx_path(export_dir, base_name):
         idx += 1
 
 class MESH_OT_export_selected_fbx(bpy.types.Operator):
-    """Export active prop to FBX for Unity"""
+    """Export active prop to FBX for Unity with optional Auto-Baking"""
     bl_idname = "mesh.export_selected_fbx"
     bl_label = "1-Click Auto-Increment FBX Export"
     bl_options = {'REGISTER', 'UNDO'}
@@ -2816,6 +2995,25 @@ class MESH_OT_export_selected_fbx(bpy.types.Operator):
 
         export_dir = props.export_folder.strip() or r"Z:\MeshCreator\exports"
         os.makedirs(export_dir, exist_ok=True)
+
+        # 🌟 オプション：プロシージャルの自動ベイク実行 (Unity ベタ塗り防止)
+        if props.auto_bake_on_export:
+            # プロシージャルマテリアルが含まれているかチェック
+            has_procedural = any(
+                mat and mat.use_nodes and not any(n.type == 'TEX_IMAGE' for n in mat.node_tree.nodes)
+                for mat in active_obj.data.materials
+            )
+            # 水面以外かつプロシージャルの場合ベイク
+            if props.prop_category != 'WATER' and has_procedural:
+                tex_out_dir = os.path.join(export_dir, "textures")
+                res = int(props.bake_resolution)
+                bake_procedural_material_to_pbr(
+                    active_obj,
+                    output_dir=tex_out_dir,
+                    res=res,
+                    bake_diffuse=props.bake_diffuse,
+                    bake_normal=props.bake_normal
+                )
 
         base_name = props.asset_name.strip() or active_obj.name
         final_fbx_path = get_next_available_fbx_path(export_dir, base_name)
@@ -2835,7 +3033,8 @@ class MESH_OT_export_selected_fbx(bpy.types.Operator):
                         if os.path.exists(src_img):
                             try:
                                 dst_img = os.path.join(export_dir, os.path.basename(src_img))
-                                shutil.copy2(src_img, dst_img)
+                                if src_img != dst_img:
+                                    shutil.copy2(src_img, dst_img)
                                 copied_textures.append(os.path.basename(src_img))
                             except Exception:
                                 pass
@@ -3633,6 +3832,24 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         description="Displace モディファイアを適用してUnity/FBXエクスポート可能な実メッシュにする"
     )
 
+    # 🔥 Auto PBR Texture Baker (Unity ベタ塗り防止)
+    bake_resolution: bpy.props.EnumProperty(
+        name="ベイク解像度",
+        items=[
+            ('512', "512 x 512 (軽量)", "モバイル・ローポリ向け"),
+            ('1024', "1024 x 1024 (標準・推奨)", "Unity標準品質"),
+            ('2048', "2048 x 2048 (高精細)", "近景・ヒーローアセット向け")
+        ],
+        default='1024'
+    )
+    auto_bake_on_export: bpy.props.BoolProperty(
+        name="FBX出力時に自動ベイク (Unityベタ塗り防止)",
+        default=True,
+        description="プロシージャルマテリアルをBaseColor/Normal画像に自動焼き付けしてFBXと同封出力"
+    )
+    bake_diffuse: bpy.props.BoolProperty(name="BaseColor (色・木目・草)", default=True)
+    bake_normal: bpy.props.BoolProperty(name="Normal Map (凹凸法線)", default=True)
+
 
 # =============================================================
 # 11. Sidebar Panel (N-Panel)
@@ -3858,6 +4075,19 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
         # 🌟 6. Tab 3: Export Settings
         elif props.studio_tab == 'EXPORT':
+            # 🔥 Auto PBR Texture Baker Box (Unity ベタ塗り防止)
+            box_bake = layout.box()
+            box_bake.label(text="🔥 Auto PBR Baker (Unityベタ塗り解消):", icon='RENDER_STILL')
+            box_bake.prop(props, "bake_resolution", text="解像度")
+            row_bp = box_bake.row(align=True)
+            row_bp.prop(props, "bake_diffuse", text="BaseColor (色)")
+            row_bp.prop(props, "bake_normal", text="Normal (法線)")
+            box_bake.prop(props, "auto_bake_on_export", text="⚡ FBX出力時に自動ベイクする")
+            
+            row_bact = box_bake.row(align=True)
+            row_bact.scale_y = 1.3
+            row_bact.operator("mesh.bake_prop_textures", text="🔥 手動で今すぐベイク", icon='TEXTURE')
+
             box_exp = layout.box()
             box_exp.label(text="Unity FBX Settings:", icon='EXPORT')
             box_exp.prop(props, "asset_name", text="アセット名")
@@ -3933,6 +4163,7 @@ classes = (
     MESH_OT_reroll_selected_prop,
     MESH_OT_create_new_prop,
     MESH_OT_apply_random_texture_only,
+    MESH_OT_bake_prop_textures,
     MESH_OT_export_selected_fbx,
     MESH_OT_open_export_folder,
     MESH_OT_create_grass_field,
