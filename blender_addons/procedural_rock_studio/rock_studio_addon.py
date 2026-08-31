@@ -1856,8 +1856,8 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     floor_crack_count: bpy.props.IntProperty(name="亀裂・傷の箇所数", default=6, min=0, max=20)
     rand_fractures: bpy.props.BoolProperty(name="🎲 亀裂ランダム", default=True)
 
-    create_debris: bpy.props.BoolProperty(name="Create Debris (周囲の破片・小石)", default=True)
-    debris_count: bpy.props.IntProperty(name="Shard Count", default=6, min=1, max=20)
+    create_debris: bpy.props.BoolProperty(name="Create Debris (周囲の破片・小石)", default=False)
+    debris_count: bpy.props.IntProperty(name="Shard Count", default=4, min=1, max=20)
 
     texture_folder: bpy.props.StringProperty(name="Texture Folder", subtype='DIR_PATH', default=r"Z:\MeshCreator\textures\Rock")
     use_folder_texture: bpy.props.BoolProperty(name="Use Folder Textures", default=True)
