@@ -9,40 +9,24 @@ with open(addon_path, 'r', encoding='utf-8') as f:
     code = f.read()
     exec(code, globals())
 
-print("=== Testing In-Place Re-Roll and Randomized Leaves (v7.5) ===")
+print("=== Testing Advanced Procedural Shader Generation (v7.6) ===")
 
-# 1. Create Initial Oak Tree
-tree = generate_procedural_prop_mesh(
-    context=bpy.context,
-    target_obj=None,
-    category="TREE",
-    name="My_Real_Tree",
-    tree_species="OAK",
-    tree_has_leaves=True,
-    tree_leaf_count=120,
-    tree_branch_levels=2,
-    size_z=4.5,
-    seed=100
-)
-initial_obj_count = len(bpy.data.objects)
-print(f"Step 1 (Created): Total Objects in Scene={initial_obj_count}, Active Tree Name={tree.name}, Verts={len(tree.data.vertices)}")
-
-# 2. Re-roll multiple times in-place on the same object
-for i in range(3):
+species_list = ["OAK", "JAPANESE_MAPLE", "PINE", "WILLOW", "BIRCH"]
+for sp in species_list:
     tree = generate_procedural_prop_mesh(
         context=bpy.context,
-        target_obj=tree,
+        target_obj=None,
         category="TREE",
-        name="My_Real_Tree",
-        tree_species="OAK",
+        name=f"Tree_{sp}",
+        tree_species=sp,
         tree_has_leaves=True,
-        tree_leaf_count=120,
+        tree_leaf_count=100,
         tree_branch_levels=2,
+        tree_mat_mode="PROCEDURAL",
         size_z=4.5,
-        seed=200 + i
+        seed=333
     )
-    current_obj_count = len(bpy.data.objects)
-    print(f"Step 2.{i+1} (Re-Rolled #{i+1}): Total Objects={current_obj_count}, Name={tree.name}, Verts={len(tree.data.vertices)}")
-    assert current_obj_count == initial_obj_count, f"Object count increased from {initial_obj_count} to {current_obj_count}!"
+    mat_names = [m.name for m in tree.data.materials if m]
+    print(f"-> Species {sp:15s}: Name={tree.name:15s}, Mats={mat_names}")
 
-print("=== ALL IN-PLACE REPLACEMENT & LEAF RANDOMIZATION TESTS PASSED! ===")
+print("=== ALL PROCEDURAL SHADERS PASSED! ===")

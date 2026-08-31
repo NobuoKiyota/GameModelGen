@@ -92,8 +92,201 @@ def apply_image_texture_material(obj, image_path, scale=1.0, bump_strength=0.35,
     
     return mat
 
+def create_procedural_bark_material(mat_name, seed=0, species="OAK"):
+    """Procedural Bark Material matching Sapling Tree Gen tutorials (Wave Texture vertical woodgrain + Noise + Bump)"""
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (650, 0)
+
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (350, 0)
+    node_bsdf.inputs['Roughness'].default_value = 0.88
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    node_coord = nodes.new(type='ShaderNodeTexCoord')
+    node_coord.location = (-900, 0)
+    
+    node_map = nodes.new(type='ShaderNodeMapping')
+    node_map.location = (-700, 0)
+    # Stretch vertically along Z to create natural bark grain
+    node_map.inputs['Scale'].default_value = (1.0, 1.0, 0.15)
+    links.new(node_coord.outputs['Object'], node_map.inputs['Vector'])
+
+    # 1. Wave Texture for vertical bark grooves
+    node_wave = nodes.new(type='ShaderNodeTexWave')
+    node_wave.location = (-480, 120)
+    node_wave.wave_type = 'BANDS'
+    node_wave.bands_direction = 'X'
+    node_wave.inputs['Scale'].default_value = 4.5
+    node_wave.inputs['Distortion'].default_value = 6.0
+    node_wave.inputs['Detail'].default_value = 4.0
+    node_wave.inputs['Detail Roughness'].default_value = 0.75
+    links.new(node_map.outputs['Vector'], node_wave.inputs['Vector'])
+
+    # 2. Fine Noise Texture for bark surface roughness
+    node_noise = nodes.new(type='ShaderNodeTexNoise')
+    node_noise.location = (-480, -150)
+    node_noise.inputs['Scale'].default_value = 14.0
+    node_noise.inputs['Detail'].default_value = 8.0
+    node_noise.inputs['Roughness'].default_value = 0.8
+    links.new(node_map.outputs['Vector'], node_noise.inputs['Vector'])
+
+    # 3. Mix Wave and Noise
+    node_mix = nodes.new(type='ShaderNodeMix')
+    node_mix.data_type = 'FLOAT'
+    node_mix.location = (-260, 0)
+    node_mix.inputs['Factor'].default_value = 0.4
+    links.new(node_wave.outputs['Color'], node_mix.inputs[2])
+    links.new(node_noise.outputs['Fac'], node_mix.inputs[3])
+
+    # 4. ColorRamp tailored per species
+    node_ramp = nodes.new(type='ShaderNodeValToRGB')
+    node_ramp.location = (-50, 100)
+
+    if species == "BIRCH":
+        # White Birch with black bark fissures
+        node_ramp.color_ramp.elements[0].position = 0.18
+        node_ramp.color_ramp.elements[0].color = (0.05, 0.05, 0.05, 1.0)
+        node_ramp.color_ramp.elements[1].position = 0.55
+        node_ramp.color_ramp.elements[1].color = (0.88, 0.88, 0.85, 1.0)
+    elif species == "PINE":
+        # Reddish-brown rough pine bark
+        node_ramp.color_ramp.elements[0].position = 0.22
+        node_ramp.color_ramp.elements[0].color = (0.12, 0.06, 0.03, 1.0)
+        node_ramp.color_ramp.elements[1].position = 0.75
+        node_ramp.color_ramp.elements[1].color = (0.35, 0.18, 0.11, 1.0)
+    elif species == "JAPANESE_MAPLE":
+        # Smooth elegant grey-brown bark
+        node_ramp.color_ramp.elements[0].position = 0.25
+        node_ramp.color_ramp.elements[0].color = (0.18, 0.14, 0.11, 1.0)
+        node_ramp.color_ramp.elements[1].position = 0.75
+        node_ramp.color_ramp.elements[1].color = (0.38, 0.32, 0.26, 1.0)
+    else: # OAK / WILLOW
+        # Deep aged dark brown oak bark
+        node_ramp.color_ramp.elements[0].position = 0.2
+        node_ramp.color_ramp.elements[0].color = (0.10, 0.07, 0.04, 1.0)
+        node_ramp.color_ramp.elements[1].position = 0.8
+        node_ramp.color_ramp.elements[1].color = (0.32, 0.23, 0.16, 1.0)
+
+    links.new(node_mix.outputs[0], node_ramp.inputs['Fac'])
+    links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+    # 5. Deep Bark Bump Normal
+    node_bump = nodes.new(type='ShaderNodeBump')
+    node_bump.location = (120, -150)
+    node_bump.inputs['Strength'].default_value = 0.75
+    node_bump.inputs['Distance'].default_value = 0.06
+    links.new(node_mix.outputs[0], node_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    return mat
+
+def create_procedural_leaf_material(mat_name, seed=0, species="OAK"):
+    """Procedural Leaf Material matching Sapling Tree Gen tutorials (Object Info Random Color Variation + Subsurface Scattering)"""
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (650, 0)
+
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (350, 0)
+    node_bsdf.inputs['Roughness'].default_value = 0.38
+    # Enable subtle SSS (Subsurface Scattering) for leaf translucency
+    try:
+        node_bsdf.inputs['Subsurface Weight'].default_value = 0.2
+    except Exception:
+        try:
+            node_bsdf.inputs['Subsurface'].default_value = 0.2
+        except Exception:
+            pass
+
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    # 1. Object Info Random for leaf-to-leaf color variations
+    node_objinfo = nodes.new(type='ShaderNodeObjectInfo')
+    node_objinfo.location = (-750, 150)
+
+    node_noise = nodes.new(type='ShaderNodeTexNoise')
+    node_noise.location = (-750, -100)
+    node_noise.inputs['Scale'].default_value = 18.0
+    node_noise.inputs['Detail'].default_value = 4.0
+
+    node_mix = nodes.new(type='ShaderNodeMix')
+    node_mix.data_type = 'FLOAT'
+    node_mix.location = (-450, 50)
+    node_mix.inputs['Factor'].default_value = 0.5
+    links.new(node_objinfo.outputs['Random'], node_mix.inputs[2])
+    links.new(node_noise.outputs['Fac'], node_mix.inputs[3])
+
+    # 2. ColorRamp with rich botanical palettes per species
+    node_ramp = nodes.new(type='ShaderNodeValToRGB')
+    node_ramp.location = (-200, 50)
+
+    if species == "JAPANESE_MAPLE":
+        # 🍁 Japanese Autumn Maple: Crimson Red -> Warm Orange -> Golden Yellow
+        node_ramp.color_ramp.elements[0].position = 0.1
+        node_ramp.color_ramp.elements[0].color = (0.75, 0.06, 0.02, 1.0)
+        
+        elem_mid = node_ramp.color_ramp.elements.new(0.55)
+        elem_mid.color = (0.92, 0.38, 0.05, 1.0)
+        
+        node_ramp.color_ramp.elements[2].position = 0.9
+        node_ramp.color_ramp.elements[2].color = (0.85, 0.68, 0.08, 1.0)
+    elif species == "PINE":
+        # 🌲 Conifer Pine: Deep forest dark pine needle green
+        node_ramp.color_ramp.elements[0].position = 0.15
+        node_ramp.color_ramp.elements[0].color = (0.04, 0.15, 0.06, 1.0)
+        node_ramp.color_ramp.elements[1].position = 0.85
+        node_ramp.color_ramp.elements[1].color = (0.10, 0.28, 0.12, 1.0)
+    elif species == "BIRCH":
+        # ⚪ White Birch: Fresh vibrant spring lime green
+        node_ramp.color_ramp.elements[0].position = 0.2
+        node_ramp.color_ramp.elements[0].color = (0.22, 0.52, 0.10, 1.0)
+        node_ramp.color_ramp.elements[1].position = 0.8
+        node_ramp.color_ramp.elements[1].color = (0.42, 0.68, 0.14, 1.0)
+    elif species == "WILLOW":
+        # 🌿 Weeping Willow: Soft sage light green
+        node_ramp.color_ramp.elements[0].position = 0.2
+        node_ramp.color_ramp.elements[0].color = (0.16, 0.38, 0.15, 1.0)
+        node_ramp.color_ramp.elements[1].position = 0.8
+        node_ramp.color_ramp.elements[1].color = (0.35, 0.56, 0.20, 1.0)
+    else: # OAK / Deciduous
+        # 🌳 Oak: Rich lush deciduous canopy green
+        node_ramp.color_ramp.elements[0].position = 0.2
+        node_ramp.color_ramp.elements[0].color = (0.12, 0.32, 0.06, 1.0)
+        node_ramp.color_ramp.elements[1].position = 0.8
+        node_ramp.color_ramp.elements[1].color = (0.26, 0.54, 0.12, 1.0)
+
+    links.new(node_mix.outputs[0], node_ramp.inputs['Fac'])
+    links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+    # 3. Micro vein bump
+    node_bump = nodes.new(type='ShaderNodeBump')
+    node_bump.location = (120, -150)
+    node_bump.inputs['Strength'].default_value = 0.25
+    node_bump.inputs['Distance'].default_value = 0.02
+    links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    return mat
+
 def create_procedural_pbr_material(mat_name, seed=0, is_grass=False):
-    mat = bpy.data.materials.new(name=mat_name)
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(name=mat_name)
     mat.use_nodes = True
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
@@ -1156,6 +1349,7 @@ def generate_sapling_real_tree(
     has_leaves=True,
     leaf_count=120,
     branch_levels=2,
+    mat_mode="PROCEDURAL",
     seed=0,
     size_z=4.5
 ):
@@ -1339,24 +1533,40 @@ def generate_sapling_real_tree(
         context.view_layer.objects.active = tree_obj
         bpy.ops.object.convert(target='MESH')
 
-    # Apply textures
-    tex_files_wood = get_textures_from_folder(r"Z:\MeshCreator\textures\Wood")
-    if tree_obj:
-        if tex_files_wood:
-            bark_tex = random.choice(tex_files_wood)
-            apply_image_texture_material(tree_obj, os.path.join(r"Z:\MeshCreator\textures\Wood", bark_tex), scale=1.0, bump_strength=0.45, slot_index=0)
-        else:
-            mat_bark = create_procedural_pbr_material(old_name + "_Bark_Mat", seed)
-            tree_obj.data.materials.append(mat_bark)
+    # Apply materials (Procedural Shader vs Image Texture)
+    if mat_mode == "PROCEDURAL":
+        if tree_obj:
+            mat_bark = create_procedural_bark_material(old_name + "_Bark_Procedural", seed=seed, species=species)
+            if tree_obj.data.materials:
+                tree_obj.data.materials[0] = mat_bark
+            else:
+                tree_obj.data.materials.append(mat_bark)
 
-    if leaves_obj and has_leaves:
-        tex_files_grass = get_textures_from_folder(r"Z:\MeshCreator\textures\Grass")
-        if tex_files_grass:
-            leaf_tex = random.choice(tex_files_grass)
-            apply_image_texture_material(leaves_obj, os.path.join(r"Z:\MeshCreator\textures\Grass", leaf_tex), scale=1.0, bump_strength=0.25, is_transparent=True, slot_index=1)
-        else:
-            mat_leaf = create_procedural_pbr_material(old_name + "_Leaves_Mat", seed + 7, is_grass=True)
-            leaves_obj.data.materials.append(mat_leaf)
+        if leaves_obj and has_leaves:
+            mat_leaf = create_procedural_leaf_material(old_name + "_Leaf_Procedural", seed=seed, species=species)
+            if leaves_obj.data.materials:
+                leaves_obj.data.materials[0] = mat_leaf
+            else:
+                leaves_obj.data.materials.append(mat_leaf)
+    else:
+        # Image Texture from folder
+        tex_files_wood = get_textures_from_folder(r"Z:\MeshCreator\textures\Wood")
+        if tree_obj:
+            if tex_files_wood:
+                bark_tex = random.choice(tex_files_wood)
+                apply_image_texture_material(tree_obj, os.path.join(r"Z:\MeshCreator\textures\Wood", bark_tex), scale=1.0, bump_strength=0.45, slot_index=0)
+            else:
+                mat_bark = create_procedural_bark_material(old_name + "_Bark_Procedural", seed=seed, species=species)
+                tree_obj.data.materials.append(mat_bark)
+
+        if leaves_obj and has_leaves:
+            tex_files_grass = get_textures_from_folder(r"Z:\MeshCreator\textures\Grass")
+            if tex_files_grass:
+                leaf_tex = random.choice(tex_files_grass)
+                apply_image_texture_material(leaves_obj, os.path.join(r"Z:\MeshCreator\textures\Grass", leaf_tex), scale=1.0, bump_strength=0.25, is_transparent=True, slot_index=1)
+            else:
+                mat_leaf = create_procedural_leaf_material(old_name + "_Leaf_Procedural", seed=seed, species=species)
+                leaves_obj.data.materials.append(mat_leaf)
 
     # Join tree and leaves into single unified prop mesh
     if tree_obj and leaves_obj and has_leaves:
@@ -1412,6 +1622,7 @@ def generate_procedural_prop_mesh(
     tree_branch_levels=2,
     tree_leaf_style="QUAD_CROSS",
     tree_curvature=0.6,
+    tree_mat_mode="PROCEDURAL",
     uv_mode="FIT",
     size_x=2.0,
     size_y=2.0,
@@ -1448,6 +1659,7 @@ def generate_procedural_prop_mesh(
             has_leaves=tree_has_leaves,
             leaf_count=tree_leaf_count,
             branch_levels=tree_branch_levels,
+            mat_mode=tree_mat_mode,
             seed=seed,
             size_z=size_z
         )
@@ -1752,6 +1964,7 @@ def resolve_prop_parameters(props):
         "tree_leaf_count": props.tree_leaf_count,
         "tree_branch_levels": props.tree_branch_levels,
         "tree_curvature": props.tree_curvature,
+        "tree_mat_mode": props.tree_material_mode,
         "uv_mode": props.uv_mapping_mode,
         "size_x": final_sx,
         "size_y": final_sy,
@@ -1908,6 +2121,7 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
             tree_leaf_count=p["tree_leaf_count"],
             tree_branch_levels=p["tree_branch_levels"],
             tree_curvature=p["tree_curvature"],
+            tree_mat_mode=p["tree_mat_mode"],
             uv_mode=p["uv_mode"],
             size_x=p["size_x"],
             size_y=p["size_y"],
@@ -1972,6 +2186,7 @@ class MESH_OT_create_new_prop(bpy.types.Operator):
             tree_leaf_count=p["tree_leaf_count"],
             tree_branch_levels=p["tree_branch_levels"],
             tree_curvature=p["tree_curvature"],
+            tree_mat_mode=p["tree_mat_mode"],
             uv_mode=p["uv_mode"],
             size_x=p["size_x"],
             size_y=p["size_y"],
@@ -2225,6 +2440,15 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     tree_leaf_count: bpy.props.IntProperty(name="葉の密度 (Leaf Density)", default=120, min=20, max=400, description="生成する葉クラスタの数量")
     tree_branch_levels: bpy.props.IntProperty(name="枝分かれ階層 (Branch Levels)", default=2, min=1, max=3, description="枝分かれの深さ (1:主枝のみ, 2:小枝あり, 3:細枝)")
     tree_curvature: bpy.props.FloatProperty(name="枝のうねり・曲がり度", default=0.6, min=0.0, max=1.0, description="幹や枝の自然なくねり・重力による垂れ下がり具合")
+    tree_material_mode: bpy.props.EnumProperty(
+        name="樹木マテリアル方式",
+        items=[
+            ('PROCEDURAL', "🎨 プロシージャルPBR (動画準拠)", "Wave Texture縦木目樹皮 ＆ 葉ごとのランダム色相・半透明シェーダー"),
+            ('IMAGE_TEXTURE', "🖼️ 外部画像テクスチャ (Image Texture)", "Wood/Grassフォルダの画像ファイルを使用")
+        ],
+        default='PROCEDURAL',
+        description="マテリアルの生成方式（画像不要のBlender完全内蔵プロシージャルシェーダーか、外部画像テクスチャか）"
+    )
 
     # Chair specific
     chair_type: bpy.props.EnumProperty(
@@ -2461,6 +2685,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_tree = layout.box()
                 box_tree.label(text="Tree Settings (リアル樹木設定):", icon='OUTLINER_OB_LIGHT')
                 box_tree.prop(props, "tree_species", text="樹種")
+                box_tree.prop(props, "tree_material_mode", text="マテリアル方式")
                 box_tree.prop(props, "tree_branch_levels", text="枝分かれ深さ")
                 box_tree.prop(props, "tree_curvature", text="枝のうねり・曲がり", slider=True)
                 box_tree.prop(props, "tree_has_leaves", text="🍃 葉を付ける")
