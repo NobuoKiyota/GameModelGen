@@ -343,85 +343,232 @@ def build_table_base(bm, size_x, size_y, size_z, shape="RECTANGLE", leg_style="O
 
     return bm.verts[:]
 
-def build_chair_base(bm, size_x, size_y, size_z, chair_type="DINING_CHAIR", leg_style="ORNAMENTAL", seed=0):
-    """Generates an antique Chair (Dining, Armchair, Round/Square Stool) with 4 Symmetrical Legs"""
+def build_chair_base(
+    bm, size_x, size_y, size_z,
+    chair_type="DINING_CHAIR",
+    leg_style="ORNAMENTAL",
+    seat_style="CUSHION",
+    back_style="SOLID",
+    leg_layout="FOUR_LEGS",
+    seed=0
+):
+    """Generates an antique Chair / Stool with Leather Cushion, Solid/Spindle Backrest, and 1-Leg/X-Cross/4-Leg layouts"""
     random.seed(seed)
     w = size_x
     d = size_y
     h = size_z
     seat_h = h * 0.48
-    seat_th = 0.04
+    seat_th = 0.06
     leg_h = seat_h - seat_th
-    leg_rad = min(w, d) * 0.065
     
-    # 1. Seat Construction (座面)
+    # 1. Cushion / Seat Construction (ふっくら革張りクッション座面 / 木製座面)
     if chair_type == "ROUND_STOOL":
-        res_seat = bmesh.ops.create_cone(
+        rad = w * 0.46
+        # Underframe wood ring
+        res_uf = bmesh.ops.create_cone(
             bm, cap_ends=True, cap_tris=False, segments=24,
-            radius1=w * 0.48, radius2=w * 0.48, depth=seat_th
+            radius1=rad * 0.92, radius2=rad * 0.92, depth=0.03
         )
-        bmesh.ops.translate(bm, vec=(0, 0, seat_h - seat_th * 0.5), verts=res_seat['verts'])
-    else:
+        bmesh.ops.translate(bm, vec=(0, 0, seat_h - seat_th + 0.015), verts=res_uf['verts'])
+
+        # Top Cushion / Seat
+        if seat_style == "CUSHION":
+            res_cushion = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=24,
+                radius1=rad, radius2=rad * 0.94, depth=seat_th
+            )
+            # Dome puff
+            for v in res_cushion['verts']:
+                if v.co.z > 0:
+                    r_dist = math.sqrt(v.co.x**2 + v.co.y**2) / rad
+                    v.co.z += (1.0 - r_dist) * 0.025
+            bmesh.ops.translate(bm, vec=(0, 0, seat_h - seat_th * 0.5), verts=res_cushion['verts'])
+        else:
+            res_seat = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=24,
+                radius1=rad, radius2=rad, depth=seat_th
+            )
+            bmesh.ops.translate(bm, vec=(0, 0, seat_h - seat_th * 0.5), verts=res_seat['verts'])
+
+    else: # Dining Chair, Armchair, Square Stool
+        # Underframe wood apron
+        res_uf = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(w * 0.88, d * 0.88, 0.04), verts=res_uf['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, seat_h - seat_th + 0.02), verts=res_uf['verts'])
+
+        # Seat Cushion
         res_seat = bmesh.ops.create_cube(bm, size=1.0)
         bmesh.ops.scale(bm, vec=(w, d, seat_th), verts=res_seat['verts'])
         bmesh.ops.translate(bm, vec=(0, 0, seat_h - seat_th * 0.5), verts=res_seat['verts'])
-        bmesh.ops.bevel(bm, geom=res_seat['verts'], offset=0.03, segments=2)
+        if seat_style == "CUSHION":
+            for v in res_seat['verts']:
+                if v.co.z > (seat_h - seat_th * 0.5):
+                    nx = max(0.0, 1.0 - abs(v.co.x / (w * 0.5)))
+                    ny = max(0.0, 1.0 - abs(v.co.y / (d * 0.5)))
+                    v.co.z += (nx * ny + 0.5) * 0.02 # Plump dome
+        bmesh.ops.bevel(bm, geom=res_seat['verts'], offset=0.015, segments=2)
 
-    # 2. 4 Symmetrical Legs
-    offset_x = (w * 0.5) * 0.76
-    offset_y = (d * 0.5) * 0.76
-    for (lx, ly) in [(-offset_x, -offset_y), (offset_x, -offset_y), (-offset_x, offset_y), (offset_x, offset_y)]:
-        bm_leg = bmesh.new()
-        build_antique_leg_or_column(bm_leg, height=leg_h, radius=leg_rad, style=leg_style, seed=seed)
-        for v in bm_leg.verts:
-            v.co.x += lx
-            v.co.y += ly
-            v.co.z += (seat_h - seat_th - leg_h * 0.5)
-        for f in bm_leg.faces:
+    # 2. Leg Structure (1本中央台座脚 / Xクロス脚 / 3本脚 / 4本脚)
+    if leg_layout == "PEDESTAL_ONE":
+        # 🌟 1 Central Turned Pedestal Column
+        col_rad = min(w, d) * 0.12
+        bm_col = bmesh.new()
+        build_antique_leg_or_column(bm_col, height=leg_h * 0.95, radius=col_rad, style=leg_style, seed=seed)
+        for v in bm_col.verts:
+            v.co.z += (leg_h * 0.5)
+        for f in bm_col.faces:
             bm.faces.new([bm.verts.new(v.co) for v in f.verts])
-        bm_leg.free()
+        bm_col.free()
 
-    # 3. Backrest (背もたれ - Dining & Armchair only)
+        # 4 Outward Base Claw Feet
+        foot_len = min(w, d) * 0.42
+        for ang in [45, 135, 225, 315]:
+            rad_ang = math.radians(ang)
+            res_foot = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=8,
+                radius1=0.035, radius2=0.02, depth=foot_len
+            )
+            bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(75), 3, 'X'), verts=res_foot['verts'])
+            bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(rad_ang, 3, 'Z'), verts=res_foot['verts'])
+            bmesh.ops.translate(bm, vec=(math.cos(rad_ang) * (foot_len * 0.45), math.sin(rad_ang) * (foot_len * 0.45), 0.04), verts=res_foot['verts'])
+
+    elif leg_layout == "X_CROSS":
+        # 🌟 X-Cross Symmetrical Legs (Left & Right cross frames)
+        x_th = min(w, d) * 0.06
+        for sx in [-w * 0.36, w * 0.36]:
+            # Bar 1 (Front-Top to Back-Bottom)
+            res_b1 = bmesh.ops.create_cube(bm, size=1.0)
+            bmesh.ops.scale(bm, vec=(x_th, 0.04, leg_h * 1.1), verts=res_b1['verts'])
+            bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(28), 3, 'X'), verts=res_b1['verts'])
+            bmesh.ops.translate(bm, vec=(sx, 0, leg_h * 0.5), verts=res_b1['verts'])
+
+            # Bar 2 (Back-Top to Front-Bottom)
+            res_b2 = bmesh.ops.create_cube(bm, size=1.0)
+            bmesh.ops.scale(bm, vec=(x_th, 0.04, leg_h * 1.1), verts=res_b2['verts'])
+            bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(-28), 3, 'X'), verts=res_b2['verts'])
+            bmesh.ops.translate(bm, vec=(sx, 0, leg_h * 0.5), verts=res_b2['verts'])
+
+        # Cross Stretcher Bar in Middle
+        res_str = bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=8, radius1=0.02, radius2=0.02, depth=w * 0.72)
+        bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(90), 3, 'Y'), verts=res_str['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, leg_h * 0.5), verts=res_str['verts'])
+
+    elif leg_layout == "TRIPOD_THREE":
+        # 🌟 Tripod 3 Legs (Evenly spaced 120 degrees within seat radius)
+        leg_rad = min(w, d) * 0.055
+        dist_r = min(w, d) * 0.32
+        for ang in [90, 210, 330]:
+            rad_ang = math.radians(ang)
+            lx = math.cos(rad_ang) * dist_r
+            ly = math.sin(rad_ang) * dist_r
+            bm_leg = bmesh.new()
+            build_antique_leg_or_column(bm_leg, height=leg_h, radius=leg_rad, style=leg_style, seed=seed)
+            for v in bm_leg.verts:
+                v.co.x += lx
+                v.co.y += ly
+                v.co.z += (leg_h * 0.5)
+            for f in bm_leg.faces:
+                bm.faces.new([bm.verts.new(v.co) for v in f.verts])
+            bm_leg.free()
+
+    else: # FOUR_LEGS (Default)
+        leg_rad = min(w, d) * 0.055
+        # Ensure legs are strictly INSIDE round stool / chair seat
+        if chair_type == "ROUND_STOOL":
+            offset_x = (w * 0.5) * 0.58
+            offset_y = (d * 0.5) * 0.58
+        else:
+            offset_x = (w * 0.5) * 0.76
+            offset_y = (d * 0.5) * 0.76
+
+        for (lx, ly) in [(-offset_x, -offset_y), (offset_x, -offset_y), (-offset_x, offset_y), (offset_x, offset_y)]:
+            bm_leg = bmesh.new()
+            build_antique_leg_or_column(bm_leg, height=leg_h, radius=leg_rad, style=leg_style, seed=seed)
+            for v in bm_leg.verts:
+                v.co.x += lx
+                v.co.y += ly
+                v.co.z += (leg_h * 0.5)
+            for f in bm_leg.faces:
+                bm.faces.new([bm.verts.new(v.co) for v in f.verts])
+            bm_leg.free()
+
+    # 3. Backrest Construction (背もたれ - Dining & Armchair only)
     if chair_type in ("DINING_CHAIR", "ARMCHAIR"):
         back_h = h - seat_h
-        back_rad = leg_rad * 0.8
+        back_rad = min(w, d) * 0.05
+        offset_x = (w * 0.5) * 0.76
+        back_y = -d * 0.5 * 0.78
         
-        # Left & Right Backrest Upright Posts
+        # Left & Right Backrest Main Upright Posts (座面から直結)
         for sx in [-offset_x, offset_x]:
-            res_p = bmesh.ops.create_cone(
-                bm, cap_ends=True, cap_tris=False, segments=12,
-                radius1=back_rad, radius2=back_rad, depth=back_h
-            )
-            bmesh.ops.translate(bm, vec=(sx, -offset_y, seat_h + back_h * 0.5), verts=res_p['verts'])
+            bm_post = bmesh.new()
+            build_antique_leg_or_column(bm_post, height=back_h, radius=back_rad, style=leg_style, seed=seed)
+            for v in bm_post.verts:
+                v.co.x += sx
+                v.co.y += back_y
+                v.co.z += (seat_h + back_h * 0.5)
+            for f in bm_post.faces:
+                bm.faces.new([bm.verts.new(v.co) for v in f.verts])
+            bm_post.free()
 
-        # Top Crown Crest Rail (背もたれ上部飾り笠木)
+        # Top Crown Crest Rail (最上部笠木)
         res_crest = bmesh.ops.create_cube(bm, size=1.0)
-        bmesh.ops.scale(bm, vec=(w * 0.88, 0.035, 0.08), verts=res_crest['verts'])
-        bmesh.ops.translate(bm, vec=(0, -offset_y, h - 0.04), verts=res_crest['verts'])
+        bmesh.ops.scale(bm, vec=(w * 0.96, 0.04, 0.09), verts=res_crest['verts'])
+        bmesh.ops.translate(bm, vec=(0, back_y, h - 0.045), verts=res_crest['verts'])
 
-        # Vertical Spindles (縦の飾り格子 3本)
-        for i in range(-1, 2):
-            res_sp = bmesh.ops.create_cone(
-                bm, cap_ends=True, cap_tris=False, segments=8,
-                radius1=back_rad * 0.55, radius2=back_rad * 0.55, depth=back_h * 0.65
+        # Backrest Inner Infill (埋め込み背板 / 隙間なし縦格子 / 楕円メダリオン)
+        if back_style == "SOLID":
+            # 🌟 埋め込み装飾背板 (Solid Wood/Leather Panel)
+            res_solid = bmesh.ops.create_cube(bm, size=1.0)
+            bmesh.ops.scale(bm, vec=(w * 0.78, 0.025, back_h * 0.82), verts=res_solid['verts'])
+            bmesh.ops.translate(bm, vec=(0, back_y, seat_h + back_h * 0.44), verts=res_solid['verts'])
+            
+            # Raised center panel
+            res_inlay = bmesh.ops.create_cube(bm, size=1.0)
+            bmesh.ops.scale(bm, vec=(w * 0.68, 0.035, back_h * 0.72), verts=res_inlay['verts'])
+            bmesh.ops.translate(bm, vec=(0, back_y, seat_h + back_h * 0.44), verts=res_inlay['verts'])
+
+        elif back_style == "OVAL":
+            # 🌟 楕円メダリオン背板 (Oval Medallion)
+            res_oval = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=24,
+                radius1=w * 0.36, radius2=w * 0.36, depth=0.035
             )
-            bmesh.ops.translate(bm, vec=(i * (w * 0.24), -offset_y, seat_h + back_h * 0.45), verts=res_sp['verts'])
+            bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(90), 3, 'X'), verts=res_oval['verts'])
+            bmesh.ops.scale(bm, vec=(1.0, 1.0, 1.35), verts=res_oval['verts'])
+            bmesh.ops.translate(bm, vec=(0, back_y, seat_h + back_h * 0.48), verts=res_oval['verts'])
 
-    # 4. Armrests (肘掛け - Armchair only)
+        else: # SPINDLE (隙間なく座面と笠木を直結する縦格子)
+            spindle_h = back_h * 0.86
+            for i in [-1, 0, 1]:
+                res_sp = bmesh.ops.create_cone(
+                    bm, cap_ends=True, cap_tris=False, segments=12,
+                    radius1=back_rad * 0.6, radius2=back_rad * 0.6, depth=spindle_h
+                )
+                bmesh.ops.translate(bm, vec=(i * (w * 0.22), back_y, seat_h + spindle_h * 0.5 + 0.01), verts=res_sp['verts'])
+
+    # 4. Armrests (肘掛け - Armchair only: 前端までしっかり伸びて美しく着地)
     if chair_type == "ARMCHAIR":
         arm_h = seat_h + (h - seat_h) * 0.45
+        offset_x = (w * 0.5) * 0.76
+        back_y = -d * 0.5 * 0.78
+        front_y = d * 0.5 * 0.72
+        
         for sx in [-offset_x, offset_x]:
-            # Arm support post
+            # Front Armrest Support Post (座面先端から立ち上がり)
             res_ap = bmesh.ops.create_cone(
-                bm, cap_ends=True, cap_tris=False, segments=8,
-                radius1=leg_rad * 0.7, radius2=leg_rad * 0.7, depth=(arm_h - seat_h)
+                bm, cap_ends=True, cap_tris=False, segments=12,
+                radius1=0.024, radius2=0.028, depth=(arm_h - seat_h)
             )
-            bmesh.ops.translate(bm, vec=(sx, offset_y * 0.5, seat_h + (arm_h - seat_h) * 0.5), verts=res_ap['verts'])
+            bmesh.ops.translate(bm, vec=(sx, front_y, seat_h + (arm_h - seat_h) * 0.5), verts=res_ap['verts'])
             
-            # Arm rest horizontal bar
+            # Horizontal / Sloped Armrest Top Rail (背柱から前柱まで完全直結)
+            rail_len = (front_y - back_y) + 0.04
+            rail_center_y = (front_y + back_y) * 0.5
             res_ab = bmesh.ops.create_cube(bm, size=1.0)
-            bmesh.ops.scale(bm, vec=(0.045, offset_y * 1.6, 0.03), verts=res_ab['verts'])
-            bmesh.ops.translate(bm, vec=(sx, -offset_y * 0.2, arm_h), verts=res_ab['verts'])
+            bmesh.ops.scale(bm, vec=(0.048, rail_len, 0.035), verts=res_ab['verts'])
+            bmesh.ops.translate(bm, vec=(sx, rail_center_y, arm_h + 0.015), verts=res_ab['verts'])
+            bmesh.ops.bevel(bm, geom=res_ab['verts'], offset=0.008, segments=2)
 
     return bm.verts[:]
 
@@ -765,6 +912,9 @@ def generate_procedural_prop_mesh(
     table_shape="RECTANGLE",
     table_leg_style="ORNAMENTAL",
     chair_type="DINING_CHAIR",
+    chair_seat_style="CUSHION",
+    chair_back_style="SOLID",
+    chair_leg_layout="FOUR_LEGS",
     chest_tiers=3,
     chest_handle_style="RING",
     bed_size="SINGLE",
@@ -809,7 +959,15 @@ def generate_procedural_prop_mesh(
     # 1. Base Geometry Construction
     bm = bmesh.new()
     if category == "CHAIR":
-        build_chair_base(bm, size_x, size_y, size_z, chair_type=chair_type, leg_style=table_leg_style, seed=seed)
+        build_chair_base(
+            bm, size_x, size_y, size_z,
+            chair_type=chair_type,
+            leg_style=table_leg_style,
+            seat_style=chair_seat_style,
+            back_style=chair_back_style,
+            leg_layout=chair_leg_layout,
+            seed=seed
+        )
     elif category == "CHEST":
         build_chest_base(bm, size_x, size_y, size_z, tiers=chest_tiers, handle_style=chest_handle_style, seed=seed)
     elif category == "BED":
@@ -1019,6 +1177,13 @@ def resolve_prop_parameters(props):
     final_col_style = random.choice(leg_styles) if props.rand_furniture_style else props.column_ornament_style
     table_shapes = ['RECTANGLE', 'ROUNDED_RECT', 'OVAL']
     final_table_shape = random.choice(table_shapes) if props.rand_furniture_style else props.table_shape
+    
+    chair_backs = ['SOLID', 'SPINDLE', 'OVAL']
+    final_chair_back = random.choice(chair_backs) if props.rand_furniture_style else props.chair_back_style
+    chair_seats = ['CUSHION', 'WOOD_FLAT']
+    final_chair_seat = random.choice(chair_seats) if props.rand_furniture_style else props.chair_seat_style
+    chair_legs = ['FOUR_LEGS', 'PEDESTAL_ONE', 'X_CROSS', 'TRIPOD_THREE']
+    final_chair_leg = random.choice(chair_legs) if props.rand_furniture_style else props.chair_leg_layout
 
     return {
         "category": cat,
@@ -1029,6 +1194,9 @@ def resolve_prop_parameters(props):
         "table_shape": final_table_shape,
         "table_leg_style": final_leg_style,
         "chair_type": props.chair_type,
+        "chair_seat_style": final_chair_seat,
+        "chair_back_style": final_chair_back,
+        "chair_leg_layout": final_chair_leg,
         "chest_tiers": props.chest_tiers,
         "chest_handle_style": props.chest_handle_style,
         "bed_size": props.bed_size,
@@ -1167,6 +1335,9 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
             table_shape=p["table_shape"],
             table_leg_style=p["table_leg_style"],
             chair_type=p["chair_type"],
+            chair_seat_style=p["chair_seat_style"],
+            chair_back_style=p["chair_back_style"],
+            chair_leg_layout=p["chair_leg_layout"],
             chest_tiers=p["chest_tiers"],
             chest_handle_style=p["chest_handle_style"],
             bed_size=p["bed_size"],
@@ -1216,6 +1387,9 @@ class MESH_OT_create_new_prop(bpy.types.Operator):
             table_shape=p["table_shape"],
             table_leg_style=p["table_leg_style"],
             chair_type=p["chair_type"],
+            chair_seat_style=p["chair_seat_style"],
+            chair_back_style=p["chair_back_style"],
+            chair_leg_layout=p["chair_leg_layout"],
             chest_tiers=p["chest_tiers"],
             chest_handle_style=p["chest_handle_style"],
             bed_size=p["bed_size"],
@@ -1430,6 +1604,33 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         ],
         default='DINING_CHAIR'
     )
+    chair_seat_style: bpy.props.EnumProperty(
+        name="座面スタイル",
+        items=[
+            ('CUSHION', "🛋️ 革張り・ふっくらクッション (Cushion)", "ふくらみのある革張り/ファブリック座面"),
+            ('WOOD_FLAT', "🪵 フラット木製座面 (Wood Flat)", "クラシックな木製座面")
+        ],
+        default='CUSHION'
+    )
+    chair_back_style: bpy.props.EnumProperty(
+        name="背もたれ形状",
+        items=[
+            ('SOLID', "🪵 埋め込み装飾背板 (Solid Panel)", "隙間のない重厚なアンティーク彫刻背板"),
+            ('SPINDLE', "🪑 縦格子スピンドル (Spindles)", "座面と笠木を直結するクラシック格子"),
+            ('OVAL', "🔘 楕円メダリオン (Oval Medallion)", "貴族風の楕円背もたれ")
+        ],
+        default='SOLID'
+    )
+    chair_leg_layout: bpy.props.EnumProperty(
+        name="脚の配置構造",
+        items=[
+            ('FOUR_LEGS', "🦿 4本脚 (Four Legs)", "スタンダードな4本脚"),
+            ('PEDESTAL_ONE', "🏛️ 1本中央台座脚 (Pedestal)", "中央の太いろくろ挽き柱＋広がるフット"),
+            ('X_CROSS', "⚔️ Xクロス交差脚 (X-Cross)", "交差したスタイリッシュなX脚"),
+            ('TRIPOD_THREE', "📐 3本脚 (Tripod 3-Legs)", "丸スツール等に最適な三脚")
+        ],
+        default='FOUR_LEGS'
+    )
 
     # Chest specific
     chest_tiers: bpy.props.IntProperty(name="引き出し段数", default=3, min=2, max=5, description="チェストの引き出し段数 (2段〜5段)")
@@ -1619,7 +1820,11 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_chair = layout.box()
                 box_chair.label(text="Chair Settings (椅子設定):", icon='PASTEDOWN')
                 box_chair.prop(props, "chair_type", text="タイプ")
-                box_chair.prop(props, "table_leg_style", text="脚の装飾 (4本対称)")
+                box_chair.prop(props, "chair_seat_style", text="座面")
+                if props.chair_type in ('DINING_CHAIR', 'ARMCHAIR'):
+                    box_chair.prop(props, "chair_back_style", text="背もたれ")
+                box_chair.prop(props, "chair_leg_layout", text="脚の構造")
+                box_chair.prop(props, "table_leg_style", text="脚の装飾")
                 box_chair.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
 
             # Chest Specific

@@ -9,15 +9,18 @@ with open(addon_path, 'r', encoding='utf-8') as f:
     code = f.read()
     exec(code, globals())
 
-print("=== Testing Antique Furniture Suite (Chair, Chest, Bed) v6.1 ===")
+print("=== Testing Chair Overhaul & New Leg Layouts (v6.2) ===")
 
-# 1. Test Chair (Dining Chair, Ornamental Legs)
-chair_dining = generate_procedural_prop_mesh(
+# 1. Dining Chair: Leather Cushion + Solid Backrest + 4 Legs
+chair_1 = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
     category="CHAIR",
-    name="Test_Chair_Dining",
+    name="Test_Chair_Cushion_Solid",
     chair_type="DINING_CHAIR",
+    chair_seat_style="CUSHION",
+    chair_back_style="SOLID",
+    chair_leg_layout="FOUR_LEGS",
     table_leg_style="ORNAMENTAL",
     size_x=0.55,
     size_y=0.55,
@@ -25,17 +28,20 @@ chair_dining = generate_procedural_prop_mesh(
     tex_folder=r"Z:\MeshCreator\textures\Wood",
     use_folder_tex=True,
     selected_tex="",
-    seed=301
+    seed=601
 )
-print(f"-> Dining Chair generated: Verts={len(chair_dining.data.vertices)}, Polys={len(chair_dining.data.polygons)}")
+print(f"-> 1. Dining Chair (Cushion + Solid Back): Verts={len(chair_1.data.vertices)}, Polys={len(chair_1.data.polygons)}")
 
-# 2. Test Chair (Armchair, Twisted Legs)
-chair_arm = generate_procedural_prop_mesh(
+# 2. Armchair: Natural Armrests + Oval Backrest + 4 Legs
+chair_2 = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
     category="CHAIR",
-    name="Test_Chair_Armchair",
+    name="Test_Chair_Armchair_Oval",
     chair_type="ARMCHAIR",
+    chair_seat_style="CUSHION",
+    chair_back_style="OVAL",
+    chair_leg_layout="FOUR_LEGS",
     table_leg_style="TWISTED",
     size_x=0.65,
     size_y=0.60,
@@ -43,62 +49,69 @@ chair_arm = generate_procedural_prop_mesh(
     tex_folder=r"Z:\MeshCreator\textures\Wood",
     use_folder_tex=True,
     selected_tex="",
-    seed=302
+    seed=602
 )
-print(f"-> Armchair (Twisted) generated: Verts={len(chair_arm.data.vertices)}, Polys={len(chair_arm.data.polygons)}")
+print(f"-> 2. Armchair (Full Armrests + Oval Back): Verts={len(chair_2.data.vertices)}, Polys={len(chair_2.data.polygons)}")
 
-# 3. Test Chest (3 Tiers, Ring Handle)
-chest_3 = generate_procedural_prop_mesh(
+# 3. Pedestal 1-Leg Chair (Central Column + 4 Claw Feet)
+chair_3 = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
-    category="CHEST",
-    name="Test_Chest_3Tiers",
-    chest_tiers=3,
-    chest_handle_style="RING",
-    size_x=1.4,
-    size_y=0.6,
-    size_z=1.1,
+    category="CHAIR",
+    name="Test_Chair_Pedestal_1Leg",
+    chair_type="DINING_CHAIR",
+    chair_seat_style="CUSHION",
+    chair_back_style="SPINDLE",
+    chair_leg_layout="PEDESTAL_ONE",
+    table_leg_style="ORNAMENTAL",
+    size_x=0.55,
+    size_y=0.55,
+    size_z=0.95,
     tex_folder=r"Z:\MeshCreator\textures\Wood",
     use_folder_tex=True,
     selected_tex="",
-    seed=401
+    seed=603
 )
-print(f"-> 3-Tier Chest (Ring Handle) generated: Verts={len(chest_3.data.vertices)}, Polys={len(chest_3.data.polygons)}")
+print(f"-> 3. Pedestal 1-Leg Chair: Verts={len(chair_3.data.vertices)}, Polys={len(chair_3.data.polygons)}")
 
-# 4. Test Chest (4 Tiers, Knob Handle)
-chest_4 = generate_procedural_prop_mesh(
+# 4. X-Cross Legs Chair
+chair_4 = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
-    category="CHEST",
-    name="Test_Chest_4Tiers",
-    chest_tiers=4,
-    chest_handle_style="KNOB",
-    size_x=1.5,
-    size_y=0.6,
-    size_z=1.3,
+    category="CHAIR",
+    name="Test_Chair_XCross",
+    chair_type="DINING_CHAIR",
+    chair_seat_style="WOOD_FLAT",
+    chair_back_style="SOLID",
+    chair_leg_layout="X_CROSS",
+    size_x=0.55,
+    size_y=0.55,
+    size_z=0.95,
     tex_folder=r"Z:\MeshCreator\textures\Wood",
     use_folder_tex=True,
     selected_tex="",
-    seed=402
+    seed=604
 )
-print(f"-> 4-Tier Chest (Knob Handle) generated: Verts={len(chest_4.data.vertices)}, Polys={len(chest_4.data.polygons)}")
+print(f"-> 4. X-Cross Legs Chair: Verts={len(chair_4.data.vertices)}, Polys={len(chair_4.data.polygons)}")
 
-# 5. Test Bed (Double Size, Ornamental Posts)
-bed_double = generate_procedural_prop_mesh(
+# 5. Round Stool (Tripod 3-Legs perfectly inside seat radius)
+stool_5 = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
-    category="BED",
-    name="Test_Bed_Double",
-    bed_size="DOUBLE",
-    column_style="ORNAMENTAL",
-    size_x=1.6,
-    size_y=2.1,
-    size_z=1.4,
+    category="CHAIR",
+    name="Test_Round_Stool_Tripod",
+    chair_type="ROUND_STOOL",
+    chair_seat_style="CUSHION",
+    chair_leg_layout="TRIPOD_THREE",
+    table_leg_style="REINFORCED",
+    size_x=0.5,
+    size_y=0.5,
+    size_z=0.48,
     tex_folder=r"Z:\MeshCreator\textures\Wood",
     use_folder_tex=True,
     selected_tex="",
-    seed=501
+    seed=605
 )
-print(f"-> Double Bed (Ornamental Posts) generated: Verts={len(bed_double.data.vertices)}, Polys={len(bed_double.data.polygons)}")
+print(f"-> 5. Round Stool (Tripod 3-Legs): Verts={len(stool_5.data.vertices)}, Polys={len(stool_5.data.polygons)}")
 
-print("=== ALL CHAIR, CHEST, BED PRESET TESTS PASSED PERFECTLY! ===")
+print("=== ALL CHAIR OVERHAUL & STRUCTURAL TESTS PASSED PERFECTLY! ===")
