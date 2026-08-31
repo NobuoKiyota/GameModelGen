@@ -2438,6 +2438,11 @@ def resolve_prop_parameters(props):
         "use_folder_tex": props.use_folder_texture,
         "selected_tex": chosen_tex,
         "tex_tiling": props.texture_tiling,
+        "enable_disp": props.enable_displacement,
+        "disp_strength": props.displacement_strength,
+        "disp_midlevel": props.displacement_midlevel,
+        "disp_subdiv": props.displacement_subdiv,
+        "apply_disp": props.apply_disp_to_mesh,
     }
 
 # =============================================================
@@ -2694,15 +2699,15 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
             create_debris=p["create_debris"],
             debris_count=p["debris_count"],
             detail_level=p["detail_level"],
-            tex_folder=p["tex_folder"],
-            use_folder_tex=p["use_folder_tex"],
-            selected_tex=p["selected_tex"],
-            tex_tiling=p["tex_tiling"],
-            enable_disp=p["enable_disp"],
-            disp_strength=p["disp_strength"],
-            disp_midlevel=p["disp_midlevel"],
-            disp_subdiv=p["disp_subdiv"],
-            apply_disp=p["apply_disp"],
+            tex_folder=p.get("tex_folder", r"Z:\MeshCreator\textures\Rock"),
+            use_folder_tex=p.get("use_folder_tex", True),
+            selected_tex=p.get("selected_tex", ""),
+            tex_tiling=p.get("tex_tiling", 1.0),
+            enable_disp=p.get("enable_disp", False),
+            disp_strength=p.get("disp_strength", 0.15),
+            disp_midlevel=p.get("disp_midlevel", 0.5),
+            disp_subdiv=p.get("disp_subdiv", 2),
+            apply_disp=p.get("apply_disp", True),
             seed=props.seed
         )
         self.report({'INFO'}, f"🎲 再抽選完了: {props.asset_name}")
@@ -2764,15 +2769,15 @@ class MESH_OT_create_new_prop(bpy.types.Operator):
             create_debris=p["create_debris"],
             debris_count=p["debris_count"],
             detail_level=p["detail_level"],
-            tex_folder=p["tex_folder"],
-            use_folder_tex=p["use_folder_tex"],
-            selected_tex=p["selected_tex"],
-            tex_tiling=p["tex_tiling"],
-            enable_disp=p["enable_disp"],
-            disp_strength=p["disp_strength"],
-            disp_midlevel=p["disp_midlevel"],
-            disp_subdiv=p["disp_subdiv"],
-            apply_disp=p["apply_disp"],
+            tex_folder=p.get("tex_folder", r"Z:\MeshCreator\textures\Rock"),
+            use_folder_tex=p.get("use_folder_tex", True),
+            selected_tex=p.get("selected_tex", ""),
+            tex_tiling=p.get("tex_tiling", 1.0),
+            enable_disp=p.get("enable_disp", False),
+            disp_strength=p.get("disp_strength", 0.15),
+            disp_midlevel=p.get("disp_midlevel", 0.5),
+            disp_subdiv=p.get("disp_subdiv", 2),
+            apply_disp=p.get("apply_disp", True),
             seed=props.seed
         )
         self.report({'INFO'}, f"✨ 新規作成完了: {props.asset_name}")
