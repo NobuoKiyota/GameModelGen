@@ -1,10 +1,10 @@
 bl_info = {
     "name": "Procedural Prop Studio Pro",
     "author": "Antigravity & User",
-    "version": "5.9.0",
+    "version": "6.1.0",
     "blender": (3, 6, 0),
     "location": "View3D > Sidebar > Prop Studio",
-    "description": "Procedural Prop Studio with Grassland Mounds & Cross-Billboard Grass Tufts for Unity",
+    "description": "Procedural Prop Studio with Complete Antique Furniture Suite: Bookshelves, Tables, Chairs, Chests, and Beds",
     "category": "Add Mesh",
 }
 
@@ -49,7 +49,7 @@ def apply_image_texture_material(obj, image_path, scale=1.0, bump_strength=0.35,
 
     node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
     node_bsdf.location = (100, 0)
-    node_bsdf.inputs['Roughness'].default_value = 0.85
+    node_bsdf.inputs['Roughness'].default_value = 0.8
     links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
 
     node_img = nodes.new(type='ShaderNodeTexImage')
@@ -68,7 +68,7 @@ def apply_image_texture_material(obj, image_path, scale=1.0, bump_strength=0.35,
         node_bump = nodes.new(type='ShaderNodeBump')
         node_bump.location = (100, -150)
         node_bump.inputs['Strength'].default_value = bump_strength
-        node_bump.inputs['Distance'].default_value = 0.1
+        node_bump.inputs['Distance'].default_value = 0.08
         links.new(node_img.outputs['Color'], node_bump.inputs['Height'])
         links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
 
@@ -91,7 +91,7 @@ def create_procedural_pbr_material(mat_name, seed=0, is_grass=False):
 
     node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
     node_bsdf.location = (350, 0)
-    node_bsdf.inputs['Roughness'].default_value = 0.85
+    node_bsdf.inputs['Roughness'].default_value = 0.75
     links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
 
     node_coord = nodes.new(type='ShaderNodeTexCoord')
@@ -112,14 +112,14 @@ def create_procedural_pbr_material(mat_name, seed=0, is_grass=False):
     
     if is_grass:
         node_ramp.color_ramp.elements[0].position = 0.2
-        node_ramp.color_ramp.elements[0].color = (0.08, 0.22, 0.05, 1.0) # Deep grass green
+        node_ramp.color_ramp.elements[0].color = (0.08, 0.22, 0.05, 1.0)
         node_ramp.color_ramp.elements[1].position = 0.8
-        node_ramp.color_ramp.elements[1].color = (0.28, 0.48, 0.12, 1.0) # Bright grass green
+        node_ramp.color_ramp.elements[1].color = (0.28, 0.48, 0.12, 1.0)
     else:
         node_ramp.color_ramp.elements[0].position = 0.25
-        node_ramp.color_ramp.elements[0].color = (0.12, 0.12, 0.13, 1.0)
+        node_ramp.color_ramp.elements[0].color = (0.15, 0.11, 0.08, 1.0)
         node_ramp.color_ramp.elements[1].position = 0.75
-        node_ramp.color_ramp.elements[1].color = (0.48, 0.44, 0.39, 1.0)
+        node_ramp.color_ramp.elements[1].color = (0.42, 0.32, 0.24, 1.0)
         
     links.new(node_noise.outputs['Fac'], node_ramp.inputs['Fac'])
     links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
@@ -134,51 +134,442 @@ def create_procedural_pbr_material(mat_name, seed=0, is_grass=False):
     return mat
 
 # =============================================================
-# 2. Advanced Organic Jagged Crack Builder
+# 2. Antique Column / Leg Geometry Generator
 # =============================================================
-def build_organic_crack_cutter(bm, length, depth, width, seed=0):
+def build_antique_leg_or_column(bm, height, radius, style="ORNAMENTAL", is_twist=False, seed=0):
     random.seed(seed)
-    num_pts = random.randint(4, 7)
-    step_len = length / float(num_pts)
-    
-    pts = []
-    cur_x = -length * 0.5
-    cur_y = 0.0
-    for i in range(num_pts + 1):
-        dev_y = random.uniform(-width * 1.5, width * 1.5) if (0 < i < num_pts) else 0.0
-        dev_z = random.uniform(-depth * 0.15, depth * 0.15)
-        pts.append(mathutils.Vector((cur_x, cur_y + dev_y, dev_z)))
-        cur_x += step_len
-    
     all_verts = []
-    for p in pts:
-        w = random.uniform(width * 0.4, width * 1.2)
-        v_left = bm.verts.new((p.x, p.y - w, depth * 0.6))
-        v_right = bm.verts.new((p.x, p.y + w, depth * 0.6))
-        v_root = bm.verts.new((p.x + random.uniform(-0.02, 0.02), p.y + random.uniform(-0.02, 0.02), -depth))
-        all_verts.append((v_left, v_right, v_root))
     
-    for i in range(len(all_verts) - 1):
-        l1, r1, b1 = all_verts[i]
-        l2, r2, b2 = all_verts[i + 1]
-        bm.faces.new((l1, l2, b2, b1))
-        bm.faces.new((r2, r1, b1, b2))
-        bm.faces.new((l1, r1, r2, l2))
+    if style == "SIMPLE":
+        res = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=16,
+            radius1=radius, radius2=radius, depth=height
+        )
+        all_verts.extend(res['verts'])
+        
+    elif style == "REINFORCED":
+        shaft_h = height * 0.8
+        cap_h = height * 0.1
+        res_s = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=16,
+            radius1=radius * 0.85, radius2=radius * 0.85, depth=shaft_h
+        )
+        all_verts.extend(res_s['verts'])
+        
+        res_tc = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(radius * 2.4, radius * 2.4, cap_h), verts=res_tc['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, height * 0.45), verts=res_tc['verts'])
+        all_verts.extend(res_tc['verts'])
+        
+        res_bc = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(radius * 2.4, radius * 2.4, cap_h), verts=res_bc['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, -height * 0.45), verts=res_bc['verts'])
+        all_verts.extend(res_bc['verts'])
 
-    l_start, r_start, b_start = all_verts[0]
-    bm.faces.new((l_start, b_start, r_start))
-    l_end, r_end, b_end = all_verts[-1]
-    bm.faces.new((l_end, r_end, b_end))
+    elif style == "TWISTED" or is_twist:
+        res = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=12,
+            radius1=radius * 0.9, radius2=radius * 0.9, depth=height * 0.8
+        )
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=8, use_grid_fill=True)
+        
+        for v in bm.verts:
+            z_fac = (v.co.z / (height * 0.8))
+            angle = z_fac * math.pi * 3.0
+            cos_a = math.cos(angle)
+            sin_a = math.sin(angle)
+            x_new = v.co.x * cos_a - v.co.y * sin_a
+            y_new = v.co.x * sin_a + v.co.y * cos_a
+            v.co.x = x_new
+            v.co.y = y_new
+        all_verts.extend(bm.verts[:])
+        
+        cap_h = height * 0.1
+        res_tc = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(radius * 2.2, radius * 2.2, cap_h), verts=res_tc['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, height * 0.45), verts=res_tc['verts'])
+        all_verts.extend(res_tc['verts'])
+        
+        res_bc = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(radius * 2.2, radius * 2.2, cap_h), verts=res_bc['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, -height * 0.45), verts=res_bc['verts'])
+        all_verts.extend(res_bc['verts'])
 
-    for v in bm.verts:
-        v.co.x += (math.sin(v.co.y * 18.0 + seed) * math.cos(v.co.z * 18.0 + seed)) * (width * 0.35)
-        v.co.y += (math.cos(v.co.x * 18.0 + seed) * math.sin(v.co.z * 18.0 + seed)) * (width * 0.35)
+    else: # ORNAMENTAL
+        shaft_h = height * 0.76
+        cap_h = height * 0.12
+        res_s = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=16,
+            radius1=radius * 0.65, radius2=radius * 0.65, depth=shaft_h
+        )
+        all_verts.extend(res_s['verts'])
+        
+        res_ub = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=radius * 1.35)
+        bmesh.ops.scale(bm, vec=(1.0, 1.0, 0.8), verts=res_ub['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, height * 0.22), verts=res_ub['verts'])
+        all_verts.extend(res_ub['verts'])
+
+        res_lb = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=radius * 1.35)
+        bmesh.ops.scale(bm, vec=(1.0, 1.0, 0.8), verts=res_lb['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, -height * 0.22), verts=res_lb['verts'])
+        all_verts.extend(res_lb['verts'])
+
+        res_mr = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=16,
+            radius1=radius * 1.1, radius2=radius * 1.1, depth=height * 0.05
+        )
+        all_verts.extend(res_mr['verts'])
+
+        res_tc = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(radius * 2.3, radius * 2.3, cap_h), verts=res_tc['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, height * 0.44), verts=res_tc['verts'])
+        all_verts.extend(res_tc['verts'])
+        
+        res_bc = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(radius * 2.3, radius * 2.3, cap_h), verts=res_bc['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, -height * 0.44), verts=res_bc['verts'])
+        all_verts.extend(res_bc['verts'])
+
+    return all_verts
 
 # =============================================================
-# 3. Geometry Builders (Grass Mound & Cross-Billboard Grass Tuft)
+# 3. Dedicated Geometry Builders: Furniture Suite
+# =============================================================
+def build_bookshelf_base(bm, size_x, size_y, size_z, tiers=3, column_style="ORNAMENTAL", seed=0):
+    random.seed(seed)
+    w = size_x
+    d = size_y
+    h = size_z
+    board_th = 0.04
+    col_rad = min(w, d) * 0.06
+    
+    # Back Plate
+    res_back = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(w - board_th * 2.0, board_th * 0.5, h), verts=res_back['verts'])
+    bmesh.ops.translate(bm, vec=(0, -d * 0.5 + board_th * 0.25, 0), verts=res_back['verts'])
+    
+    # Side Panels
+    res_lside = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(board_th, d, h), verts=res_lside['verts'])
+    bmesh.ops.translate(bm, vec=(-w * 0.5 + board_th * 0.5, 0, 0), verts=res_lside['verts'])
+    
+    res_rside = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(board_th, d, h), verts=res_rside['verts'])
+    bmesh.ops.translate(bm, vec=(w * 0.5 - board_th * 0.5, 0, 0), verts=res_rside['verts'])
+    
+    # Top & Bottom Crown Boards
+    res_top = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(w * 1.06, d * 1.06, board_th * 1.5), verts=res_top['verts'])
+    bmesh.ops.translate(bm, vec=(0, 0, h * 0.5 - board_th * 0.75), verts=res_top['verts'])
+
+    res_bot = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(w * 1.04, d * 1.04, board_th * 1.5), verts=res_bot['verts'])
+    bmesh.ops.translate(bm, vec=(0, 0, -h * 0.5 + board_th * 0.75), verts=res_bot['verts'])
+    
+    # Inner Shelves (2-4 tiers)
+    shelf_count = max(2, min(4, tiers))
+    inner_h = h - board_th * 3.0
+    step_z = inner_h / float(shelf_count)
+    for s in range(1, shelf_count):
+        cur_z = -h * 0.5 + board_th * 1.5 + (s * step_z)
+        res_sh = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(w - board_th * 2.2, d * 0.94, board_th), verts=res_sh['verts'])
+        bmesh.ops.translate(bm, vec=(0, -d * 0.02, cur_z), verts=res_sh['verts'])
+
+    # Symmetrical Front Ornamental Side Columns
+    for sign_x in [-1, 1]:
+        bm_col = bmesh.new()
+        build_antique_leg_or_column(bm_col, height=h * 0.96, radius=col_rad, style=column_style, seed=seed)
+        for v in bm_col.verts:
+            v.co.x += sign_x * (w * 0.5 - col_rad * 1.2)
+            v.co.y += (d * 0.5 - col_rad * 0.8)
+        for f in bm_col.faces:
+            bm.faces.new([bm.verts.new(v.co) for v in f.verts])
+        bm_col.free()
+    
+    return bm.verts[:]
+
+def build_table_base(bm, size_x, size_y, size_z, shape="RECTANGLE", leg_style="ORNAMENTAL", seed=0):
+    random.seed(seed)
+    w = size_x
+    d = size_y
+    h = size_z
+    top_th = 0.05
+    leg_h = h - top_th
+    
+    # Tabletop
+    if shape == "OVAL":
+        res_top = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=32,
+            radius1=1.0, radius2=1.0, depth=top_th
+        )
+        bmesh.ops.scale(bm, vec=(w * 0.5, d * 0.5, 1.0), verts=res_top['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, h * 0.5 - top_th * 0.5), verts=res_top['verts'])
+    elif shape == "ROUNDED_RECT":
+        res_top = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(w, d, top_th), verts=res_top['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, h * 0.5 - top_th * 0.5), verts=res_top['verts'])
+        bmesh.ops.bevel(bm, geom=res_top['verts'], offset=min(w, d) * 0.08, segments=3)
+    else: # RECTANGLE
+        res_top = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(w, d, top_th), verts=res_top['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, h * 0.5 - top_th * 0.5), verts=res_top['verts'])
+
+    # Apron Framework
+    apron_h = 0.08
+    res_apron_f = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(w * 0.82, 0.025, apron_h), verts=res_apron_f['verts'])
+    bmesh.ops.translate(bm, vec=(0, d * 0.36, h * 0.5 - top_th - apron_h * 0.5), verts=res_apron_f['verts'])
+    
+    res_apron_b = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(w * 0.82, 0.025, apron_h), verts=res_apron_b['verts'])
+    bmesh.ops.translate(bm, vec=(0, -d * 0.36, h * 0.5 - top_th - apron_h * 0.5), verts=res_apron_b['verts'])
+    
+    # 4 Symmetrical Antique Legs
+    leg_rad = max(0.03, min(w, d) * 0.055)
+    offset_x = (w * 0.5) * 0.78 * (0.82 if shape == "OVAL" else 1.0)
+    offset_y = (d * 0.5) * 0.76 * (0.82 if shape == "OVAL" else 1.0)
+
+    for (lx, ly) in [(-offset_x, -offset_y), (offset_x, -offset_y), (-offset_x, offset_y), (offset_x, offset_y)]:
+        bm_leg = bmesh.new()
+        build_antique_leg_or_column(bm_leg, height=leg_h, radius=leg_rad, style=leg_style, seed=seed)
+        for v in bm_leg.verts:
+            v.co.x += lx
+            v.co.y += ly
+            v.co.z += (-top_th * 0.5)
+        for f in bm_leg.faces:
+            bm.faces.new([bm.verts.new(v.co) for v in f.verts])
+        bm_leg.free()
+
+    return bm.verts[:]
+
+def build_chair_base(bm, size_x, size_y, size_z, chair_type="DINING_CHAIR", leg_style="ORNAMENTAL", seed=0):
+    """Generates an antique Chair (Dining, Armchair, Round/Square Stool) with 4 Symmetrical Legs"""
+    random.seed(seed)
+    w = size_x
+    d = size_y
+    h = size_z
+    seat_h = h * 0.48
+    seat_th = 0.04
+    leg_h = seat_h - seat_th
+    leg_rad = min(w, d) * 0.065
+    
+    # 1. Seat Construction (座面)
+    if chair_type == "ROUND_STOOL":
+        res_seat = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=24,
+            radius1=w * 0.48, radius2=w * 0.48, depth=seat_th
+        )
+        bmesh.ops.translate(bm, vec=(0, 0, seat_h - seat_th * 0.5), verts=res_seat['verts'])
+    else:
+        res_seat = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(w, d, seat_th), verts=res_seat['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, seat_h - seat_th * 0.5), verts=res_seat['verts'])
+        bmesh.ops.bevel(bm, geom=res_seat['verts'], offset=0.03, segments=2)
+
+    # 2. 4 Symmetrical Legs
+    offset_x = (w * 0.5) * 0.76
+    offset_y = (d * 0.5) * 0.76
+    for (lx, ly) in [(-offset_x, -offset_y), (offset_x, -offset_y), (-offset_x, offset_y), (offset_x, offset_y)]:
+        bm_leg = bmesh.new()
+        build_antique_leg_or_column(bm_leg, height=leg_h, radius=leg_rad, style=leg_style, seed=seed)
+        for v in bm_leg.verts:
+            v.co.x += lx
+            v.co.y += ly
+            v.co.z += (seat_h - seat_th - leg_h * 0.5)
+        for f in bm_leg.faces:
+            bm.faces.new([bm.verts.new(v.co) for v in f.verts])
+        bm_leg.free()
+
+    # 3. Backrest (背もたれ - Dining & Armchair only)
+    if chair_type in ("DINING_CHAIR", "ARMCHAIR"):
+        back_h = h - seat_h
+        back_rad = leg_rad * 0.8
+        
+        # Left & Right Backrest Upright Posts
+        for sx in [-offset_x, offset_x]:
+            res_p = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=12,
+                radius1=back_rad, radius2=back_rad, depth=back_h
+            )
+            bmesh.ops.translate(bm, vec=(sx, -offset_y, seat_h + back_h * 0.5), verts=res_p['verts'])
+
+        # Top Crown Crest Rail (背もたれ上部飾り笠木)
+        res_crest = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(w * 0.88, 0.035, 0.08), verts=res_crest['verts'])
+        bmesh.ops.translate(bm, vec=(0, -offset_y, h - 0.04), verts=res_crest['verts'])
+
+        # Vertical Spindles (縦の飾り格子 3本)
+        for i in range(-1, 2):
+            res_sp = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=8,
+                radius1=back_rad * 0.55, radius2=back_rad * 0.55, depth=back_h * 0.65
+            )
+            bmesh.ops.translate(bm, vec=(i * (w * 0.24), -offset_y, seat_h + back_h * 0.45), verts=res_sp['verts'])
+
+    # 4. Armrests (肘掛け - Armchair only)
+    if chair_type == "ARMCHAIR":
+        arm_h = seat_h + (h - seat_h) * 0.45
+        for sx in [-offset_x, offset_x]:
+            # Arm support post
+            res_ap = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=8,
+                radius1=leg_rad * 0.7, radius2=leg_rad * 0.7, depth=(arm_h - seat_h)
+            )
+            bmesh.ops.translate(bm, vec=(sx, offset_y * 0.5, seat_h + (arm_h - seat_h) * 0.5), verts=res_ap['verts'])
+            
+            # Arm rest horizontal bar
+            res_ab = bmesh.ops.create_cube(bm, size=1.0)
+            bmesh.ops.scale(bm, vec=(0.045, offset_y * 1.6, 0.03), verts=res_ab['verts'])
+            bmesh.ops.translate(bm, vec=(sx, -offset_y * 0.2, arm_h), verts=res_ab['verts'])
+
+    return bm.verts[:]
+
+def build_chest_base(bm, size_x, size_y, size_z, tiers=3, handle_style="RING", seed=0):
+    """Generates an antique Chest of Drawers with 2-5 drawers, raised panel frames, and hardware handles"""
+    random.seed(seed)
+    w = size_x
+    d = size_y
+    h = size_z
+    leg_h = h * 0.14
+    body_h = h - leg_h
+    body_z_center = -h * 0.5 + leg_h + body_h * 0.5
+    
+    # 1. Main Cabinet Body (本体箱)
+    res_body = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(w * 0.94, d * 0.94, body_h), verts=res_body['verts'])
+    bmesh.ops.translate(bm, vec=(0, 0, body_z_center), verts=res_body['verts'])
+    
+    # 2. Top Crown Board (天板モールディング)
+    res_top = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(w * 1.04, d * 1.04, 0.05), verts=res_top['verts'])
+    bmesh.ops.translate(bm, vec=(0, 0, h * 0.5 - 0.025), verts=res_top['verts'])
+
+    # 3. 4 Base Feet (4つのアンティーク台座脚)
+    foot_rad = min(w, d) * 0.07
+    offset_x = (w * 0.5) * 0.8
+    offset_y = (d * 0.5) * 0.8
+    for (lx, ly) in [(-offset_x, -offset_y), (offset_x, -offset_y), (-offset_x, offset_y), (offset_x, offset_y)]:
+        res_foot = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=foot_rad)
+        bmesh.ops.scale(bm, vec=(1.1, 1.1, (leg_h / (foot_rad * 2.0))), verts=res_foot['verts'])
+        bmesh.ops.translate(bm, vec=(lx, ly, -h * 0.5 + leg_h * 0.5), verts=res_foot['verts'])
+
+    # 4. Drawers & Handles (2 ~ 5段の引き出し)
+    drawer_count = max(2, min(5, tiers))
+    drawer_h = (body_h * 0.88) / float(drawer_count)
+    front_y = d * 0.5 * 0.94
+    
+    for i in range(drawer_count):
+        cur_z = (-h * 0.5 + leg_h + (body_h * 0.06)) + (i + 0.5) * drawer_h
+        
+        # Drawer Front Panel (引き出し前板)
+        res_dp = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(w * 0.86, 0.025, drawer_h * 0.88), verts=res_dp['verts'])
+        bmesh.ops.translate(bm, vec=(0, front_y + 0.012, cur_z), verts=res_dp['verts'])
+        
+        # Raised Panel Molding (立体飾り縁)
+        res_frame = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(w * 0.8, 0.015, drawer_h * 0.72), verts=res_frame['verts'])
+        bmesh.ops.translate(bm, vec=(0, front_y + 0.025, cur_z), verts=res_frame['verts'])
+
+        # Handles (左右2個の取っ手)
+        for hx in [-w * 0.24, w * 0.24]:
+            if handle_style == "KNOB":
+                # Antique Round Knob
+                res_knob = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=0.018)
+                bmesh.ops.translate(bm, vec=(hx, front_y + 0.045, cur_z), verts=res_knob['verts'])
+            elif handle_style == "BAR":
+                # Horizontal Bar
+                res_bar = bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=8, radius1=0.008, radius2=0.008, depth=0.09)
+                bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(90), 3, 'Y'), verts=res_bar['verts'])
+                bmesh.ops.translate(bm, vec=(hx, front_y + 0.04, cur_z), verts=res_bar['verts'])
+            else: # RING
+                # Drop Ring Handle
+                res_ring = bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=12, radius1=0.022, radius2=0.022, depth=0.008)
+                bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(90), 3, 'X'), verts=res_ring['verts'])
+                bmesh.ops.translate(bm, vec=(hx, front_y + 0.04, cur_z - 0.01), verts=res_ring['verts'])
+
+    return bm.verts[:]
+
+def build_bed_base(bm, size_x, size_y, size_z, bed_size="SINGLE", leg_style="ORNAMENTAL", seed=0):
+    """Generates an antique Bedframe with Headboard, Footboard, Posts, and Mattress"""
+    random.seed(seed)
+    
+    # Standard Bed Dimensions
+    if bed_size == "KING":
+        w = 2.0
+    elif bed_size == "DOUBLE":
+        w = 1.6
+    else: # SINGLE
+        w = 1.2
+        
+    d = max(size_y, 2.0)
+    h = size_z
+    frame_h = 0.35
+    head_h = h
+    foot_h = h * 0.65
+    post_rad = 0.065
+    
+    # 1. 4 Corner Antique Posts (四隅の装飾支柱)
+    offset_x = w * 0.5
+    offset_y = d * 0.5
+    
+    # Head Posts (高い頭側ポスト 2本)
+    for sx in [-offset_x, offset_x]:
+        bm_hp = bmesh.new()
+        build_antique_leg_or_column(bm_hp, height=head_h, radius=post_rad, style=leg_style, seed=seed)
+        for v in bm_hp.verts:
+            v.co.x += sx
+            v.co.y += -offset_y
+            v.co.z += (head_h * 0.5)
+        for f in bm_hp.faces:
+            bm.faces.new([bm.verts.new(v.co) for v in f.verts])
+        bm_hp.free()
+
+    # Foot Posts (足側ポスト 2本)
+    for sx in [-offset_x, offset_x]:
+        bm_fp = bmesh.new()
+        build_antique_leg_or_column(bm_fp, height=foot_h, radius=post_rad, style=leg_style, seed=seed)
+        for v in bm_fp.verts:
+            v.co.x += sx
+            v.co.y += offset_y
+            v.co.z += (foot_h * 0.5)
+        for f in bm_fp.faces:
+            bm.faces.new([bm.verts.new(v.co) for v in f.verts])
+        bm_fp.free()
+
+    # 2. Headboard Panel (頭側装飾背板)
+    res_hb = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(w - post_rad * 1.5, 0.04, head_h * 0.65), verts=res_hb['verts'])
+    bmesh.ops.translate(bm, vec=(0, -offset_y, frame_h + (head_h * 0.65) * 0.5), verts=res_hb['verts'])
+
+    # 3. Footboard Panel (足側装飾板)
+    res_fb = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(w - post_rad * 1.5, 0.04, foot_h * 0.5), verts=res_fb['verts'])
+    bmesh.ops.translate(bm, vec=(0, offset_y, frame_h + (foot_h * 0.5) * 0.5), verts=res_fb['verts'])
+
+    # 4. Bed Side Rails & Platform (サイドフレーム＆床板)
+    res_lrail = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(0.04, d, 0.12), verts=res_lrail['verts'])
+    bmesh.ops.translate(bm, vec=(-offset_x + post_rad * 0.5, 0, frame_h), verts=res_lrail['verts'])
+    
+    res_rrail = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(0.04, d, 0.12), verts=res_rrail['verts'])
+    bmesh.ops.translate(bm, vec=(offset_x - post_rad * 0.5, 0, frame_h), verts=res_rrail['verts'])
+
+    # 5. Mattress (ふっくらマットレス)
+    mat_th = 0.24
+    res_mat = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(w * 0.88, d * 0.9, mat_th), verts=res_mat['verts'])
+    bmesh.ops.translate(bm, vec=(0, 0, frame_h + mat_th * 0.5 + 0.02), verts=res_mat['verts'])
+    bmesh.ops.bevel(bm, geom=res_mat['verts'], offset=0.04, segments=2)
+
+    return bm.verts[:]
+
+# =============================================================
+# 4. Standard Base Geometry Builders
 # =============================================================
 def build_grass_mound_base(bm, size_x, size_y, size_z, shape="SQUARE", seed=0):
-    """Generates a natural organic meadow mound slab with soft uneven rolling surface"""
     random.seed(seed)
     if shape == "CIRCLE":
         bmesh.ops.create_cone(
@@ -190,51 +581,36 @@ def build_grass_mound_base(bm, size_x, size_y, size_z, shape="SQUARE", seed=0):
             bm, cap_ends=True, cap_tris=False, segments=6,
             radius1=size_x * 0.5, radius2=size_x * 0.5, depth=size_z
         )
-    else: # SQUARE
+    else:
         verts = bmesh.ops.create_cube(bm, size=1.0)['verts']
         bmesh.ops.scale(bm, vec=(size_x, size_y, size_z), verts=verts)
 
     bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=4, use_grid_fill=True)
-    
-    # Apply soft organic rolling mound unevenness only to top surface (Z > 0)
     for v in bm.verts:
         if v.co.z > 0:
             nx = math.sin(v.co.x * 1.8 + seed) * math.cos(v.co.y * 1.8 + seed)
             ny = math.cos(v.co.x * 2.2 + seed * 2) * math.sin(v.co.y * 2.2 + seed * 2)
             v.co.z += (nx + ny) * (size_z * 0.18)
-
     return bm.verts[:]
 
 def build_grass_tuft_clump(bm, size_x, size_y, size_z, blade_count=4, seed=0):
-    """Generates crossed billboard grass tuft clump optimized for Unity wind shaders"""
     random.seed(seed)
     h = size_z
     w = max(size_x, size_y) * 0.5
-    
-    # Generate multi-angle crossed billboard planes
     angles = [0, 45, 90, 135][:blade_count] if blade_count <= 4 else [i * (180.0 / blade_count) for i in range(blade_count)]
-    
-    for i, ang in enumerate(angles):
+    for ang in angles:
         ang_rad = math.radians(ang + random.uniform(-8.0, 8.0))
         cur_w = w * random.uniform(0.85, 1.15)
         cur_h = h * random.uniform(0.85, 1.2)
-        
         dx = math.cos(ang_rad) * (cur_w * 0.5)
         dy = math.sin(ang_rad) * (cur_w * 0.5)
-        
-        # Tilt angle slightly
         tilt_x = random.uniform(-0.06, 0.06) * cur_h
         tilt_y = random.uniform(-0.06, 0.06) * cur_h
-        
-        # Bottom left, Bottom right, Top right, Top left
         v_bl = bm.verts.new((-dx, -dy, 0.0))
         v_br = bm.verts.new((dx, dy, 0.0))
         v_tr = bm.verts.new((dx + tilt_x, dy + tilt_y, cur_h))
         v_tl = bm.verts.new((-dx + tilt_x, -dy + tilt_y, cur_h))
-        
-        # Create double-sided quad face
         bm.faces.new((v_bl, v_br, v_tr, v_tl))
-
     return bm.verts[:]
 
 def build_rock_base(bm, size_x, size_y, size_z, style):
@@ -257,10 +633,9 @@ def build_floor_base(bm, size_x, size_y, size_z, shape="SQUARE", seed=0):
             bm, cap_ends=True, cap_tris=False, segments=6,
             radius1=size_x * 0.5, radius2=size_x * 0.5, depth=size_z
         )
-    else: # SQUARE
+    else:
         verts = bmesh.ops.create_cube(bm, size=1.0)['verts']
         bmesh.ops.scale(bm, vec=(size_x, size_y, size_z), verts=verts)
-
     bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=2, use_grid_fill=True)
     return bm.verts[:]
 
@@ -271,15 +646,12 @@ def build_wall_base(bm, size_x, size_y, size_z, shape="STRAIGHT", seed=0):
         half_w = size_x * 0.5
         half_th = th * 0.5
         h = size_z
-        
         v_ft = bm.verts.new((0, -half_th, h * 0.5))
         v_fl = bm.verts.new((-half_w, -half_th, -h * 0.5))
         v_fr = bm.verts.new((half_w, -half_th, -h * 0.5))
-        
         v_bt = bm.verts.new((0, half_th, h * 0.5))
         v_bl = bm.verts.new((-half_w, half_th, -h * 0.5))
         v_br = bm.verts.new((half_w, half_th, -h * 0.5))
-        
         bm.faces.new((v_fl, v_fr, v_ft))
         bm.faces.new((v_bl, v_bt, v_br))
         bm.faces.new((v_fl, v_bl, v_br, v_fr))
@@ -289,7 +661,6 @@ def build_wall_base(bm, size_x, size_y, size_z, shape="STRAIGHT", seed=0):
         v1 = bmesh.ops.create_cube(bm, size=1.0)['verts']
         bmesh.ops.scale(bm, vec=(size_x, size_y * 0.4, size_z), verts=v1)
         bmesh.ops.translate(bm, vec=(0, -size_x * 0.25, 0), verts=v1)
-        
         v2 = bmesh.ops.create_cube(bm, size=1.0)['verts']
         bmesh.ops.scale(bm, vec=(size_y * 0.4, size_x * 0.5, size_z), verts=v2)
         bmesh.ops.translate(bm, vec=(-size_x * 0.5 + size_y * 0.2, 0, 0), verts=v2)
@@ -300,10 +671,9 @@ def build_wall_base(bm, size_x, size_y, size_z, shape="STRAIGHT", seed=0):
         )
         verts = res['verts']
         bmesh.ops.scale(bm, vec=(1.0, 0.4, 1.0), verts=verts)
-    else: # STRAIGHT
+    else:
         verts = bmesh.ops.create_cube(bm, size=1.0)['verts']
         bmesh.ops.scale(bm, vec=(size_x, size_y * 0.35, size_z), verts=verts)
-
     bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=2, use_grid_fill=True)
     return bm.verts[:]
 
@@ -313,15 +683,12 @@ def build_pillar_base(bm, size_x, size_y, size_z):
         radius1=size_x * 0.45, radius2=size_x * 0.45, depth=size_z * 2.0
     )
     verts = res['verts']
-    
     cap_verts = bmesh.ops.create_cube(bm, size=1.0)['verts']
     bmesh.ops.scale(bm, vec=(size_x * 1.1, size_y * 1.1, size_z * 0.2), verts=cap_verts)
     bmesh.ops.translate(bm, vec=(0, 0, size_z * 1.0), verts=cap_verts)
-    
     base_verts = bmesh.ops.create_cube(bm, size=1.0)['verts']
     bmesh.ops.scale(bm, vec=(size_x * 1.15, size_y * 1.15, size_z * 0.2), verts=base_verts)
     bmesh.ops.translate(bm, vec=(0, 0, -size_z * 1.0), verts=base_verts)
-    
     return verts + cap_verts + base_verts
 
 def build_beam_base(bm, size_x, size_y, size_z):
@@ -339,7 +706,6 @@ def build_beam_base(bm, size_x, size_y, size_z):
 def build_beam_arch_base(bm, size_x, size_y, size_z):
     all_verts = []
     rad = min(size_x, size_y) * 0.14
-    
     res_top = bmesh.ops.create_cone(
         bm, cap_ends=True, cap_tris=False, segments=16,
         radius1=rad, radius2=rad, depth=size_x * 2.2
@@ -382,12 +748,10 @@ def build_beam_arch_base(bm, size_x, size_y, size_z):
     bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(45), 3, 'Y'), verts=rb_verts)
     bmesh.ops.translate(bm, vec=(size_x * 0.55, 0, size_z * 0.7), verts=rb_verts)
     all_verts.extend(rb_verts)
-    
-    bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=1, use_grid_fill=True)
     return all_verts
 
 # =============================================================
-# 4. Master Generator Core
+# 5. Master Generator Core
 # =============================================================
 def generate_procedural_prop_mesh(
     context,
@@ -398,6 +762,14 @@ def generate_procedural_prop_mesh(
     floor_shape="SQUARE",
     wall_shape="STRAIGHT",
     grass_mode="MOUND",
+    table_shape="RECTANGLE",
+    table_leg_style="ORNAMENTAL",
+    chair_type="DINING_CHAIR",
+    chest_tiers=3,
+    chest_handle_style="RING",
+    bed_size="SINGLE",
+    shelf_tiers=3,
+    column_style="ORNAMENTAL",
     uv_mode="FIT",
     size_x=2.0,
     size_y=2.0,
@@ -436,7 +808,17 @@ def generate_procedural_prop_mesh(
 
     # 1. Base Geometry Construction
     bm = bmesh.new()
-    if category == "GRASS":
+    if category == "CHAIR":
+        build_chair_base(bm, size_x, size_y, size_z, chair_type=chair_type, leg_style=table_leg_style, seed=seed)
+    elif category == "CHEST":
+        build_chest_base(bm, size_x, size_y, size_z, tiers=chest_tiers, handle_style=chest_handle_style, seed=seed)
+    elif category == "BED":
+        build_bed_base(bm, size_x, size_y, size_z, bed_size=bed_size, leg_style=column_style, seed=seed)
+    elif category == "BOOKSHELF":
+        build_bookshelf_base(bm, size_x, size_y, size_z, tiers=shelf_tiers, column_style=column_style, seed=seed)
+    elif category == "TABLE":
+        build_table_base(bm, size_x, size_y, size_z, shape=table_shape, leg_style=table_leg_style, seed=seed)
+    elif category == "GRASS":
         if grass_mode == "TUFT":
             build_grass_tuft_clump(bm, size_x, size_y, size_z, blade_count=4, seed=seed)
         else:
@@ -463,10 +845,8 @@ def generate_procedural_prop_mesh(
             dx = math.cos(angle) * dist
             dy = math.sin(angle) * dist
             dz = -size_z * 0.35 + random.uniform(-0.05, 0.08)
-            
             d_rad = random.uniform(0.12, 0.35)
             d_verts = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=d_rad)['verts']
-            
             sx = random.uniform(0.8, 1.4)
             sy = random.uniform(0.8, 1.4)
             sz = random.uniform(0.5, 1.0)
@@ -476,105 +856,18 @@ def generate_procedural_prop_mesh(
     bm.to_mesh(mesh)
     bm.free()
 
-    # 2. Organic Jagged Cracks for Floor & Wall (Not on Grass Tuft)
-    if category in ("FLOOR", "WALL") and crack_count > 0:
-        half_x = size_x * 0.35
-        half_y = (size_y * 0.4) if category == "FLOOR" else (size_z * 0.35)
-        for sc in range(min(crack_count, 20)):
-            scar_mesh = bpy.data.meshes.new(f"Temp_Jagged_Crack_{sc}")
-            scar_obj = bpy.data.objects.new("Temp_Jagged_Crack", scar_mesh)
-            context.collection.objects.link(scar_obj)
-            
-            sbm = bmesh.new()
-            c_len = random.uniform(0.3, 0.85) * max(size_x, size_z) * 0.35
-            c_width = random.uniform(0.02, 0.06) * (crack_depth * 1.6)
-            c_depth = random.uniform(0.03, 0.09) * (crack_depth * 1.6)
-            
-            build_organic_crack_cutter(sbm, length=c_len, depth=c_depth, width=c_width, seed=seed + sc * 17)
-            sbm.to_mesh(scar_mesh)
-            sbm.free()
-            
-            px = random.uniform(-half_x, half_x)
-            if category == "FLOOR":
-                py = random.uniform(-half_y, half_y)
-                pz = (size_z * 0.5)
-                scar_obj.location = (obj.location.x + px, obj.location.y + py, obj.location.z + pz)
-                scar_obj.rotation_euler = (
-                    random.uniform(-0.08, 0.08),
-                    random.uniform(-0.08, 0.08),
-                    random.uniform(0, math.pi * 2)
-                )
-            else:
-                py = (size_y * 0.35 * 0.5) * random.choice([1, -1])
-                pz = random.uniform(-half_y, half_y * 0.7)
-                scar_obj.location = (obj.location.x + px, obj.location.y + py, obj.location.z + pz)
-                scar_obj.rotation_euler = (
-                    math.radians(90) if py > 0 else math.radians(-90),
-                    random.uniform(0, math.pi * 2),
-                    random.uniform(-0.08, 0.08)
-                )
-            
-            bool_mod = obj.modifiers.new(name=f"Bool_Crack_{sc}", type='BOOLEAN')
-            bool_mod.operation = 'DIFFERENCE'
-            bool_mod.object = scar_obj
-            bool_mod.solver = 'FAST'
-            
-            try:
-                bpy.ops.object.modifier_apply(modifier=bool_mod.name)
-            except Exception:
-                pass
-            
-            bpy.data.objects.remove(scar_obj, do_unlink=True)
-            bpy.data.meshes.remove(scar_mesh, do_unlink=True)
-
-    # 3. Big Chunk Boolean Fractures (Rock & Pillar)
-    if big_chunk_cuts > 0 and category in ("ROCK", "PILLAR"):
-        for c in range(big_chunk_cuts):
-            cutter_mesh = bpy.data.meshes.new("Temp_Cutter_Mesh")
-            cutter_obj = bpy.data.objects.new("Temp_Cutter", cutter_mesh)
-            context.collection.objects.link(cutter_obj)
-            
-            cbm = bmesh.new()
-            bmesh.ops.create_cube(cbm, size=random.uniform(1.0, 2.2))
-            cbm.to_mesh(cutter_mesh)
-            cbm.free()
-            
-            cutter_obj.location = (
-                obj.location.x + (random.choice([-1, 1]) * size_x * random.uniform(0.35, 0.65)),
-                obj.location.y + (random.choice([-1, 1]) * size_y * random.uniform(0.35, 0.65)),
-                obj.location.z + (random.choice([-1, 1]) * size_z * random.uniform(0.2, 0.6))
-            )
-            cutter_obj.rotation_euler = (
-                random.uniform(0, math.pi),
-                random.uniform(0, math.pi),
-                random.uniform(0, math.pi)
-            )
-            
-            bool_mod = obj.modifiers.new(name=f"Bool_Cut_{c}", type='BOOLEAN')
-            bool_mod.operation = 'DIFFERENCE'
-            bool_mod.object = cutter_obj
-            bool_mod.solver = 'FAST'
-            
-            try:
-                bpy.ops.object.modifier_apply(modifier=bool_mod.name)
-            except Exception:
-                pass
-            
-            bpy.data.objects.remove(cutter_obj, do_unlink=True)
-            bpy.data.meshes.remove(cutter_mesh, do_unlink=True)
-
-    # 4. Bevel for Floor, Wall & Grass Mound
-    if category in ("FLOOR", "WALL") or (category == "GRASS" and grass_mode == "MOUND"):
+    # 2. Bevel for Furniture, Floor, Wall & Grass Mound
+    if category in ("FLOOR", "WALL", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED") or (category == "GRASS" and grass_mode == "MOUND"):
         bevel_mod = obj.modifiers.new(name="Bevel_Chipping", type='BEVEL')
-        bevel_mod.width = min(0.03, (size_z if category != "WALL" else size_y) * 0.15)
+        bevel_mod.width = 0.012 if category in ("BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED") else min(0.03, (size_z if category != "WALL" else size_y) * 0.15)
         bevel_mod.segments = 2
         try:
             bpy.ops.object.modifier_apply(modifier=bevel_mod.name)
         except Exception:
             pass
 
-    # 5. Subdivision & Displacements (Rock / Pillar / Beam Architecture)
-    if category not in ("FLOOR", "WALL", "GRASS"):
+    # 3. Subdivision & Displacements (Rock / Pillar / Beam Architecture)
+    if category in ("ROCK", "PILLAR", "BEAM", "BEAM_ARCH"):
         subsurf = obj.modifiers.new(name="Subsurf_Base", type='SUBSURF')
         subsurf.render_levels = detail_level + 1
         subsurf.levels = detail_level + 1
@@ -591,7 +884,6 @@ def generate_procedural_prop_mesh(
         if chisel_strength > 0.05:
             tex_voronoi = bpy.data.textures.new(name + "_Tex_Chisel", type='VORONOI' if category not in ("BEAM", "BEAM_ARCH") else 'WOOD')
             tex_voronoi.noise_scale = 0.8
-            
             disp_voronoi = obj.modifiers.new(name="Disp_Chisel", type='DISPLACE')
             disp_voronoi.texture = tex_voronoi
             disp_voronoi.strength = chisel_strength * (0.18 if category in ("BEAM", "BEAM_ARCH") else 0.5)
@@ -601,13 +893,12 @@ def generate_procedural_prop_mesh(
             tex_crack = bpy.data.textures.new(name + "_Tex_Crack", type='VORONOI')
             tex_crack.noise_scale = 0.5
             tex_crack.distance_metric = 'DISTANCE_SQUARED'
-            
             disp_crack = obj.modifiers.new(name="Disp_Crack", type='DISPLACE')
             disp_crack.texture = tex_crack
             disp_crack.strength = -crack_depth * (0.12 if category in ("BEAM", "BEAM_ARCH") else 0.4)
             disp_crack.mid_level = 0.85
 
-    # 6. Apply Modifiers & Smooth
+    # 4. Apply Modifiers & Smooth
     for p in mesh.polygons:
         p.use_smooth = True
 
@@ -617,25 +908,24 @@ def generate_procedural_prop_mesh(
         except Exception:
             pass
 
-    # 7. Smart UV Projection
+    # 5. Smart UV Projection
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='SELECT')
     
     if category == "GRASS" and grass_mode == "TUFT":
-        # Standard UV unwrap for billboard planes (0 to 1 quad mapping)
         bpy.ops.uv.smart_project(angle_limit=88.0, island_margin=0.0)
-    elif category in ("FLOOR", "WALL", "BEAM", "BEAM_ARCH", "GRASS"):
+    elif category in ("FLOOR", "WALL", "BEAM", "BEAM_ARCH", "GRASS", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED"):
         if uv_mode == "FIT":
             max_dim = max(size_x, size_y, size_z)
             bpy.ops.uv.cube_project(cube_size=max_dim, correct_aspect=True, clip_to_bounds=True)
-        else: # TILING
+        else:
             bpy.ops.uv.cube_project(cube_size=2.0 / max(0.1, tex_tiling), correct_aspect=True)
     else: # ROCK
         bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.02)
         
     bpy.ops.object.mode_set(mode='OBJECT')
 
-    # 8. Material Assignment
+    # 6. Material Assignment
     tex_files = get_textures_from_folder(tex_folder)
     if use_folder_tex and tex_files:
         chosen_tex = selected_tex if (selected_tex and selected_tex in tex_files) else random.choice(tex_files)
@@ -661,7 +951,7 @@ def cleanup_old_debris(context, parent_name):
         bpy.data.objects.remove(o, do_unlink=True)
 
 # =============================================================
-# 5. Helper to Resolve Parameters
+# 6. Helper to Resolve Parameters
 # =============================================================
 def resolve_prop_parameters(props):
     cat = props.prop_category
@@ -669,7 +959,27 @@ def resolve_prop_parameters(props):
     final_type = random.choice(types) if props.rand_type else props.rock_type
     
     if props.rand_dimensions:
-        if cat in ("FLOOR", "GRASS"):
+        if cat == "CHAIR":
+            final_sx = round(random.uniform(0.48, 0.62), 2)
+            final_sy = round(random.uniform(0.48, 0.62), 2)
+            final_sz = round(random.uniform(0.85, 1.1), 2)
+        elif cat == "CHEST":
+            final_sx = round(random.uniform(1.2, 1.8), 2)
+            final_sy = round(random.uniform(0.5, 0.7), 2)
+            final_sz = round(random.uniform(0.9, 1.4), 2)
+        elif cat == "BED":
+            final_sx = round(random.uniform(1.2, 2.0), 2)
+            final_sy = round(random.uniform(2.0, 2.2), 2)
+            final_sz = round(random.uniform(1.2, 1.6), 2)
+        elif cat == "BOOKSHELF":
+            final_sx = round(random.uniform(1.2, 2.0), 2)
+            final_sy = round(random.uniform(0.4, 0.65), 2)
+            final_sz = round(random.uniform(1.8, 2.4), 2)
+        elif cat == "TABLE":
+            final_sx = round(random.uniform(1.4, 2.4), 2)
+            final_sy = round(random.uniform(0.8, 1.4), 2)
+            final_sz = round(random.uniform(0.7, 0.9), 2)
+        elif cat in ("FLOOR", "GRASS"):
             if cat == "GRASS" and props.grass_mode == 'TUFT':
                 final_sx = round(random.uniform(0.6, 1.2), 2)
                 final_sy = final_sx
@@ -698,32 +1008,17 @@ def resolve_prop_parameters(props):
     else:
         final_sx, final_sy, final_sz = props.size_x, props.size_y, props.size_z
 
-    if props.rand_surface:
-        final_roughness = round(random.uniform(0.4, 1.2), 2)
-        final_chisel = round(random.uniform(0.4, 1.3), 2)
-    else:
-        final_roughness = props.roughness
-        final_chisel = props.chisel_strength
-
-    if props.rand_fractures:
-        final_chunks = random.randint(1, 4) if cat in ("ROCK", "PILLAR") else 0
-        final_crack = round(random.uniform(0.3, 1.0), 2)
-        final_cracks_count = random.randint(2, 12) if cat in ("FLOOR", "WALL") else 0
-    else:
-        final_chunks = props.big_chunk_cuts
-        final_crack = props.crack_depth
-        final_cracks_count = props.floor_crack_count
-
-    if props.rand_debris:
-        final_debris_count = random.randint(3, 10)
-    else:
-        final_debris_count = props.debris_count
-
     tex_files = get_textures_from_folder(props.texture_folder)
     if props.rand_texture and tex_files:
         chosen_tex = random.choice(tex_files)
     else:
         chosen_tex = props.selected_texture if (props.selected_texture in tex_files) else (tex_files[0] if tex_files else "")
+
+    leg_styles = ['SIMPLE', 'REINFORCED', 'ORNAMENTAL', 'TWISTED']
+    final_leg_style = random.choice(leg_styles) if props.rand_furniture_style else props.table_leg_style
+    final_col_style = random.choice(leg_styles) if props.rand_furniture_style else props.column_ornament_style
+    table_shapes = ['RECTANGLE', 'ROUNDED_RECT', 'OVAL']
+    final_table_shape = random.choice(table_shapes) if props.rand_furniture_style else props.table_shape
 
     return {
         "category": cat,
@@ -731,17 +1026,25 @@ def resolve_prop_parameters(props):
         "floor_shape": props.floor_shape,
         "wall_shape": props.wall_shape,
         "grass_mode": props.grass_mode,
+        "table_shape": final_table_shape,
+        "table_leg_style": final_leg_style,
+        "chair_type": props.chair_type,
+        "chest_tiers": props.chest_tiers,
+        "chest_handle_style": props.chest_handle_style,
+        "bed_size": props.bed_size,
+        "shelf_tiers": props.shelf_tiers,
+        "column_style": final_col_style,
         "uv_mode": props.uv_mapping_mode,
         "size_x": final_sx,
         "size_y": final_sy,
         "size_z": final_sz,
-        "roughness": final_roughness,
-        "chisel_strength": final_chisel,
-        "crack_depth": final_crack,
-        "big_chunk_cuts": final_chunks,
-        "crack_count": final_cracks_count,
-        "create_debris": False if cat in ("FLOOR", "WALL", "GRASS") else props.create_debris,
-        "debris_count": final_debris_count,
+        "roughness": props.roughness,
+        "chisel_strength": props.chisel_strength,
+        "crack_depth": props.crack_depth,
+        "big_chunk_cuts": props.big_chunk_cuts,
+        "crack_count": props.floor_crack_count,
+        "create_debris": False if cat in ("FLOOR", "WALL", "GRASS", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED") else props.create_debris,
+        "debris_count": props.debris_count,
         "detail_level": props.detail_level,
         "tex_folder": props.texture_folder,
         "use_folder_tex": props.use_folder_texture,
@@ -750,7 +1053,7 @@ def resolve_prop_parameters(props):
     }
 
 # =============================================================
-# 6. Clean Unity FBX Exporter
+# 7. Clean Unity FBX Exporter
 # =============================================================
 def get_next_available_fbx_path(export_dir, base_name):
     os.makedirs(export_dir, exist_ok=True)
@@ -836,7 +1139,7 @@ class MESH_OT_open_export_folder(bpy.types.Operator):
         return {'FINISHED'}
 
 # =============================================================
-# 7. Core Operators
+# 8. Core Operators
 # =============================================================
 class MESH_OT_reroll_selected_prop(bpy.types.Operator):
     """Re-roll and morph the selected prop in-place with new random seed & texture"""
@@ -861,6 +1164,14 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
             floor_shape=p["floor_shape"],
             wall_shape=p["wall_shape"],
             grass_mode=p["grass_mode"],
+            table_shape=p["table_shape"],
+            table_leg_style=p["table_leg_style"],
+            chair_type=p["chair_type"],
+            chest_tiers=p["chest_tiers"],
+            chest_handle_style=p["chest_handle_style"],
+            bed_size=p["bed_size"],
+            shelf_tiers=p["shelf_tiers"],
+            column_style=p["column_style"],
             uv_mode=p["uv_mode"],
             size_x=p["size_x"],
             size_y=p["size_y"],
@@ -902,6 +1213,14 @@ class MESH_OT_create_new_prop(bpy.types.Operator):
             floor_shape=p["floor_shape"],
             wall_shape=p["wall_shape"],
             grass_mode=p["grass_mode"],
+            table_shape=p["table_shape"],
+            table_leg_style=p["table_leg_style"],
+            chair_type=p["chair_type"],
+            chest_tiers=p["chest_tiers"],
+            chest_handle_style=p["chest_handle_style"],
+            bed_size=p["bed_size"],
+            shelf_tiers=p["shelf_tiers"],
+            column_style=p["column_style"],
             uv_mode=p["uv_mode"],
             size_x=p["size_x"],
             size_y=p["size_y"],
@@ -954,7 +1273,7 @@ class MESH_OT_apply_random_texture_only(bpy.types.Operator):
         return {'FINISHED'}
 
 # =============================================================
-# 8. Category Preset Callback
+# 9. Category Preset Callback
 # =============================================================
 def get_texture_enum_items(self, context):
     props = context.scene.prop_studio_props
@@ -974,61 +1293,78 @@ def update_category_preset(self, context):
         'PILLAR': "Pillar_Column",
         'BEAM': "Timber_Beam",
         'BEAM_ARCH': "Beam_Arch",
-        'GRASS': "Grass_Meadow"
+        'GRASS': "Grass_Meadow",
+        'BOOKSHELF': "Antique_Bookshelf",
+        'TABLE': "Antique_Table",
+        'CHAIR': "Antique_Chair",
+        'CHEST': "Antique_Chest",
+        'BED': "Antique_Bed"
     }
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
-    if cat == "GRASS":
+    if cat == "CHAIR":
+        props.size_x = 0.55
+        props.size_y = 0.55
+        props.size_z = 0.95
+        props.chair_type = 'DINING_CHAIR'
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "CHEST":
+        props.size_x = 1.4
+        props.size_y = 0.6
+        props.size_z = 1.1
+        props.chest_tiers = 3
+        props.chest_handle_style = 'RING'
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "BED":
+        props.size_x = 1.4
+        props.size_y = 2.1
+        props.size_z = 1.35
+        props.bed_size = 'SINGLE'
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "BOOKSHELF":
+        props.size_x = 1.6
+        props.size_y = 0.5
+        props.size_z = 2.1
+        props.shelf_tiers = 3
+        props.column_ornament_style = 'ORNAMENTAL'
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "TABLE":
+        props.size_x = 1.8
+        props.size_y = 1.0
+        props.size_z = 0.78
+        props.table_shape = 'RECTANGLE'
+        props.table_leg_style = 'ORNAMENTAL'
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "GRASS":
         props.size_x = 3.0
         props.size_y = 3.0
         props.size_z = 0.3
-        props.create_debris = False
-        props.big_chunk_cuts = 0
-        props.floor_crack_count = 0
         props.uv_mapping_mode = 'FIT'
-        props.texture_tiling = 1.0
     elif cat == "FLOOR":
         props.size_x = 2.0
         props.size_y = 2.0
         props.size_z = 0.2
-        props.create_debris = False
-        props.big_chunk_cuts = 0
-        props.floor_crack_count = 5
         props.uv_mapping_mode = 'FIT'
-        props.texture_tiling = 1.0
     elif cat == "WALL":
         props.size_x = 3.0
         props.size_y = 1.0
         props.size_z = 2.5
-        props.create_debris = False
-        props.big_chunk_cuts = 0
-        props.floor_crack_count = 6
         props.uv_mapping_mode = 'FIT'
-        props.texture_tiling = 1.0
     elif cat in ("BEAM", "BEAM_ARCH"):
         props.size_x = 2.4
         props.size_y = 1.5
         props.size_z = 2.0
-        props.create_debris = False
-        props.big_chunk_cuts = 0
         props.uv_mapping_mode = 'FIT'
-        props.texture_tiling = 1.0
     elif cat == "PILLAR":
         props.size_x = 1.2
         props.size_y = 1.2
         props.size_z = 2.5
-        props.create_debris = False
-        props.big_chunk_cuts = 1
         props.uv_mapping_mode = 'FIT'
-        props.texture_tiling = 1.0
     else: # ROCK
         props.size_x = 2.2
         props.size_y = 2.0
         props.size_z = 1.6
-        props.create_debris = True
-        props.big_chunk_cuts = 2
         props.uv_mapping_mode = 'TILING'
-        props.texture_tiling = 1.5
 
     folder_map = {
         'ROCK': r"Z:\MeshCreator\textures\Rock",
@@ -1037,7 +1373,12 @@ def update_category_preset(self, context):
         'PILLAR': r"Z:\MeshCreator\textures\Pillar",
         'BEAM': r"Z:\MeshCreator\textures\Wood",
         'BEAM_ARCH': r"Z:\MeshCreator\textures\Wood",
-        'GRASS': r"Z:\MeshCreator\textures\Grass"
+        'GRASS': r"Z:\MeshCreator\textures\Grass",
+        'BOOKSHELF': r"Z:\MeshCreator\textures\Wood",
+        'TABLE': r"Z:\MeshCreator\textures\Wood",
+        'CHAIR': r"Z:\MeshCreator\textures\Wood",
+        'CHEST': r"Z:\MeshCreator\textures\Wood",
+        'BED': r"Z:\MeshCreator\textures\Wood"
     }
     
     target_folder = folder_map.get(cat, r"Z:\MeshCreator\textures\Rock")
@@ -1045,13 +1386,18 @@ def update_category_preset(self, context):
     props.texture_folder = target_folder
 
 # =============================================================
-# 9. Property Group
+# 10. Property Group
 # =============================================================
 class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
             ('ROCK', "🪨 岩 (Rock / Boulder)", "textures/Rock/ と自動連動"),
+            ('TABLE', "🪑 机・テーブル (Table / Desk)", "textures/Wood/ と自動連動（四角/角丸/楕円＆アンティーク4本脚）"),
+            ('CHAIR', "💺 椅子・チェア (Chair / Stool)", "textures/Wood/ と自動連動（ダイニング/アーム/スツール）"),
+            ('BOOKSHELF', "📚 本棚・収納棚 (Bookshelf / Rack)", "textures/Wood/ と自動連動（2~4段棚＆対称装飾柱）"),
+            ('CHEST', "🚪 チェスト・タンス (Chest of Drawers)", "textures/Wood/ と自動連動（2~5段引き出し＆取っ手金具）"),
+            ('BED', "🛏️ アンティークベッド (Antique Bedframe)", "textures/Wood/ と自動連動（四隅装飾柱＆ヘッドボード＆マットレス）"),
             ('GRASS', "🌿 草原・草地 (Grassland / Meadow)", "textures/Grass/ と自動連動（草地丘陵スラブ＆十字草むら）"),
             ('FLOOR', "🟫 床・タイル (Floor / Tile)", "textures/Floor/ と自動連動（正方形・円形・六角形＆有機的亀裂）"),
             ('WALL', "🧱 壁・城壁 (Wall / Ruins)", "textures/Wall/ と自動連動（直線・L字・円弧・▲三角切妻壁）"),
@@ -1066,12 +1412,82 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     studio_tab: bpy.props.EnumProperty(
         name="Studio Tab",
         items=[
-            ('SHAPE', "📐 形状", "形状・寸法・有機的クラック傷設定"),
+            ('SHAPE', "📐 形状", "形状・寸法・家具パーツ設定"),
             ('TEX', "🎨 テクスチャ", "PBRテクスチャ連動・UVフィット設定"),
             ('EXPORT', "📦 出力", "Unity FBXエクスポート設定")
         ],
         default='SHAPE'
     )
+
+    # Chair specific
+    chair_type: bpy.props.EnumProperty(
+        name="椅子タイプ",
+        items=[
+            ('DINING_CHAIR', "💺 背もたれチェア (Dining Chair)", "クラシックな背もたれ付き椅子"),
+            ('ARMCHAIR', "🛋️ アームチェア (Armchair)", "肘掛け付きアンティークチェア"),
+            ('ROUND_STOOL', "⚪ 丸スツール (Round Stool)", "円形座面の腰掛け"),
+            ('SQUARE_STOOL', "🔲 角スツール (Square Stool)", "四角座面の腰掛け")
+        ],
+        default='DINING_CHAIR'
+    )
+
+    # Chest specific
+    chest_tiers: bpy.props.IntProperty(name="引き出し段数", default=3, min=2, max=5, description="チェストの引き出し段数 (2段〜5段)")
+    chest_handle_style: bpy.props.EnumProperty(
+        name="取っ手金具",
+        items=[
+            ('RING', "リング金具 (Ring Handle)", "アンティークなドロップリング金具"),
+            ('KNOB', "丸ノブ (Round Knob)", "クラシックな丸型つまみ"),
+            ('BAR', "水平バー (Bar Handle)", "水平ハンドルバー")
+        ],
+        default='RING'
+    )
+
+    # Bed specific
+    bed_size: bpy.props.EnumProperty(
+        name="ベッドサイズ",
+        items=[
+            ('SINGLE', "シングル (Single: 1.2m)", "幅 1.2m のベッド"),
+            ('DOUBLE', "ダブル (Double: 1.6m)", "幅 1.6m のベッド"),
+            ('KING', "キング (King: 2.0m)", "幅 2.0m の広々ベッド")
+        ],
+        default='SINGLE'
+    )
+
+    # Bookshelf specific
+    shelf_tiers: bpy.props.IntProperty(name="棚の段数", default=3, min=2, max=4, description="本棚の棚板段数 (2段, 3段, 4段)")
+    column_ornament_style: bpy.props.EnumProperty(
+        name="柱装飾",
+        items=[
+            ('ORNAMENTAL', "アンティーク・ろくろ挽き (Turned)", "ビーズ・リング・コーンを重ねたクラシック装飾柱"),
+            ('TWISTED', "螺旋・ツイスト (Twisted)", "スパイラル状のひねり装飾柱"),
+            ('REINFORCED', "補強台座付き (Reinforced)", "上下にキャピタル台座を持つ柱"),
+            ('SIMPLE', "シンプル角柱/円柱 (Simple)", "クリーンなストレート柱")
+        ],
+        default='ORNAMENTAL'
+    )
+
+    # Table specific
+    table_shape: bpy.props.EnumProperty(
+        name="天板形状",
+        items=[
+            ('RECTANGLE', "🔲 スタンダード四角 (Rectangle)", "標準の長方形天板"),
+            ('ROUNDED_RECT', "🔘 角丸長方形 (Rounded Rect)", "四隅が滑らかに丸まった天板"),
+            ('OVAL', "⬭ 楕円 (Oval / Ellipse)", "美しい楕円形天板")
+        ],
+        default='RECTANGLE'
+    )
+    table_leg_style: bpy.props.EnumProperty(
+        name="脚の形状",
+        items=[
+            ('ORNAMENTAL', "アンティーク・ろくろ挽き (Turned)", "球体ビーズ・リング・コーンの4本脚"),
+            ('TWISTED', "螺旋・ツイスト (Twisted)", "スパイラルひねりの4本脚"),
+            ('REINFORCED', "補強台座付き (Reinforced)", "上下に段差リング・台座を持つ4本脚"),
+            ('SIMPLE', "シンプル (Simple)", "プレーンな4本脚")
+        ],
+        default='ORNAMENTAL'
+    )
+    rand_furniture_style: bpy.props.BoolProperty(name="🎲 家具スタイルガチャ", default=True)
 
     grass_mode: bpy.props.EnumProperty(
         name="Grass Type",
@@ -1128,9 +1544,9 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     )
     rand_type: bpy.props.BoolProperty(name="🎲 形状ランダム", default=True)
 
-    size_x: bpy.props.FloatProperty(name="X (幅/スパン)", default=3.0, min=0.2, max=20.0)
-    size_y: bpy.props.FloatProperty(name="Y (厚み/奥行)", default=3.0, min=0.1, max=20.0)
-    size_z: bpy.props.FloatProperty(name="Z (高さ)", default=0.3, min=0.05, max=20.0)
+    size_x: bpy.props.FloatProperty(name="X (幅/スパン)", default=1.8, min=0.2, max=20.0)
+    size_y: bpy.props.FloatProperty(name="Y (厚み/奥行)", default=1.0, min=0.1, max=20.0)
+    size_z: bpy.props.FloatProperty(name="Z (高さ)", default=0.78, min=0.05, max=20.0)
     rand_dimensions: bpy.props.BoolProperty(name="🎲 サイズランダム", default=True)
 
     roughness: bpy.props.FloatProperty(name="Roughness (粗さ)", default=0.75, min=0.0, max=2.0)
@@ -1144,7 +1560,6 @@ class PropStudioProperties(bpy.types.PropertyGroup):
 
     create_debris: bpy.props.BoolProperty(name="Create Debris (周囲の破片・小石)", default=True)
     debris_count: bpy.props.IntProperty(name="Shard Count", default=6, min=1, max=20)
-    rand_debris: bpy.props.BoolProperty(name="🎲 破片数ランダム", default=True)
 
     texture_folder: bpy.props.StringProperty(name="Texture Folder", subtype='DIR_PATH', default=r"Z:\MeshCreator\textures\Rock")
     use_folder_texture: bpy.props.BoolProperty(name="Use Folder Textures", default=True)
@@ -1157,7 +1572,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     auto_random: bpy.props.BoolProperty(name="Auto Random", default=True)
 
 # =============================================================
-# 10. Sidebar Panel (N-Panel)
+# 11. Sidebar Panel (N-Panel)
 # =============================================================
 class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
     bl_label = "Procedural Prop Studio Pro"
@@ -1197,23 +1612,69 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
         layout.separator()
 
-        # 🌟 4. Tab 1: Shape & Dimensions
+        # 🌟 4. Tab 1: Shape & Dimensions & Specific Controls
         if props.studio_tab == 'SHAPE':
-            if props.prop_category == 'GRASS':
+            # Chair Specific
+            if props.prop_category == 'CHAIR':
+                box_chair = layout.box()
+                box_chair.label(text="Chair Settings (椅子設定):", icon='PASTEDOWN')
+                box_chair.prop(props, "chair_type", text="タイプ")
+                box_chair.prop(props, "table_leg_style", text="脚の装飾 (4本対称)")
+                box_chair.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
+
+            # Chest Specific
+            elif props.prop_category == 'CHEST':
+                box_chest = layout.box()
+                box_chest.label(text="Chest Settings (タンス設定):", icon='FILE_ARCHIVE')
+                box_chest.prop(props, "chest_tiers", text="引き出し段数 (2~5段)")
+                box_chest.prop(props, "chest_handle_style", text="取っ手金具")
+                box_chest.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
+
+            # Bed Specific
+            elif props.prop_category == 'BED':
+                box_bed = layout.box()
+                box_bed.label(text="Bed Settings (ベッド設定):", icon='COMMUNITY')
+                box_bed.prop(props, "bed_size", text="サイズ")
+                box_bed.prop(props, "column_ornament_style", text="四隅ポスト装飾")
+                box_bed.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
+
+            # Bookshelf Specific
+            elif props.prop_category == 'BOOKSHELF':
+                box_shelf = layout.box()
+                box_shelf.label(text="Bookshelf Settings (本棚設定):", icon='BOOKMARKS')
+                box_shelf.prop(props, "shelf_tiers", text="棚段数 (2~4段)")
+                box_shelf.prop(props, "column_ornament_style", text="側柱の装飾")
+                box_shelf.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
+
+            # Table Specific
+            elif props.prop_category == 'TABLE':
+                box_tab = layout.box()
+                box_tab.label(text="Table Settings (机・テーブル設定):", icon='WORKSPACE')
+                box_tab.prop(props, "table_shape", text="天板形状")
+                box_tab.prop(props, "table_leg_style", text="脚の装飾 (4本対称)")
+                box_tab.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
+
+            # Grass Specific
+            elif props.prop_category == 'GRASS':
                 box_gmode = layout.box()
                 box_gmode.label(text="Grass Type (草原タイプ):", icon='OUTLINER_OB_CURVE')
                 box_gmode.prop(props, "grass_mode", text="")
                 if props.grass_mode == 'MOUND':
                     box_gmode.prop(props, "floor_shape", text="床形状")
+
+            # Floor Specific
             elif props.prop_category == 'FLOOR':
                 box_fshape = layout.box()
                 box_fshape.label(text="Floor Shape (床の形状):", icon='MESH_PLANE')
                 box_fshape.prop(props, "floor_shape", text="")
+
+            # Wall Specific
             elif props.prop_category == 'WALL':
                 box_wshape = layout.box()
                 box_wshape.label(text="Wall Shape (壁の形状):", icon='MESH_CUBE')
                 box_wshape.prop(props, "wall_shape", text="")
 
+            # Dimensions Box
             box_dim = layout.box()
             row_dh = box_dim.row(align=True)
             row_dh.label(text="Dimensions (サイズ):", icon='EMPTY_DATA')
@@ -1229,17 +1690,17 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 row_d.prop(props, "size_y", text="Y (奥行)")
                 row_d.prop(props, "size_z", text="Z (高さ)")
 
+            # Surface / Fractures for Rock & Architecture
             if props.prop_category in ("FLOOR", "WALL"):
                 box_scar = layout.box()
                 row_sch = box_scar.row(align=True)
                 row_sch.label(text="Organic Cracks (有機的亀裂・傷):", icon='MOD_BOOLEAN')
                 row_sch.prop(props, "rand_fractures", text="🎲 ランダム")
-                
                 col_sc = box_scar.column(align=True)
                 col_sc.enabled = not props.rand_fractures
                 col_sc.prop(props, "floor_crack_count", text="亀裂・傷の箇所数 (1~20)")
                 col_sc.prop(props, "crack_depth", text="亀裂の深さ・太さ", slider=True)
-            elif props.prop_category != 'GRASS':
+            elif props.prop_category in ("ROCK", "PILLAR", "BEAM", "BEAM_ARCH"):
                 box_surf = layout.box()
                 row_sh = box_surf.row(align=True)
                 row_sh.label(text="Surface (粗さ・削り):", icon='MOD_SUBSURF')
@@ -1288,7 +1749,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
             box_exp.operator("mesh.open_export_folder", text="📂 保存先フォルダを開く", icon='FOLDER_REDIRECT')
 
 # =============================================================
-# 11. Registration
+# 12. Registration
 # =============================================================
 classes = (
     PropStudioProperties,
