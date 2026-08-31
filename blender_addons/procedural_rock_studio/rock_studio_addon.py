@@ -16,6 +16,13 @@ import os
 import shutil
 import subprocess
 import mathutils
+import addon_utils
+
+# Auto-enable Sapling Tree Gen if available
+try:
+    addon_utils.enable("add_curve_sapling", default_set=True)
+except Exception:
+    pass
 
 # =============================================================
 # 1. Texture Auto-Scanner & Material Generator
@@ -1135,6 +1142,170 @@ def build_beam_arch_base(bm, size_x, size_y, size_z):
     all_verts.extend(rb_verts)
     return all_verts
 
+def build_real_tree_base(
+    bm, size_x, size_y, size_z,
+    species="OAK",
+    has_leaves=True,
+    leaf_count=120,
+    branch_levels=2,
+    seed=0
+):
+    """Generates a procedural real tree with trunk, branching structure, and leaf clusters (Oak, Pine, Willow, Palm, Birch, Japanese Maple)"""
+    random.seed(seed)
+    h = size_z
+    spread = max(size_x, size_y)
+    trunk_r = spread * 0.08
+    trunk_h = h * (0.35 if species in ("OAK", "JAPANESE_MAPLE") else (0.5 if species in ("PINE", "BIRCH") else 0.75))
+
+    # 1. 🪵 Main Trunk (幹の生成: 根元フレア ＆ 自然な曲がり)
+    num_trunk_segs = 6
+    seg_h = trunk_h / num_trunk_segs
+    curr_z = 0.0
+    curr_x = 0.0
+    curr_y = 0.0
+    
+    trunk_pts = []
+    for i in range(num_trunk_segs + 1):
+        t = i / num_trunk_segs
+        # Flare base and taper top
+        r = trunk_r * (1.5 - t * 0.75 if t < 0.2 else (1.2 - t * 0.6))
+        trunk_pts.append((curr_x, curr_y, curr_z, r))
+        curr_z += seg_h
+        curr_x += (random.random() - 0.5) * (trunk_r * 0.35)
+        curr_y += (random.random() - 0.5) * (trunk_r * 0.35)
+
+    # Build trunk cylinder segments
+    for i in range(num_trunk_segs):
+        p1 = trunk_pts[i]
+        p2 = trunk_pts[i + 1]
+        mid_x = (p1[0] + p2[0]) * 0.5
+        mid_y = (p1[1] + p2[1]) * 0.5
+        mid_z = (p1[2] + p2[2]) * 0.5
+        
+        res_t = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=12,
+            radius1=p1[3], radius2=p2[3], depth=seg_h
+        )
+        # Vector tilt
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        rot_mat = mathutils.Matrix.Translation((mid_x, mid_y, mid_z))
+        bmesh.ops.translate(bm, vec=(mid_x, mid_y, mid_z), verts=res_t['verts'])
+
+    branch_tips = []
+
+    # 2. 🌲 Branching Architecture (樹種別の枝分かれ構造)
+    if species == "PALM":
+        # 🌴 Palm Fronds (ヤシの木の放射状大葉)
+        num_fronds = random.randint(8, 14)
+        for fi in range(num_fronds):
+            ang = math.radians(fi * (360.0 / num_fronds) + random.uniform(-10, 10))
+            frond_len = spread * random.uniform(0.7, 1.1)
+            # Arching frond stem
+            res_stem = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=8,
+                radius1=0.03, radius2=0.008, depth=frond_len
+            )
+            # Arch downward
+            bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(55), 3, 'X'), verts=res_stem['verts'])
+            bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(ang, 3, 'Z'), verts=res_stem['verts'])
+            bmesh.ops.translate(bm, vec=(
+                curr_x + math.cos(ang) * (frond_len * 0.4),
+                curr_y + math.sin(ang) * (frond_len * 0.4),
+                curr_z - frond_len * 0.2
+            ), verts=res_stem['verts'])
+            branch_tips.append((
+                curr_x + math.cos(ang) * (frond_len * 0.7),
+                curr_y + math.sin(ang) * (frond_len * 0.7),
+                curr_z - frond_len * 0.35
+            ))
+
+    elif species == "PINE":
+        # 🌲 Pine / Conifer Tiers (針葉樹の階層状枝)
+        num_tiers = random.randint(4, 7)
+        for ti in range(num_tiers):
+            tier_t = (ti + 1) / (num_tiers + 1)
+            tier_z = trunk_h * (0.35 + tier_t * 0.65)
+            tier_spread = spread * (1.0 - tier_t * 0.75) * 0.5
+            num_b = random.randint(4, 6)
+            for bi in range(num_b):
+                ang = math.radians(bi * (360.0 / num_b) + random.uniform(-15, 15))
+                res_b = bmesh.ops.create_cone(
+                    bm, cap_ends=True, cap_tris=False, segments=8,
+                    radius1=trunk_r * 0.35, radius2=0.01, depth=tier_spread
+                )
+                bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(75), 3, 'X'), verts=res_b['verts'])
+                bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(ang, 3, 'Z'), verts=res_b['verts'])
+                bx = math.cos(ang) * (tier_spread * 0.5)
+                by = math.sin(ang) * (tier_spread * 0.5)
+                bmesh.ops.translate(bm, vec=(bx, by, tier_z), verts=res_b['verts'])
+                branch_tips.append((bx * 1.8, by * 1.8, tier_z - 0.05))
+
+    else: # OAK, BIRCH, WILLOW, JAPANESE_MAPLE
+        # 🌳 Spreading Hardwood Branches
+        num_main_branches = random.randint(4, 7)
+        for bi in range(num_main_branches):
+            ang = math.radians(bi * (360.0 / num_main_branches) + random.uniform(-20, 20))
+            pitch = math.radians(random.uniform(25, 60))
+            b_len = spread * random.uniform(0.45, 0.75)
+            b_rad = trunk_r * random.uniform(0.4, 0.6)
+            
+            res_mb = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=8,
+                radius1=b_rad, radius2=b_rad * 0.4, depth=b_len
+            )
+            # Willow droop vs Oak spreading
+            tilt = math.radians(-35) if species == "WILLOW" else pitch
+            bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(tilt, 3, 'X'), verts=res_mb['verts'])
+            bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(ang, 3, 'Z'), verts=res_mb['verts'])
+            
+            bx = curr_x + math.cos(ang) * (b_len * 0.45)
+            by = curr_y + math.sin(ang) * (b_len * 0.45)
+            bz = curr_z + math.sin(pitch) * (b_len * 0.45)
+            bmesh.ops.translate(bm, vec=(bx, by, bz), verts=res_mb['verts'])
+            
+            tip_x = curr_x + math.cos(ang) * (b_len * 0.9)
+            tip_y = curr_y + math.sin(ang) * (b_len * 0.9)
+            tip_z = curr_z + math.sin(pitch) * (b_len * 0.9)
+            branch_tips.append((tip_x, tip_y, tip_z))
+
+            # Secondary Sub-branches
+            if branch_levels >= 2:
+                for sub_i in range(2):
+                    sub_ang = ang + random.uniform(-0.6, 0.6)
+                    sub_len = b_len * 0.55
+                    res_sb = bmesh.ops.create_cone(
+                        bm, cap_ends=True, cap_tris=False, segments=6,
+                        radius1=b_rad * 0.35, radius2=0.01, depth=sub_len
+                    )
+                    bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(random.uniform(30, 70)), 3, 'X'), verts=res_sb['verts'])
+                    bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(sub_ang, 3, 'Z'), verts=res_sb['verts'])
+                    sbx = tip_x + math.cos(sub_ang) * (sub_len * 0.45)
+                    sby = tip_y + math.sin(sub_ang) * (sub_len * 0.45)
+                    sbz = tip_z + random.uniform(-0.1, 0.2)
+                    bmesh.ops.translate(bm, vec=(sbx, sby, sbz), verts=res_sb['verts'])
+                    branch_tips.append((sbx * 1.1, sby * 1.1, sbz))
+
+    # 3. 🍃 Leaf Clusters (生い茂る葉クラスタ / クロスビルボード葉)
+    if has_leaves and branch_tips:
+        num_leaves = max(20, min(300, leaf_count))
+        for _ in range(num_leaves):
+            base_pt = random.choice(branch_tips)
+            lx = base_pt[0] + random.uniform(-spread * 0.18, spread * 0.18)
+            ly = base_pt[1] + random.uniform(-spread * 0.18, spread * 0.18)
+            lz = base_pt[2] + random.uniform(-h * 0.1, h * 0.15)
+            
+            l_sz = spread * random.uniform(0.18, 0.35)
+            # Create crossed leaf billboard quads
+            for rot_z in [0, 60, 120]:
+                res_leaf = bmesh.ops.create_cube(bm, size=1.0)
+                bmesh.ops.scale(bm, vec=(l_sz, 0.005, l_sz * 0.75), verts=res_leaf['verts'])
+                bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(random.uniform(-30, 30)), 3, 'X'), verts=res_leaf['verts'])
+                bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(rot_z + random.uniform(-15, 15)), 3, 'Z'), verts=res_leaf['verts'])
+                bmesh.ops.translate(bm, vec=(lx, ly, lz), verts=res_leaf['verts'])
+
+    return bm.verts[:]
+
 # =============================================================
 # 5. Master Generator Core
 # =============================================================
@@ -1158,6 +1329,10 @@ def generate_procedural_prop_mesh(
     bed_size="SINGLE",
     shelf_tiers=3,
     column_style="ORNAMENTAL",
+    tree_species="OAK",
+    tree_has_leaves=True,
+    tree_leaf_count=120,
+    tree_branch_levels=2,
     uv_mode="FIT",
     size_x=2.0,
     size_y=2.0,
@@ -1196,7 +1371,16 @@ def generate_procedural_prop_mesh(
 
     # 1. Base Geometry Construction
     bm = bmesh.new()
-    if category in ("CHAIR", "OFFICE_CHAIR"):
+    if category == "TREE":
+        build_real_tree_base(
+            bm, size_x, size_y, size_z,
+            species=tree_species,
+            has_leaves=tree_has_leaves,
+            leaf_count=tree_leaf_count,
+            branch_levels=tree_branch_levels,
+            seed=seed
+        )
+    elif category in ("CHAIR", "OFFICE_CHAIR"):
         build_chair_base(
             bm, size_x, size_y, size_z,
             chair_type=chair_type,
@@ -1454,6 +1638,10 @@ def resolve_prop_parameters(props):
         "bed_size": props.bed_size,
         "shelf_tiers": props.shelf_tiers,
         "column_style": final_col_style,
+        "tree_species": props.tree_species,
+        "tree_has_leaves": props.tree_has_leaves,
+        "tree_leaf_count": props.tree_leaf_count,
+        "tree_branch_levels": props.tree_branch_levels,
         "uv_mode": props.uv_mapping_mode,
         "size_x": final_sx,
         "size_y": final_sy,
@@ -1463,7 +1651,7 @@ def resolve_prop_parameters(props):
         "crack_depth": props.crack_depth,
         "big_chunk_cuts": props.big_chunk_cuts,
         "crack_count": props.floor_crack_count,
-        "create_debris": False if cat in ("FLOOR", "WALL", "GRASS", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED") else props.create_debris,
+        "create_debris": False if cat in ("FLOOR", "WALL", "GRASS", "BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED", "TREE") else props.create_debris,
         "debris_count": props.debris_count,
         "detail_level": props.detail_level,
         "tex_folder": props.texture_folder,
@@ -1555,7 +1743,11 @@ class MESH_OT_open_export_folder(bpy.types.Operator):
         props = context.scene.prop_studio_props
         export_dir = props.export_folder.strip() or r"Z:\MeshCreator\exports"
         os.makedirs(export_dir, exist_ok=True)
-        subprocess.Popen(f'explorer "{export_dir}"')
+        try:
+            subprocess.Popen(f'explorer "{export_dir}"')
+            self.report({'INFO'}, f"Opened: {export_dir}")
+        except Exception as e:
+            self.report({'WARNING'}, f"Could not open folder: {e}")
         return {'FINISHED'}
 
 # =============================================================
@@ -1595,6 +1787,10 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
             bed_size=p["bed_size"],
             shelf_tiers=p["shelf_tiers"],
             column_style=p["column_style"],
+            tree_species=p["tree_species"],
+            tree_has_leaves=p["tree_has_leaves"],
+            tree_leaf_count=p["tree_leaf_count"],
+            tree_branch_levels=p["tree_branch_levels"],
             uv_mode=p["uv_mode"],
             size_x=p["size_x"],
             size_y=p["size_y"],
@@ -1647,6 +1843,10 @@ class MESH_OT_create_new_prop(bpy.types.Operator):
             bed_size=p["bed_size"],
             shelf_tiers=p["shelf_tiers"],
             column_style=p["column_style"],
+            tree_species=p["tree_species"],
+            tree_has_leaves=p["tree_has_leaves"],
+            tree_leaf_count=p["tree_leaf_count"],
+            tree_branch_levels=p["tree_branch_levels"],
             uv_mode=p["uv_mode"],
             size_x=p["size_x"],
             size_y=p["size_y"],
@@ -1715,6 +1915,7 @@ def update_category_preset(self, context):
     name_map = {
         'ROCK': "Rock_Boulder",
         'CRAG': "Crag_Rock",
+        'TREE': "Real_Tree",
         'PC_DESK': "Modern_PC_Desk",
         'OFFICE_CHAIR': "Modern_Office_Chair",
         'FLOOR': "Floor_Tile",
@@ -1731,7 +1932,12 @@ def update_category_preset(self, context):
     }
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
-    if cat in ("ROCK", "CRAG"):
+    if cat == "TREE":
+        props.size_x = 3.5
+        props.size_y = 3.5
+        props.size_z = 4.5
+        props.uv_mapping_mode = 'FIT'
+    elif cat in ("ROCK", "CRAG"):
         props.size_x = 2.2
         props.size_y = 2.0
         props.size_z = 1.6
@@ -1811,6 +2017,7 @@ def update_category_preset(self, context):
     folder_map = {
         'ROCK': r"Z:\MeshCreator\textures\Rock",
         'CRAG': r"Z:\MeshCreator\textures\Rock",
+        'TREE': r"Z:\MeshCreator\textures\Wood",
         'PC_DESK': r"Z:\MeshCreator\textures\Wood",
         'OFFICE_CHAIR': r"Z:\MeshCreator\textures\Wood",
         'FLOOR': r"Z:\MeshCreator\textures\Floor",
@@ -1837,6 +2044,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
+            ('TREE', "🌳 リアル樹木・自然木 (Real Tree / Sapling)", "textures/Wood/ と自動連動（オーク/針葉樹/柳/ヤシ/白樺/紅葉・幹枝葉生成）"),
             ('PC_DESK', "🖥️ 近代PCデスク (Modern PC Desk)", "textures/Wood/ と自動連動（モニタースタンド付き・スチール口の字脚・L字型）"),
             ('OFFICE_CHAIR', "💺 近代オフィスチェア (Modern Office Chair)", "textures/Wood/ と自動連動（5本足キャスター＆ガスシリンダー＆シェル）"),
             ('TABLE', "🪑 アンティーク机 (Antique Table)", "textures/Wood/ と自動連動（四角/角丸/楕円＆アンティーク4本脚）"),
@@ -1853,7 +2061,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('BEAM', "🪵 梁・丸太支柱 (Timber Log Beam)", "textures/Wood/ と自動連動（シリンダー丸太梁）"),
             ('BEAM_ARCH', "🪵🏛️ 梁アーチ (Beam Arch)", "textures/Wood/ と自動連動（シリンダー丸太アーチ）")
         ],
-        default='PC_DESK',
+        default='TREE',
         update=update_category_preset
     )
 
@@ -1866,6 +2074,23 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         ],
         default='SHAPE'
     )
+
+    # Tree Specific (リアル樹木・自然木設定)
+    tree_species: bpy.props.EnumProperty(
+        name="樹種 (Tree Species)",
+        items=[
+            ('OAK', "🌳 オーク・カシ (Oak / Deciduous)", "どっしりとした大木・自然な枝分かれの広葉樹"),
+            ('PINE', "🌲 パイン・マツ (Pine / Conifer)", "上に向かって三角錐状に広がる常緑針葉樹"),
+            ('WILLOW', "🌿 シダレヤナギ (Weeping Willow)", "下に向かって優雅に垂れ下がる枝"),
+            ('PALM', "🌴 ヤシの木 (Palm Tree)", "南国・ビーチの放射状大葉を持つヤシの木"),
+            ('BIRCH', "⚪ シラカバ (Birch)", "すらりと伸びる白い幹の落葉樹"),
+            ('JAPANESE_MAPLE', "🍁 モミジ・カエデ (Japanese Maple)", "繊細で風情ある和風の枝ぶり")
+        ],
+        default='OAK'
+    )
+    tree_has_leaves: bpy.props.BoolProperty(name="🍃 葉を付ける (Foliage)", default=True, description="葉（リーフクラスタ）を生成するか（OFFで冬の枯れ木・枝のみ）")
+    tree_leaf_count: bpy.props.IntProperty(name="葉の密度 (Leaf Density)", default=120, min=20, max=400, description="生成する葉クラスタの数量")
+    tree_branch_levels: bpy.props.IntProperty(name="枝分かれ階層 (Branch Levels)", default=2, min=1, max=3, description="枝分かれの深さ (1:主枝のみ, 2:小枝あり, 3:細枝)")
 
     # Chair specific
     chair_type: bpy.props.EnumProperty(
@@ -2097,8 +2322,18 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
         # 🌟 4. Tab 1: Shape & Dimensions & Specific Controls
         if props.studio_tab == 'SHAPE':
+            # Tree Specific (リアル樹木・自然木設定)
+            if props.prop_category == 'TREE':
+                box_tree = layout.box()
+                box_tree.label(text="Tree Settings (リアル樹木設定):", icon='OUTLINER_OB_LIGHT')
+                box_tree.prop(props, "tree_species", text="樹種")
+                box_tree.prop(props, "tree_branch_levels", text="枝分かれ深さ")
+                box_tree.prop(props, "tree_has_leaves", text="🍃 葉を付ける")
+                if props.tree_has_leaves:
+                    box_tree.prop(props, "tree_leaf_count", text="葉の密度")
+
             # Chair Specific (近代オフィスチェア ＆ アンティーク椅子)
-            if props.prop_category in ('CHAIR', 'OFFICE_CHAIR'):
+            elif props.prop_category in ('CHAIR', 'OFFICE_CHAIR'):
                 box_chair = layout.box()
                 box_chair.label(text="Chair Settings (椅子設定):", icon='PASTEDOWN')
                 box_chair.prop(props, "chair_type", text="タイプ")

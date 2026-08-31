@@ -9,41 +9,84 @@ with open(addon_path, 'r', encoding='utf-8') as f:
     code = f.read()
     exec(code, globals())
 
-print("=== Testing Direct Preset Categories: PC_DESK & OFFICE_CHAIR (v7.1) ===")
+print("=== Testing Real Tree Presets (v7.2) ===")
 
-# 1. Direct Category: PC_DESK
-desk_direct = generate_procedural_prop_mesh(
+# 1. Test Oak Tree (Broadleaf with Leaves)
+oak_tree = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
-    category="PC_DESK",
-    name="Test_PC_Desk_Direct",
-    table_shape="MONITOR_RISER_DESK",
-    table_leg_style="STEEL_LOOP",
-    size_x=1.6,
-    size_y=0.75,
-    size_z=0.72,
+    category="TREE",
+    name="Test_Oak_Tree",
+    tree_species="OAK",
+    tree_has_leaves=True,
+    tree_leaf_count=100,
+    tree_branch_levels=2,
+    size_x=3.5,
+    size_y=3.5,
+    size_z=4.5,
     tex_folder=r"Z:\MeshCreator\textures\Wood",
     use_folder_tex=True,
     selected_tex="",
-    seed=1301
+    seed=2001
 )
-print(f"-> 1. Direct Category PC_DESK: Verts={len(desk_direct.data.vertices)}, Polys={len(desk_direct.data.polygons)}")
+print(f"-> 1. Oak Tree (Leaves ON): Verts={len(oak_tree.data.vertices)}, Polys={len(oak_tree.data.polygons)}")
 
-# 2. Direct Category: OFFICE_CHAIR
-chair_direct = generate_procedural_prop_mesh(
+# 2. Test Pine Tree (Conifer)
+pine_tree = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
-    category="OFFICE_CHAIR",
-    name="Test_Office_Chair_Direct",
-    chair_type="OFFICE_TASK_CHAIR",
-    size_x=0.62,
-    size_y=0.60,
-    size_z=0.96,
+    category="TREE",
+    name="Test_Pine_Tree",
+    tree_species="PINE",
+    tree_has_leaves=True,
+    tree_leaf_count=80,
+    tree_branch_levels=2,
+    size_x=2.8,
+    size_y=2.8,
+    size_z=5.0,
     tex_folder=r"Z:\MeshCreator\textures\Wood",
     use_folder_tex=True,
     selected_tex="",
-    seed=1302
+    seed=2002
 )
-print(f"-> 2. Direct Category OFFICE_CHAIR: Verts={len(chair_direct.data.vertices)}, Polys={len(chair_direct.data.polygons)}")
+print(f"-> 2. Pine Tree (Conifer): Verts={len(pine_tree.data.vertices)}, Polys={len(pine_tree.data.polygons)}")
 
-print("=== ALL DIRECT PRESET CATEGORY TESTS PASSED! ===")
+# 3. Test Palm Tree
+palm_tree = generate_procedural_prop_mesh(
+    context=bpy.context,
+    target_obj=None,
+    category="TREE",
+    name="Test_Palm_Tree",
+    tree_species="PALM",
+    tree_has_leaves=False,
+    tree_branch_levels=1,
+    size_x=3.0,
+    size_y=3.0,
+    size_z=4.2,
+    tex_folder=r"Z:\MeshCreator\textures\Wood",
+    use_folder_tex=True,
+    selected_tex="",
+    seed=2003
+)
+print(f"-> 3. Palm Tree: Verts={len(palm_tree.data.vertices)}, Polys={len(palm_tree.data.polygons)}")
+
+# 4. Test Willow Tree (Bare winter tree without leaves)
+willow_tree = generate_procedural_prop_mesh(
+    context=bpy.context,
+    target_obj=None,
+    category="TREE",
+    name="Test_Willow_Bare_Tree",
+    tree_species="WILLOW",
+    tree_has_leaves=False,
+    tree_branch_levels=2,
+    size_x=3.2,
+    size_y=3.2,
+    size_z=4.0,
+    tex_folder=r"Z:\MeshCreator\textures\Wood",
+    use_folder_tex=True,
+    selected_tex="",
+    seed=2004
+)
+print(f"-> 4. Willow Tree (Bare branches): Verts={len(willow_tree.data.vertices)}, Polys={len(willow_tree.data.polygons)}")
+
+print("=== ALL REAL TREE PRESET TESTS PASSED! ===")
