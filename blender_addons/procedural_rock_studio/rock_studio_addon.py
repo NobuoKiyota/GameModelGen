@@ -115,7 +115,8 @@ def create_procedural_bark_material(mat_name, seed=0, species="OAK"):
     
     node_map = nodes.new(type='ShaderNodeMapping')
     node_map.location = (-700, 0)
-    # Stretch vertically along Z to create natural bark grain
+    # Stretch vertically along Z and offset position based on seed
+    node_map.inputs['Location'].default_value = (float((seed * 37) % 100), float((seed * 71) % 100), float((seed * 19) % 100))
     node_map.inputs['Scale'].default_value = (1.0, 1.0, 0.15)
     links.new(node_coord.outputs['Object'], node_map.inputs['Vector'])
 
@@ -124,16 +125,17 @@ def create_procedural_bark_material(mat_name, seed=0, species="OAK"):
     node_wave.location = (-480, 120)
     node_wave.wave_type = 'BANDS'
     node_wave.bands_direction = 'X'
-    node_wave.inputs['Scale'].default_value = 4.5
-    node_wave.inputs['Distortion'].default_value = 6.0
+    node_wave.inputs['Scale'].default_value = 4.5 + float((seed % 7) * 0.2)
+    node_wave.inputs['Distortion'].default_value = 5.5 + float((seed % 9) * 0.3)
     node_wave.inputs['Detail'].default_value = 4.0
     node_wave.inputs['Detail Roughness'].default_value = 0.75
+    node_wave.inputs['Phase Offset'].default_value = float((seed % 100) * 0.08)
     links.new(node_map.outputs['Vector'], node_wave.inputs['Vector'])
 
     # 2. Fine Noise Texture for bark surface roughness
     node_noise = nodes.new(type='ShaderNodeTexNoise')
     node_noise.location = (-480, -150)
-    node_noise.inputs['Scale'].default_value = 14.0
+    node_noise.inputs['Scale'].default_value = 13.0 + float((seed % 5) * 0.5)
     node_noise.inputs['Detail'].default_value = 8.0
     node_noise.inputs['Roughness'].default_value = 0.8
     links.new(node_map.outputs['Vector'], node_noise.inputs['Vector'])
@@ -150,30 +152,33 @@ def create_procedural_bark_material(mat_name, seed=0, species="OAK"):
     node_ramp = nodes.new(type='ShaderNodeValToRGB')
     node_ramp.location = (-50, 100)
 
+    # Seed-based brightness tone shift
+    tone_shift = ((seed % 11) - 5) * 0.008
+
     if species == "BIRCH":
         # White Birch with black bark fissures
         node_ramp.color_ramp.elements[0].position = 0.18
         node_ramp.color_ramp.elements[0].color = (0.05, 0.05, 0.05, 1.0)
         node_ramp.color_ramp.elements[1].position = 0.55
-        node_ramp.color_ramp.elements[1].color = (0.88, 0.88, 0.85, 1.0)
+        node_ramp.color_ramp.elements[1].color = (max(0.7, 0.88 + tone_shift), max(0.7, 0.88 + tone_shift), max(0.68, 0.85 + tone_shift), 1.0)
     elif species == "PINE":
         # Reddish-brown rough pine bark
         node_ramp.color_ramp.elements[0].position = 0.22
-        node_ramp.color_ramp.elements[0].color = (0.12, 0.06, 0.03, 1.0)
+        node_ramp.color_ramp.elements[0].color = (0.12 + tone_shift, 0.06 + tone_shift, 0.03, 1.0)
         node_ramp.color_ramp.elements[1].position = 0.75
-        node_ramp.color_ramp.elements[1].color = (0.35, 0.18, 0.11, 1.0)
+        node_ramp.color_ramp.elements[1].color = (0.35 + tone_shift, 0.18 + tone_shift, 0.11, 1.0)
     elif species == "JAPANESE_MAPLE":
         # Smooth elegant grey-brown bark
         node_ramp.color_ramp.elements[0].position = 0.25
-        node_ramp.color_ramp.elements[0].color = (0.18, 0.14, 0.11, 1.0)
+        node_ramp.color_ramp.elements[0].color = (0.18 + tone_shift, 0.14 + tone_shift, 0.11, 1.0)
         node_ramp.color_ramp.elements[1].position = 0.75
-        node_ramp.color_ramp.elements[1].color = (0.38, 0.32, 0.26, 1.0)
+        node_ramp.color_ramp.elements[1].color = (0.38 + tone_shift, 0.32 + tone_shift, 0.26, 1.0)
     else: # OAK / WILLOW
         # Deep aged dark brown oak bark
         node_ramp.color_ramp.elements[0].position = 0.2
-        node_ramp.color_ramp.elements[0].color = (0.10, 0.07, 0.04, 1.0)
+        node_ramp.color_ramp.elements[0].color = (0.10 + tone_shift, 0.07 + tone_shift, 0.04, 1.0)
         node_ramp.color_ramp.elements[1].position = 0.8
-        node_ramp.color_ramp.elements[1].color = (0.32, 0.23, 0.16, 1.0)
+        node_ramp.color_ramp.elements[1].color = (0.32 + tone_shift, 0.23 + tone_shift, 0.16, 1.0)
 
     links.new(node_mix.outputs[0], node_ramp.inputs['Fac'])
     links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
@@ -221,13 +226,13 @@ def create_procedural_leaf_material(mat_name, seed=0, species="OAK"):
 
     node_noise = nodes.new(type='ShaderNodeTexNoise')
     node_noise.location = (-750, -100)
-    node_noise.inputs['Scale'].default_value = 18.0
+    node_noise.inputs['Scale'].default_value = 18.0 + float((seed % 7) * 0.8)
     node_noise.inputs['Detail'].default_value = 4.0
 
     node_mix = nodes.new(type='ShaderNodeMix')
     node_mix.data_type = 'FLOAT'
     node_mix.location = (-450, 50)
-    node_mix.inputs['Factor'].default_value = 0.5
+    node_mix.inputs['Factor'].default_value = 0.45 + float((seed % 10) * 0.015)
     links.new(node_objinfo.outputs['Random'], node_mix.inputs[2])
     links.new(node_noise.outputs['Fac'], node_mix.inputs[3])
 
@@ -235,40 +240,43 @@ def create_procedural_leaf_material(mat_name, seed=0, species="OAK"):
     node_ramp = nodes.new(type='ShaderNodeValToRGB')
     node_ramp.location = (-200, 50)
 
+    # Seed-based hue/warmth shift
+    hue_var = ((seed % 13) - 6) * 0.01
+
     if species == "JAPANESE_MAPLE":
         # 🍁 Japanese Autumn Maple: Crimson Red -> Warm Orange -> Golden Yellow
         node_ramp.color_ramp.elements[0].position = 0.1
-        node_ramp.color_ramp.elements[0].color = (0.75, 0.06, 0.02, 1.0)
+        node_ramp.color_ramp.elements[0].color = (0.75 + hue_var, 0.06, 0.02, 1.0)
         
         elem_mid = node_ramp.color_ramp.elements.new(0.55)
-        elem_mid.color = (0.92, 0.38, 0.05, 1.0)
+        elem_mid.color = (0.92, 0.38 + hue_var, 0.05, 1.0)
         
         node_ramp.color_ramp.elements[2].position = 0.9
-        node_ramp.color_ramp.elements[2].color = (0.85, 0.68, 0.08, 1.0)
+        node_ramp.color_ramp.elements[2].color = (0.85, 0.68 + hue_var, 0.08, 1.0)
     elif species == "PINE":
         # 🌲 Conifer Pine: Deep forest dark pine needle green
         node_ramp.color_ramp.elements[0].position = 0.15
-        node_ramp.color_ramp.elements[0].color = (0.04, 0.15, 0.06, 1.0)
+        node_ramp.color_ramp.elements[0].color = (0.04, 0.15 + hue_var, 0.06, 1.0)
         node_ramp.color_ramp.elements[1].position = 0.85
-        node_ramp.color_ramp.elements[1].color = (0.10, 0.28, 0.12, 1.0)
+        node_ramp.color_ramp.elements[1].color = (0.10, 0.28 + hue_var, 0.12, 1.0)
     elif species == "BIRCH":
         # ⚪ White Birch: Fresh vibrant spring lime green
         node_ramp.color_ramp.elements[0].position = 0.2
-        node_ramp.color_ramp.elements[0].color = (0.22, 0.52, 0.10, 1.0)
+        node_ramp.color_ramp.elements[0].color = (0.22, 0.52 + hue_var, 0.10, 1.0)
         node_ramp.color_ramp.elements[1].position = 0.8
-        node_ramp.color_ramp.elements[1].color = (0.42, 0.68, 0.14, 1.0)
+        node_ramp.color_ramp.elements[1].color = (0.42, 0.68 + hue_var, 0.14, 1.0)
     elif species == "WILLOW":
         # 🌿 Weeping Willow: Soft sage light green
         node_ramp.color_ramp.elements[0].position = 0.2
-        node_ramp.color_ramp.elements[0].color = (0.16, 0.38, 0.15, 1.0)
+        node_ramp.color_ramp.elements[0].color = (0.16, 0.38 + hue_var, 0.15, 1.0)
         node_ramp.color_ramp.elements[1].position = 0.8
-        node_ramp.color_ramp.elements[1].color = (0.35, 0.56, 0.20, 1.0)
+        node_ramp.color_ramp.elements[1].color = (0.35, 0.56 + hue_var, 0.20, 1.0)
     else: # OAK / Deciduous
         # 🌳 Oak: Rich lush deciduous canopy green
         node_ramp.color_ramp.elements[0].position = 0.2
-        node_ramp.color_ramp.elements[0].color = (0.12, 0.32, 0.06, 1.0)
+        node_ramp.color_ramp.elements[0].color = (0.12, 0.32 + hue_var, 0.06, 1.0)
         node_ramp.color_ramp.elements[1].position = 0.8
-        node_ramp.color_ramp.elements[1].color = (0.26, 0.54, 0.12, 1.0)
+        node_ramp.color_ramp.elements[1].color = (0.26, 0.54 + hue_var, 0.12, 1.0)
 
     links.new(node_mix.outputs[0], node_ramp.inputs['Fac'])
     links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])

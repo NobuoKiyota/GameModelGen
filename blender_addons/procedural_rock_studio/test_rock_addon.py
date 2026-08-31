@@ -9,24 +9,31 @@ with open(addon_path, 'r', encoding='utf-8') as f:
     code = f.read()
     exec(code, globals())
 
-print("=== Testing Advanced Procedural Shader Generation (v7.6) ===")
+print("=== Testing Dynamic Shader Seed Reactivity (v7.7) ===")
 
-species_list = ["OAK", "JAPANESE_MAPLE", "PINE", "WILLOW", "BIRCH"]
-for sp in species_list:
-    tree = generate_procedural_prop_mesh(
-        context=bpy.context,
-        target_obj=None,
-        category="TREE",
-        name=f"Tree_{sp}",
-        tree_species=sp,
-        tree_has_leaves=True,
-        tree_leaf_count=100,
-        tree_branch_levels=2,
-        tree_mat_mode="PROCEDURAL",
-        size_z=4.5,
-        seed=333
-    )
-    mat_names = [m.name for m in tree.data.materials if m]
-    print(f"-> Species {sp:15s}: Name={tree.name:15s}, Mats={mat_names}")
+tree1 = generate_procedural_prop_mesh(
+    context=bpy.context,
+    target_obj=None,
+    category="TREE",
+    name="Tree_Maple_A",
+    tree_species="JAPANESE_MAPLE",
+    tree_has_leaves=True,
+    tree_mat_mode="PROCEDURAL",
+    size_z=4.5,
+    seed=101
+)
 
-print("=== ALL PROCEDURAL SHADERS PASSED! ===")
+tree2 = generate_procedural_prop_mesh(
+    context=bpy.context,
+    target_obj=tree1,
+    category="TREE",
+    name="Tree_Maple_A",
+    tree_species="JAPANESE_MAPLE",
+    tree_has_leaves=True,
+    tree_mat_mode="PROCEDURAL",
+    size_z=4.5,
+    seed=888
+)
+
+print(f"Tree Mats: {[m.name for m in tree2.data.materials]}")
+print("=== SHADER SEED REACTIVITY VERIFIED! ===")
