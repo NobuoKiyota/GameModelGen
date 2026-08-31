@@ -2253,6 +2253,8 @@ def generate_procedural_prop_mesh(
     else: # ROCK
         bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.02)
         
+    bpy.ops.object.mode_set(mode='OBJECT')
+
     # 6. Material Assignment & PBR Displacement
     if category == "TREE":
         # Slot 0: Bark (Wood Bark Texture)
