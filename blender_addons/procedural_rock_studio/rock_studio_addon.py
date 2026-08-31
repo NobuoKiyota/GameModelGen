@@ -673,6 +673,152 @@ def create_procedural_ground_terrain_shader(mat_name, seed=0):
 
     return mat
 
+
+def create_procedural_water_shader(mat_name, color_type='TROPICAL', wave_strength=0.12, seed=0):
+    """YouTube 4大水面チュートリアル完全統合:
+    Transmission 1.0 + IOR 1.333 + Volume Absorption (動画1 Flow) + 二重波紋Bump (動画4 Chuck CG)"""
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    try:
+        mat.use_screen_refraction = True
+    except Exception:
+        pass
+
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    # 1. Output & Principled BSDF
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (700, 0)
+
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (380, 0)
+    try:
+        node_bsdf.inputs['Roughness'].default_value = 0.02
+    except Exception:
+        pass
+
+    try:
+        node_bsdf.inputs['IOR'].default_value = 1.333 # 純水の物理屈折率 (動画 1 & 4)
+    except Exception:
+        pass
+
+    # Transmission 設定 (Blender 3.6+ / 4.0 両対応)
+    try:
+        node_bsdf.inputs['Transmission Weight'].default_value = 1.0
+    except Exception:
+        try:
+            node_bsdf.inputs['Transmission'].default_value = 1.0
+        except Exception:
+            pass
+
+    # 水質カラーパレット設定
+    if color_type == 'DEEP_OCEAN':
+        # 🌊 ディープオーシャン (Video 2 & 3: 深海紺碧)
+        base_col = (0.015, 0.045, 0.14, 1.0)
+        vol_col = (0.01, 0.08, 0.18, 1.0)
+        vol_density = 1.2
+    elif color_type == 'POND_GREEN':
+        # 🌿 リバー・ポンド (Video 4: 自然池・水草緑)
+        base_col = (0.05, 0.20, 0.12, 1.0)
+        vol_col = (0.08, 0.25, 0.15, 1.0)
+        vol_density = 0.85
+    elif color_type == 'CRYSTAL':
+        # 💎 クリスタルクリア (プール・水槽)
+        base_col = (0.85, 0.95, 1.0, 1.0)
+        vol_col = (0.2, 0.6, 0.8, 1.0)
+        vol_density = 0.2
+    else: # TROPICAL (デフォルト)
+        # 🏝️ 南国エメラルドシアン (Video 1 Flow 準拠)
+        base_col = (0.06, 0.62, 0.68, 1.0)
+        vol_col = (0.04, 0.38, 0.45, 1.0)
+        vol_density = 0.65
+
+    node_bsdf.inputs['Base Color'].default_value = base_col
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    # 2. Volume Absorption (動画 1 Flow風: 水深に応じた自然な光減衰)
+    node_vol = nodes.new(type='ShaderNodeVolumeAbsorption')
+    node_vol.location = (380, -280)
+    node_vol.inputs['Color'].default_value = vol_col
+    node_vol.inputs['Density'].default_value = vol_density
+    links.new(node_vol.outputs['Volume'], node_out.inputs['Volume'])
+
+    # 3. 座標 ＆ Mapping
+    node_coord = nodes.new(type='ShaderNodeTexCoord')
+    node_coord.location = (-750, 0)
+    node_map = nodes.new(type='ShaderNodeMapping')
+    node_map.location = (-580, 0)
+    node_map.inputs['Location'].default_value = (float((seed * 17) % 10), float((seed * 31) % 10), 0.0)
+    links.new(node_coord.outputs['Object'], node_map.inputs['Vector'])
+
+    # 4. 二重波紋 Bump (動画 4 Chuck CG 準拠: 細波 Noise + うねり Voronoi)
+    node_noise = nodes.new(type='ShaderNodeTexNoise')
+    node_noise.location = (-380, 100)
+    node_noise.inputs['Scale'].default_value = 16.0
+    node_noise.inputs['Detail'].default_value = 4.0
+    node_noise.inputs['Roughness'].default_value = 0.5
+    links.new(node_map.outputs['Vector'], node_noise.inputs['Vector'])
+
+    node_vor = nodes.new(type='ShaderNodeTexVoronoi')
+    node_vor.location = (-380, -150)
+    node_vor.inputs['Scale'].default_value = 4.0
+    links.new(node_map.outputs['Vector'], node_vor.inputs['Vector'])
+
+    node_mix = nodes.new(type='ShaderNodeMix')
+    node_mix.data_type = 'FLOAT'
+    node_mix.location = (-160, 0)
+    node_mix.inputs['Factor'].default_value = 0.35
+    links.new(node_noise.outputs['Fac'], node_mix.inputs[2])
+    links.new(node_vor.outputs['Distance'], node_mix.inputs[3])
+
+    node_bump = nodes.new(type='ShaderNodeBump')
+    node_bump.location = (120, -150)
+    node_bump.inputs['Strength'].default_value = max(0.02, wave_strength)
+    node_bump.inputs['Distance'].default_value = 0.04
+    links.new(node_mix.outputs[0], node_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    return mat
+
+
+def create_procedural_water_bed_shader(mat_name, seed=0):
+    """池底・川底スラブ用マテリアル: 泥×砂利×小石のプロシージャルブレンド"""
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.inputs['Roughness'].default_value = 0.85
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    node_coord = nodes.new(type='ShaderNodeTexCoord')
+    node_noise = nodes.new(type='ShaderNodeTexNoise')
+    node_noise.inputs['Scale'].default_value = 8.0
+    links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
+
+    node_ramp = nodes.new(type='ShaderNodeValToRGB')
+    node_ramp.color_ramp.elements[0].color = (0.08, 0.06, 0.04, 1.0) # 深い泥
+    node_ramp.color_ramp.elements[1].color = (0.28, 0.22, 0.15, 1.0) # 砂利
+    links.new(node_noise.outputs['Fac'], node_ramp.inputs['Fac'])
+    links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+    node_bump = nodes.new(type='ShaderNodeBump')
+    node_bump.inputs['Strength'].default_value = 0.4
+    links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    return mat
+
+
 def create_procedural_pbr_material(mat_name, seed=0, is_grass=False):
     mat = bpy.data.materials.get(mat_name)
     if not mat:
@@ -1552,6 +1698,155 @@ def build_grass_mound_base(bm, size_x, size_y, size_z, shape="SQUARE", seed=0):
                                       undulation=size_z * 0.18, subdivisions=14)
 
 
+def build_water_surface_base(bm, size_x, size_y, size_z, shape="LAKE", seed=0, include_bed=True):
+    """5大水面形状ビルダー (LAKE, POND, SQUARE, CIRCLE, OCEAN)
+    動画 1 (Flow), 動画 2 (Ocean), 動画 4 (Chuck CG 湖・池) 準拠の本格幾何学"""
+    random.seed(seed)
+    subdiv = 16
+    half_x = size_x * 0.5
+    half_y = size_y * 0.5
+
+    if shape == "SQUARE":
+        # 🔲 四角・プール・水槽・水路
+        step_x = size_x / float(subdiv)
+        step_y = size_y / float(subdiv)
+        verts = []
+        for iy in range(subdiv + 1):
+            row = []
+            for ix in range(subdiv + 1):
+                x = -half_x + ix * step_x
+                y = -half_y + iy * step_y
+                # 穏やかな水面の揺らぎ
+                z = (math.sin(x * 1.8 + seed * 0.2) * math.cos(y * 1.5 + seed * 0.3)) * (size_z * 0.05)
+                row.append(bm.verts.new((x, y, z)))
+            verts.append(row)
+        for iy in range(subdiv):
+            for ix in range(subdiv):
+                bm.faces.new((verts[iy][ix], verts[iy][ix+1], verts[iy+1][ix+1], verts[iy+1][ix]))
+
+    elif shape == "CIRCLE":
+        # 🔘 円形・泉・噴水・水たまり
+        rings = 8
+        segments = 24
+        center_v = bm.verts.new((0.0, 0.0, 0.0))
+        prev_ring = [center_v] * segments
+        for r in range(1, rings + 1):
+            cur_ring = []
+            rad_ratio = r / float(rings)
+            for s in range(segments):
+                ang = s * (math.pi * 2.0 / segments)
+                rx = math.cos(ang) * half_x * rad_ratio
+                ry = math.sin(ang) * half_y * rad_ratio
+                rz = (math.sin(rx * 2.0 + seed * 0.3) * math.cos(ry * 2.0 + seed * 0.4)) * (size_z * 0.04)
+                cur_ring.append(bm.verts.new((rx, ry, rz)))
+            
+            if r == 1:
+                for s in range(segments):
+                    s_next = (s + 1) % segments
+                    bm.faces.new((center_v, cur_ring[s], cur_ring[s_next]))
+            else:
+                for s in range(segments):
+                    s_next = (s + 1) % segments
+                    bm.faces.new((prev_ring[s], cur_ring[s], cur_ring[s_next], prev_ring[s_next]))
+            prev_ring = cur_ring
+
+    elif shape == "POND":
+        # 🌿 自然池・湧水池 (有機的曲線 ＋ 池底スラブ構造)
+        rings = 10
+        segments = 28
+        center_v = bm.verts.new((0.0, 0.0, 0.0))
+        prev_ring = [center_v] * segments
+        for r in range(1, rings + 1):
+            cur_ring = []
+            rad_ratio = r / float(rings)
+            for s in range(segments):
+                ang = s * (math.pi * 2.0 / segments)
+                # 有機的境界ノイズ (入り江や出っ張り)
+                coast_noise = (1.0 + math.sin(ang * 3.0 + seed * 0.7) * 0.12
+                                   + math.cos(ang * 5.0 + seed * 0.3) * 0.08)
+                rx = math.cos(ang) * half_x * rad_ratio * coast_noise
+                ry = math.sin(ang) * half_y * rad_ratio * coast_noise
+                # 水面はほぼフラット、境界近くでわずかに減衰
+                rz = (math.sin(rx * 1.5) * math.cos(ry * 1.5)) * (size_z * 0.03)
+                cur_ring.append(bm.verts.new((rx, ry, rz)))
+
+            if r == 1:
+                for s in range(segments):
+                    s_next = (s + 1) % segments
+                    bm.faces.new((center_v, cur_ring[s], cur_ring[s_next]))
+            else:
+                for s in range(segments):
+                    s_next = (s + 1) % segments
+                    bm.faces.new((prev_ring[s], cur_ring[s], cur_ring[s_next], prev_ring[s_next]))
+            prev_ring = cur_ring
+
+        # 池底スラブ (すり鉢状の泥底)
+        if include_bed:
+            bed_depth = size_z * 0.8
+            bed_center = bm.verts.new((0.0, 0.0, -bed_depth))
+            prev_bed_ring = [bed_center] * segments
+            for r in range(1, rings + 1):
+                cur_bed_ring = []
+                rad_ratio = r / float(rings)
+                for s in range(segments):
+                    ang = s * (math.pi * 2.0 / segments)
+                    coast_noise = (1.0 + math.sin(ang * 3.0 + seed * 0.7) * 0.12
+                                       + math.cos(ang * 5.0 + seed * 0.3) * 0.08)
+                    rx = math.cos(ang) * half_x * 1.15 * rad_ratio * coast_noise
+                    ry = math.sin(ang) * half_y * 1.15 * rad_ratio * coast_noise
+                    rz = -bed_depth * (1.0 - (rad_ratio ** 1.8)) - (size_z * 0.08)
+                    cur_bed_ring.append(bm.verts.new((rx, ry, rz)))
+
+                if r == 1:
+                    for s in range(segments):
+                        s_next = (s + 1) % segments
+                        f = bm.faces.new((bed_center, cur_bed_ring[s_next], cur_bed_ring[s]))
+                        f.material_index = 1
+                else:
+                    for s in range(segments):
+                        s_next = (s + 1) % segments
+                        f = bm.faces.new((prev_bed_ring[s], prev_bed_ring[s_next], cur_bed_ring[s_next], cur_bed_ring[s]))
+                        f.material_index = 1
+                prev_bed_ring = cur_bed_ring
+
+    elif shape == "OCEAN":
+        # 🌊 大海原 (Ocean Modifier ベースの広域グリッド)
+        step_x = size_x / float(subdiv)
+        step_y = size_y / float(subdiv)
+        verts = []
+        for iy in range(subdiv + 1):
+            row = []
+            for ix in range(subdiv + 1):
+                x = -half_x + ix * step_x
+                y = -half_y + iy * step_y
+                row.append(bm.verts.new((x, y, 0.0)))
+            verts.append(row)
+        for iy in range(subdiv):
+            for ix in range(subdiv):
+                bm.faces.new((verts[iy][ix], verts[iy][ix+1], verts[iy+1][ix+1], verts[iy+1][ix]))
+
+    else: # LAKE (デフォルト)
+        # 🏞️ 湖・大水面 (広大な自然海岸線 ＋ 穏やかな大うねり)
+        step_x = size_x / float(subdiv)
+        step_y = size_y / float(subdiv)
+        verts = []
+        for iy in range(subdiv + 1):
+            row = []
+            for ix in range(subdiv + 1):
+                x = -half_x + ix * step_x
+                y = -half_y + iy * step_y
+                # 湖面の大波うねり (Video 1 Flow 準拠)
+                z = (math.sin(x * 0.8 + seed * 0.15) * math.cos(y * 0.7 + seed * 0.2)
+                     + math.sin(x * 2.1 + seed * 0.4) * math.cos(y * 1.8 + seed * 0.3) * 0.35) * (size_z * 0.12)
+                row.append(bm.verts.new((x, y, z)))
+            verts.append(row)
+        for iy in range(subdiv):
+            for ix in range(subdiv):
+                bm.faces.new((verts[iy][ix], verts[iy][ix+1], verts[iy+1][ix+1], verts[iy+1][ix]))
+
+    return bm.verts[:]
+
+
 def build_convex_hull_rock(bm, size_x, size_y, size_z, point_count=18, is_crag=True, seed=0):
     """Generates 100% SOLID ultra-realistic procedural rocks via Convex Hull algorithm (YouTube Sacoche Ito 3D method)"""
     random.seed(seed)
@@ -2043,6 +2338,10 @@ def generate_procedural_prop_mesh(
     bed_size="SINGLE",
     shelf_tiers=3,
     column_style="ORNAMENTAL",
+    water_shape="LAKE",
+    water_color_type="TROPICAL",
+    water_wave_strength=0.12,
+    water_include_bed=True,
     tree_species="OAK",
     tree_has_leaves=True,
     tree_leaf_count=120,
@@ -2134,6 +2433,8 @@ def generate_procedural_prop_mesh(
         build_bookshelf_base(bm, size_x, size_y, size_z, tiers=shelf_tiers, column_style=column_style, seed=seed)
     elif category in ("TABLE", "PC_DESK"):
         build_table_base(bm, size_x, size_y, size_z, shape=table_shape, leg_style=table_leg_style, seed=seed)
+    elif category == "WATER":
+        build_water_surface_base(bm, size_x, size_y, size_z, shape=water_shape, seed=seed, include_bed=water_include_bed)
     elif category == "GRASS":
         if grass_mode == "TUFT":
             build_grass_tuft_clump(bm, size_x, size_y, size_z, blade_count=4, seed=seed)
@@ -2184,7 +2485,20 @@ def generate_procedural_prop_mesh(
         except Exception:
             pass
 
-    # 3. Subdivision & Displacements
+    # 3. Ocean Modifier for OCEAN preset
+    if category == "WATER" and water_shape == "OCEAN":
+        ocean_mod = obj.modifiers.new(name="Ocean_Wave", type='OCEAN')
+        ocean_mod.geometry_mode = 'DISPLACE'
+        ocean_mod.resolution = 12
+        ocean_mod.spatial_size = int(max(size_x, size_y) * 2.0)
+        ocean_mod.wind_velocity = 20.0
+        ocean_mod.choppiness = 1.4
+        ocean_mod.wave_scale = size_z * 0.4
+        ocean_mod.use_foam = True
+        ocean_mod.foam_coverage = 0.35
+        ocean_mod.foam_layer_name = "foam"
+
+    # 4. Subdivision & Displacements
     if category in ("ROCK", "CRAG", "PILLAR", "BEAM", "BEAM_ARCH"):
         subsurf = obj.modifiers.new(name="Subsurf_Base", type='SUBSURF')
         subsurf.render_levels = 1 if category == "CRAG" else (detail_level + 1)
@@ -2221,15 +2535,16 @@ def generate_procedural_prop_mesh(
             disp_crack.strength = -crack_depth * (0.25 if category == "CRAG" else 0.4)
             disp_crack.mid_level = 0.85
 
-    # 4. Apply Modifiers & Auto Smooth
+    # 4. Apply Modifiers & Auto Smooth (except OCEAN which is dynamic)
     for p in mesh.polygons:
         p.use_smooth = True
 
-    for mod in list(obj.modifiers):
-        try:
-            bpy.ops.object.modifier_apply(modifier=mod.name)
-        except Exception:
-            pass
+    if not (category == "WATER" and water_shape == "OCEAN"):
+        for mod in list(obj.modifiers):
+            try:
+                bpy.ops.object.modifier_apply(modifier=mod.name)
+            except Exception:
+                pass
 
     if category == "CRAG":
         try:
@@ -2244,7 +2559,7 @@ def generate_procedural_prop_mesh(
     
     if category == "GRASS" and grass_mode == "TUFT":
         bpy.ops.uv.smart_project(angle_limit=88.0, island_margin=0.0)
-    elif category in ("FLOOR", "WALL", "BEAM", "BEAM_ARCH", "GRASS", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED"):
+    elif category in ("FLOOR", "WALL", "BEAM", "BEAM_ARCH", "GRASS", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED", "WATER"):
         if uv_mode == "FIT":
             max_dim = max(size_x, size_y, size_z)
             bpy.ops.uv.cube_project(cube_size=max_dim, correct_aspect=True, clip_to_bounds=True)
@@ -2282,6 +2597,21 @@ def generate_procedural_prop_mesh(
             mat = create_procedural_ground_terrain_shader(name + "_Ground_Mat", seed)
         obj.data.materials.clear()
         obj.data.materials.append(mat)
+    elif category == "WATER":
+        # 🌊 物理準拠水面シェーダー (動画 1 Flow, 動画 4 Chuck CG)
+        mat_water = create_procedural_water_shader(
+            name + "_Water_Surface_Mat",
+            color_type=water_color_type,
+            wave_strength=water_wave_strength,
+            seed=seed
+        )
+        obj.data.materials.clear()
+        obj.data.materials.append(mat_water)
+
+        # Slot 1: 池底・川底マテリアル (POND で池底スラブがある場合)
+        if water_shape == "POND" and water_include_bed:
+            mat_bed = create_procedural_water_bed_shader(name + "_Water_Bed_Mat", seed=seed)
+            obj.data.materials.append(mat_bed)
     else:
         tex_files = get_textures_from_folder(tex_folder)
         disp_img = None
@@ -2352,6 +2682,10 @@ def resolve_prop_parameters(props):
             final_sx = round(random.uniform(1.4, 2.4), 2)
             final_sy = round(random.uniform(0.8, 1.4), 2)
             final_sz = round(random.uniform(0.7, 0.9), 2)
+        elif cat == "WATER":
+            final_sx = round(random.uniform(4.0, 10.0), 2)
+            final_sy = final_sx if props.water_shape in ('CIRCLE', 'POND') else round(random.uniform(4.0, 10.0), 2)
+            final_sz = round(random.uniform(0.5, 1.5), 2)
         elif cat in ("FLOOR", "GRASS"):
             if cat == "GRASS" and props.grass_mode == 'TUFT':
                 final_sx = round(random.uniform(0.6, 1.2), 2)
@@ -2406,6 +2740,10 @@ def resolve_prop_parameters(props):
         "floor_shape": props.floor_shape,
         "wall_shape": props.wall_shape,
         "grass_mode": props.grass_mode,
+        "water_shape": props.water_shape,
+        "water_color_type": props.water_color_type,
+        "water_wave_strength": props.water_wave_strength,
+        "water_include_bed": props.water_include_bed,
         "table_shape": final_table_shape,
         "table_leg_style": final_leg_style,
         "chair_type": props.chair_type,
@@ -2433,7 +2771,7 @@ def resolve_prop_parameters(props):
         "crack_depth": props.crack_depth,
         "big_chunk_cuts": props.big_chunk_cuts,
         "crack_count": props.floor_crack_count,
-        "create_debris": False if cat in ("FLOOR", "WALL", "GRASS", "BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED", "TREE") else props.create_debris,
+        "create_debris": False if cat in ("FLOOR", "WALL", "GRASS", "BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED", "TREE", "WATER") else props.create_debris,
         "debris_count": props.debris_count,
         "detail_level": props.detail_level,
         "tex_folder": props.texture_folder,
@@ -2682,6 +3020,10 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
             bed_size=p["bed_size"],
             shelf_tiers=p["shelf_tiers"],
             column_style=p["column_style"],
+            water_shape=p.get("water_shape", "LAKE"),
+            water_color_type=p.get("water_color_type", "TROPICAL"),
+            water_wave_strength=p.get("water_wave_strength", 0.12),
+            water_include_bed=p.get("water_include_bed", True),
             tree_species=p["tree_species"],
             tree_has_leaves=p["tree_has_leaves"],
             tree_leaf_style=p["tree_leaf_style"],
@@ -2752,6 +3094,10 @@ class MESH_OT_create_new_prop(bpy.types.Operator):
             bed_size=p["bed_size"],
             shelf_tiers=p["shelf_tiers"],
             column_style=p["column_style"],
+            water_shape=p.get("water_shape", "LAKE"),
+            water_color_type=p.get("water_color_type", "TROPICAL"),
+            water_wave_strength=p.get("water_wave_strength", 0.12),
+            water_include_bed=p.get("water_include_bed", True),
             tree_species=p["tree_species"],
             tree_has_leaves=p["tree_has_leaves"],
             tree_leaf_style=p["tree_leaf_style"],
@@ -2898,6 +3244,11 @@ def update_category_preset(self, context):
         props.shelf_tiers = 3
         props.column_ornament_style = 'ORNAMENTAL'
         props.uv_mapping_mode = 'FIT'
+    elif cat == "WATER":
+        props.size_x = 6.0
+        props.size_y = 6.0
+        props.size_z = 0.8
+        props.uv_mapping_mode = 'FIT'
     elif cat == "TABLE":
         props.size_x = 1.8
         props.size_y = 1.0
@@ -2943,6 +3294,7 @@ def update_category_preset(self, context):
         'BEAM': r"Z:\MeshCreator\textures\Wood",
         'BEAM_ARCH': r"Z:\MeshCreator\textures\Wood",
         'GRASS': r"Z:\MeshCreator\textures\Grass",
+        'WATER': r"Z:\MeshCreator\textures\Floor",
         'BOOKSHELF': r"Z:\MeshCreator\textures\Wood",
         'TABLE': r"Z:\MeshCreator\textures\Wood",
         'CHAIR': r"Z:\MeshCreator\textures\Wood",
@@ -2961,6 +3313,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
+            ('WATER', "💧 水面・池・湖 (Water / Lake / Ocean)", "湖・池・四角プール・泉・大海原（物理屈折IOR 1.333＆二重波紋）"),
             ('TREE', "🌳 リアル樹木・自然木 (Real Tree / Sapling)", "textures/Wood/ と自動連動（オーク/針葉樹/柳/ヤシ/白樺/紅葉・幹枝葉生成）"),
             ('PC_DESK', "🖥️ 近代PCデスク (Modern PC Desk)", "textures/Wood/ と自動連動（モニタースタンド付き・スチール口の字脚・L字型）"),
             ('OFFICE_CHAIR', "💺 近代オフィスチェア (Modern Office Chair)", "textures/Wood/ と自動連動（5本足キャスター＆ガスシリンダー＆シェル）"),
@@ -2978,7 +3331,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('BEAM', "🪵 梁・丸太支柱 (Timber Log Beam)", "textures/Wood/ と自動連動（シリンダー丸太梁）"),
             ('BEAM_ARCH', "🪵🏛️ 梁アーチ (Beam Arch)", "textures/Wood/ と自動連動（シリンダー丸太アーチ）")
         ],
-        default='TREE',
+        default='WATER',
         update=update_category_preset
     )
 
@@ -2991,6 +3344,31 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         ],
         default='SHAPE'
     )
+
+    # Water Specific (リアル水面・池・湖設定)
+    water_shape: bpy.props.EnumProperty(
+        name="水面形状 (Water Shape)",
+        items=[
+            ('LAKE', "🏞️ 湖・大水面 (Lake)", "不規則な自然海岸線と穏やかな大波うねり"),
+            ('POND', "🌿 自然池・湧水池 (Pond)", "有機的曲線を持つ池＋池底スラブ構造（泥砂利）"),
+            ('SQUARE', "🔲 四角・プール・水路 (Square)", "近代建築プール・ダンジョン水路・四角水面"),
+            ('CIRCLE', "🔘 円形・泉・水たまり (Circle)", "円形の泉・噴水・水たまり"),
+            ('OCEAN', "🌊 大海原 (Ocean)", "Ocean Modifier によるリアルな海洋波浪シミュレーション")
+        ],
+        default='LAKE'
+    )
+    water_color_type: bpy.props.EnumProperty(
+        name="水質カラー (Water Color)",
+        items=[
+            ('TROPICAL', "🏝️ 南国エメラルドシアン (Tropical Cyan)", "映画Flow風 澄み切ったエメラルドブルー"),
+            ('DEEP_OCEAN', "🌊 ディープオーシャン (Deep Ocean Navy)", "深海・荒波の重厚な紺碧"),
+            ('POND_GREEN', "🌿 リバー・ポンド (Natural Pond Green)", "水草や泥底が似合う自然な緑褐色"),
+            ('CRYSTAL', "💎 クリスタルクリア (Pure Crystal)", "プール・水槽用の無色透明")
+        ],
+        default='TROPICAL'
+    )
+    water_wave_strength: bpy.props.FloatProperty(name="波の強さ (Wave Strength)", default=0.12, min=0.0, max=1.0, description="水面のさざ波・うねりBump強度")
+    water_include_bed: bpy.props.BoolProperty(name="池底スラブを生成 (Include Bed Slab)", default=True, description="池（POND）生成時に泥砂利の池底スラブを同時に生成するか")
 
     # Tree Specific (リアル樹木・自然木設定)
     tree_species: bpy.props.EnumProperty(
@@ -3299,8 +3677,18 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
         # 🌟 4. Tab 1: Shape & Dimensions & Specific Controls
         if props.studio_tab == 'SHAPE':
+            # Water Specific (水面・池・湖設定)
+            if props.prop_category == 'WATER':
+                box_water = layout.box()
+                box_water.label(text="Water Settings (水面・池・湖設定):", icon='MOD_OCEAN')
+                box_water.prop(props, "water_shape", text="形状プリセット")
+                box_water.prop(props, "water_color_type", text="水質カラー")
+                box_water.prop(props, "water_wave_strength", text="波の強さ (Bump)", slider=True)
+                if props.water_shape == 'POND':
+                    box_water.prop(props, "water_include_bed", text="🌿 泥砂利の池底スラブを生成")
+
             # Tree Specific (リアル樹木・自然木設定)
-            if props.prop_category == 'TREE':
+            elif props.prop_category == 'TREE':
                 box_tree = layout.box()
                 box_tree.label(text="Tree Settings (リアル樹木設定):", icon='OUTLINER_OB_LIGHT')
                 box_tree.prop(props, "tree_species", text="樹種")
