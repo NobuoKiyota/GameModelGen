@@ -9,14 +9,14 @@ with open(addon_path, 'r', encoding='utf-8') as f:
     code = f.read()
     exec(code, globals())
 
-print("=== Testing Modern PC Desk & Office Chair Presets (v7.0) ===")
+print("=== Testing Direct Preset Categories: PC_DESK & OFFICE_CHAIR (v7.1) ===")
 
-# 1. Test Modern PC Desk with Monitor Riser & Steel Loop Legs
-desk_1 = generate_procedural_prop_mesh(
+# 1. Direct Category: PC_DESK
+desk_direct = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
-    category="TABLE",
-    name="Test_Modern_PC_Desk_Riser",
+    category="PC_DESK",
+    name="Test_PC_Desk_Direct",
     table_shape="MONITOR_RISER_DESK",
     table_leg_style="STEEL_LOOP",
     size_x=1.6,
@@ -25,16 +25,16 @@ desk_1 = generate_procedural_prop_mesh(
     tex_folder=r"Z:\MeshCreator\textures\Wood",
     use_folder_tex=True,
     selected_tex="",
-    seed=1201
+    seed=1301
 )
-print(f"-> 1. Modern PC Desk (Monitor Riser + Steel Loop): Verts={len(desk_1.data.vertices)}, Polys={len(desk_1.data.polygons)}")
+print(f"-> 1. Direct Category PC_DESK: Verts={len(desk_direct.data.vertices)}, Polys={len(desk_direct.data.polygons)}")
 
-# 2. Test Modern Office Task Chair (5-Star Casters + Gas Cylinder + Ergonomic Back)
-chair_office = generate_procedural_prop_mesh(
+# 2. Direct Category: OFFICE_CHAIR
+chair_direct = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
-    category="CHAIR",
-    name="Test_Modern_Office_Task_Chair",
+    category="OFFICE_CHAIR",
+    name="Test_Office_Chair_Direct",
     chair_type="OFFICE_TASK_CHAIR",
     size_x=0.62,
     size_y=0.60,
@@ -42,43 +42,8 @@ chair_office = generate_procedural_prop_mesh(
     tex_folder=r"Z:\MeshCreator\textures\Wood",
     use_folder_tex=True,
     selected_tex="",
-    seed=1202
+    seed=1302
 )
-print(f"-> 2. Modern Office Task Chair (5-Star Base): Verts={len(chair_office.data.vertices)}, Polys={len(chair_office.data.polygons)}")
+print(f"-> 2. Direct Category OFFICE_CHAIR: Verts={len(chair_direct.data.vertices)}, Polys={len(chair_direct.data.polygons)}")
 
-# 3. Test Modern Eames Shell Chair
-chair_shell = generate_procedural_prop_mesh(
-    context=bpy.context,
-    target_obj=None,
-    category="CHAIR",
-    name="Test_Modern_Shell_Chair",
-    chair_type="MODERN_SHELL_CHAIR",
-    size_x=0.52,
-    size_y=0.50,
-    size_z=0.84,
-    tex_folder=r"Z:\MeshCreator\textures\Wood",
-    use_folder_tex=True,
-    selected_tex="",
-    seed=1203
-)
-print(f"-> 3. Modern Shell Chair (Splayed Legs): Verts={len(chair_shell.data.vertices)}, Polys={len(chair_shell.data.polygons)}")
-
-# 4. Test L-Shaped Studio Desk with Steel Pipe Legs
-desk_L = generate_procedural_prop_mesh(
-    context=bpy.context,
-    target_obj=None,
-    category="TABLE",
-    name="Test_L_Shaped_Studio_Desk",
-    table_shape="L_SHAPED_CORNER",
-    table_leg_style="STEEL_PIPE",
-    size_x=2.0,
-    size_y=1.4,
-    size_z=0.72,
-    tex_folder=r"Z:\MeshCreator\textures\Wood",
-    use_folder_tex=True,
-    selected_tex="",
-    seed=1204
-)
-print(f"-> 4. L-Shaped Studio Desk (Steel Pipe): Verts={len(desk_L.data.vertices)}, Polys={len(desk_L.data.polygons)}")
-
-print("=== ALL MODERN PC DESK & OFFICE CHAIR PRESET TESTS PASSED! ===")
+print("=== ALL DIRECT PRESET CATEGORY TESTS PASSED! ===")

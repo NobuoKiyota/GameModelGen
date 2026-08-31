@@ -1196,7 +1196,7 @@ def generate_procedural_prop_mesh(
 
     # 1. Base Geometry Construction
     bm = bmesh.new()
-    if category == "CHAIR":
+    if category in ("CHAIR", "OFFICE_CHAIR"):
         build_chair_base(
             bm, size_x, size_y, size_z,
             chair_type=chair_type,
@@ -1212,7 +1212,7 @@ def generate_procedural_prop_mesh(
         build_bed_base(bm, size_x, size_y, size_z, bed_size=bed_size, leg_style=column_style, seed=seed)
     elif category == "BOOKSHELF":
         build_bookshelf_base(bm, size_x, size_y, size_z, tiers=shelf_tiers, column_style=column_style, seed=seed)
-    elif category == "TABLE":
+    elif category in ("TABLE", "PC_DESK"):
         build_table_base(bm, size_x, size_y, size_z, shape=table_shape, leg_style=table_leg_style, seed=seed)
     elif category == "GRASS":
         if grass_mode == "TUFT":
@@ -1255,9 +1255,9 @@ def generate_procedural_prop_mesh(
     bm.free()
 
     # 2. Bevel for Furniture, Floor, Wall & Grass Mound
-    if category in ("FLOOR", "WALL", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED") or (category == "GRASS" and grass_mode == "MOUND"):
+    if category in ("FLOOR", "WALL", "BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED") or (category == "GRASS" and grass_mode == "MOUND"):
         bevel_mod = obj.modifiers.new(name="Bevel_Chipping", type='BEVEL')
-        bevel_mod.width = 0.012 if category in ("BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED") else min(0.03, (size_z if category != "WALL" else size_y) * 0.15)
+        bevel_mod.width = 0.012 if category in ("BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED") else min(0.03, (size_z if category != "WALL" else size_y) * 0.15)
         bevel_mod.segments = 2
         try:
             bpy.ops.object.modifier_apply(modifier=bevel_mod.name)
@@ -1715,6 +1715,8 @@ def update_category_preset(self, context):
     name_map = {
         'ROCK': "Rock_Boulder",
         'CRAG': "Crag_Rock",
+        'PC_DESK': "Modern_PC_Desk",
+        'OFFICE_CHAIR': "Modern_Office_Chair",
         'FLOOR': "Floor_Tile",
         'WALL': "Wall_Block",
         'PILLAR': "Pillar_Column",
@@ -1734,6 +1736,19 @@ def update_category_preset(self, context):
         props.size_y = 2.0
         props.size_z = 1.6
         props.uv_mapping_mode = 'TILING'
+    elif cat == "PC_DESK":
+        props.size_x = 1.6
+        props.size_y = 0.75
+        props.size_z = 0.72
+        props.table_shape = 'MONITOR_RISER_DESK'
+        props.table_leg_style = 'STEEL_LOOP'
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "OFFICE_CHAIR":
+        props.size_x = 0.62
+        props.size_y = 0.60
+        props.size_z = 0.96
+        props.chair_type = 'OFFICE_TASK_CHAIR'
+        props.uv_mapping_mode = 'FIT'
     elif cat == "CHAIR":
         props.size_x = 0.55
         props.size_y = 0.55
@@ -1796,6 +1811,8 @@ def update_category_preset(self, context):
     folder_map = {
         'ROCK': r"Z:\MeshCreator\textures\Rock",
         'CRAG': r"Z:\MeshCreator\textures\Rock",
+        'PC_DESK': r"Z:\MeshCreator\textures\Wood",
+        'OFFICE_CHAIR': r"Z:\MeshCreator\textures\Wood",
         'FLOOR': r"Z:\MeshCreator\textures\Floor",
         'WALL': r"Z:\MeshCreator\textures\Wall",
         'PILLAR': r"Z:\MeshCreator\textures\Pillar",
@@ -1820,13 +1837,15 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
-            ('CRAG', "🏔️ 険岩・ごつごつ岩 (Jagged Crags)", "textures/Rock/ と自動連動（多面体バイセクトスライス＆鋭利な稜線岩）"),
-            ('ROCK', "🪨 丸岩・巨石 (Round Boulder / Soft Rock)", "textures/Rock/ と自動連動（自然な丸みを持つ丸岩・河原の石）"),
-            ('TABLE', "🪑 机・テーブル (Table / Desk)", "textures/Wood/ と自動連動（四角/角丸/楕円＆アンティーク4本脚）"),
-            ('CHAIR', "💺 椅子・チェア (Chair / Stool)", "textures/Wood/ と自動連動（革張り座面/埋め込み背板/1本脚/X脚）"),
+            ('PC_DESK', "🖥️ 近代PCデスク (Modern PC Desk)", "textures/Wood/ と自動連動（モニタースタンド付き・スチール口の字脚・L字型）"),
+            ('OFFICE_CHAIR', "💺 近代オフィスチェア (Modern Office Chair)", "textures/Wood/ と自動連動（5本足キャスター＆ガスシリンダー＆シェル）"),
+            ('TABLE', "🪑 アンティーク机 (Antique Table)", "textures/Wood/ と自動連動（四角/角丸/楕円＆アンティーク4本脚）"),
+            ('CHAIR', "💺 アンティーク椅子 (Antique Chair)", "textures/Wood/ と自動連動（革張り座面/埋め込み背板/1本脚/X脚）"),
             ('BOOKSHELF', "📚 本棚・収納棚 (Bookshelf / Rack)", "textures/Wood/ と自動連動（2~4段棚＆対称装飾柱）"),
             ('CHEST', "🚪 チェスト・タンス (Chest of Drawers)", "textures/Wood/ と自動連動（2~5段引き出し＆取っ手金具）"),
             ('BED', "🛏️ アンティークベッド (Antique Bedframe)", "textures/Wood/ と自動連動（四隅装飾柱＆ヘッドボード＆マットレス）"),
+            ('CRAG', "🏔️ 険岩・ごつごつ岩 (Jagged Crags)", "textures/Rock/ と自動連動（Convex Hull多面体＆鋭利な稜線岩）"),
+            ('ROCK', "🪨 丸岩・巨石 (Round Boulder / Soft Rock)", "textures/Rock/ と自動連動（自然な丸みを持つ丸岩・河原の石）"),
             ('GRASS', "🌿 草原・草地 (Grassland / Meadow)", "textures/Grass/ と自動連動（草地丘陵スラブ＆十字草むら）"),
             ('FLOOR', "🟫 床・タイル (Floor / Tile)", "textures/Floor/ と自動連動（正方形・円形・六角形＆有機的亀裂）"),
             ('WALL', "🧱 壁・城壁 (Wall / Ruins)", "textures/Wall/ と自動連動（直線・L字・円弧・▲三角切妻壁）"),
@@ -1834,7 +1853,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('BEAM', "🪵 梁・丸太支柱 (Timber Log Beam)", "textures/Wood/ と自動連動（シリンダー丸太梁）"),
             ('BEAM_ARCH', "🪵🏛️ 梁アーチ (Beam Arch)", "textures/Wood/ と自動連動（シリンダー丸太アーチ）")
         ],
-        default='CRAG',
+        default='PC_DESK',
         update=update_category_preset
     )
 
@@ -2078,8 +2097,8 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
         # 🌟 4. Tab 1: Shape & Dimensions & Specific Controls
         if props.studio_tab == 'SHAPE':
-            # Chair Specific
-            if props.prop_category == 'CHAIR':
+            # Chair Specific (近代オフィスチェア ＆ アンティーク椅子)
+            if props.prop_category in ('CHAIR', 'OFFICE_CHAIR'):
                 box_chair = layout.box()
                 box_chair.label(text="Chair Settings (椅子設定):", icon='PASTEDOWN')
                 box_chair.prop(props, "chair_type", text="タイプ")
@@ -2090,6 +2109,14 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                     box_chair.prop(props, "chair_leg_layout", text="脚の構造")
                     box_chair.prop(props, "table_leg_style", text="脚の装飾")
                 box_chair.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
+
+            # Table Specific (近代PCデスク ＆ アンティーク机)
+            elif props.prop_category in ('TABLE', 'PC_DESK'):
+                box_tab = layout.box()
+                box_tab.label(text="Table / Desk Settings (机・デスク設定):", icon='WORKSPACE')
+                box_tab.prop(props, "table_shape", text="天板形状")
+                box_tab.prop(props, "table_leg_style", text="脚の形状・フレーム")
+                box_tab.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
 
             # Chest Specific
             elif props.prop_category == 'CHEST':
@@ -2114,14 +2141,6 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_shelf.prop(props, "shelf_tiers", text="棚段数 (2~4段)")
                 box_shelf.prop(props, "column_ornament_style", text="側柱の装飾")
                 box_shelf.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
-
-            # Table Specific
-            elif props.prop_category == 'TABLE':
-                box_tab = layout.box()
-                box_tab.label(text="Table / Desk Settings (机・デスク設定):", icon='WORKSPACE')
-                box_tab.prop(props, "table_shape", text="天板形状")
-                box_tab.prop(props, "table_leg_style", text="脚の形状・フレーム")
-                box_tab.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
 
             # Grass Specific
             elif props.prop_category == 'GRASS':
