@@ -769,40 +769,57 @@ def build_rock_base(bm, size_x, size_y, size_z, style="BOULDER"):
     bmesh.ops.scale(bm, vec=(size_x, size_y, size_z), verts=verts)
     return verts
 
-def build_crag_base(bm, size_x, size_y, size_z, style="JAGGED_CRAG", chisel_cuts=8, seed=0):
-    """Generates ultra-rugged craggy jagged rocks via multi-plane bisect slicing and sharp voronoi facets (新規: 険岩・ごつごつ岩)"""
+def build_crag_base(bm, size_x, size_y, size_z, style="JAGGED_CRAG", chisel_cuts=6, seed=0):
+    """Generates 100% SOLID ultra-rugged faceted crag rocks based on low-poly faceted icosphere clusters"""
     random.seed(seed)
     
-    if style in ("COLUMNAR_CLIFF", "FRACTURED"):
-        res = bmesh.ops.create_cube(bm, size=1.0)
-        verts = res['verts']
-        bmesh.ops.scale(bm, vec=(size_x, size_y, size_z), verts=verts)
-    elif style == "VOLCANIC_SPIKE":
-        res = bmesh.ops.create_cone(
-            bm, cap_ends=True, cap_tris=False, segments=8,
-            radius1=max(size_x, size_y) * 0.6, radius2=0.08, depth=size_z * 1.3
-        )
-        verts = res['verts']
-    else: # JAGGED_CRAG
-        res = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
-        verts = res['verts']
-        sx = size_x * random.uniform(0.85, 1.15)
-        sy = size_y * random.uniform(0.85, 1.15)
-        sz = size_z * random.uniform(0.9, 1.25)
-        bmesh.ops.scale(bm, vec=(sx, sy, sz), verts=verts)
-
-    # 🔪 Multi-Plane Bisect Chisel Slicing
-    num_cuts = max(4, min(16, chisel_cuts))
-    max_dim = max(size_x, size_y, size_z) * 0.55
+    # 1. Main Central Solid Faceted Boulder (中身の詰まったローポリ多面体岩)
+    subdiv = 1 if style in ("SHARP", "FRACTURED") else 2
+    res_main = bmesh.ops.create_icosphere(bm, subdivisions=subdiv, radius=1.0)
     
-    for i in range(num_cuts):
+    # Random non-uniform stretching
+    sx = size_x * random.uniform(0.8, 1.2) * 0.5
+    sy = size_y * random.uniform(0.8, 1.2) * 0.5
+    sz = size_z * random.uniform(0.85, 1.3) * 0.5
+    bmesh.ops.scale(bm, vec=(sx, sy, sz), verts=res_main['verts'])
+
+    # Random vertex jagged displacement on main body
+    for v in res_main['verts']:
+        v.co.x += (random.random() - 0.5) * (sx * 0.35)
+        v.co.y += (random.random() - 0.5) * (sy * 0.35)
+        v.co.z += (random.random() - 0.5) * (sz * 0.35)
+
+    # 2. Secondary Cluster Shards (合体する2〜3個のゴツゴツ副岩塊)
+    num_sub_rocks = random.randint(2, 4)
+    for i in range(num_sub_rocks):
+        sub_rad = random.uniform(0.35, 0.75)
+        res_sub = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=sub_rad)
+        
+        ssx = sx * random.uniform(0.5, 0.9)
+        ssy = sy * random.uniform(0.5, 0.9)
+        ssz = sz * random.uniform(0.4, 0.85)
+        bmesh.ops.scale(bm, vec=(ssx, ssy, ssz), verts=res_sub['verts'])
+        
+        # Position around main rock
+        ang = random.uniform(0, math.pi * 2)
+        dist = random.uniform(sx * 0.3, sx * 0.75)
+        off_x = math.cos(ang) * dist
+        off_y = math.sin(ang) * dist
+        off_z = random.uniform(-sz * 0.4, sz * 0.1)
+        bmesh.ops.translate(bm, vec=(off_x, off_y, off_z), verts=res_sub['verts'])
+
+    # 3. 🔪 Clean Solid Planar Chisel Cuts (断面を必ず閉じる cap_trim=True で殻化を完全防止)
+    num_cuts = max(3, min(8, chisel_cuts))
+    max_dim = max(size_x, size_y, size_z) * 0.5
+    
+    for _ in range(num_cuts):
         theta = random.uniform(0, math.pi * 2)
-        phi = random.uniform(-math.pi * 0.45, math.pi * 0.45)
+        phi = random.uniform(-math.pi * 0.4, math.pi * 0.4)
         nx = math.cos(phi) * math.cos(theta)
         ny = math.cos(phi) * math.sin(theta)
         nz = math.sin(phi)
         
-        dist = random.uniform(max_dim * 0.35, max_dim * 0.78)
+        dist = random.uniform(max_dim * 0.4, max_dim * 0.8)
         px = nx * dist
         py = ny * dist
         pz = nz * dist
@@ -814,14 +831,12 @@ def build_crag_base(bm, size_x, size_y, size_z, style="JAGGED_CRAG", chisel_cuts
                 plane_co=(px, py, pz),
                 plane_no=(nx, ny, nz),
                 clear_outer=True,
-                clear_inner=False
+                clear_inner=False,
+                cap_trim=True,
+                cap_subsurface=False
             )
         except Exception:
             pass
-
-    for v in bm.verts:
-        jit = (random.random() - 0.5) * (max_dim * 0.08)
-        v.co += v.normal * jit
 
     return bm.verts[:]
 
