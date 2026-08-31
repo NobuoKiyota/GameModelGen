@@ -9,14 +9,14 @@ with open(addon_path, 'r', encoding='utf-8') as f:
     code = f.read()
     exec(code, globals())
 
-print("=== Testing Solid Low-Poly Faceted Cluster Crags (v6.5) ===")
+print("=== Testing Convex Hull Procedural Rock Generator (v6.6) ===")
 
-# Test Crag Cluster (100% Solid & Closed)
-crag_solid = generate_procedural_prop_mesh(
+# 1. Test Convex Hull Jagged Crag (CRAG)
+crag_hull = generate_procedural_prop_mesh(
     context=bpy.context,
     target_obj=None,
     category="CRAG",
-    name="Test_Crag_Cluster_Solid",
+    name="Test_Convex_Hull_Crag",
     style="JAGGED_CRAG",
     size_x=2.5,
     size_y=2.2,
@@ -29,8 +29,26 @@ crag_solid = generate_procedural_prop_mesh(
     tex_folder=r"Z:\MeshCreator\textures\Rock",
     use_folder_tex=True,
     selected_tex="",
-    seed=901
+    seed=1001
 )
-print(f"-> Crag Cluster Solid generated: Verts={len(crag_solid.data.vertices)}, Polys={len(crag_solid.data.polygons)}")
+print(f"-> 1. Convex Hull Jagged Crag: Verts={len(crag_hull.data.vertices)}, Polys={len(crag_hull.data.polygons)}")
 
-print("=== SOLID CRAG CLUSTER TEST PASSED! ===")
+# 2. Test Convex Hull Round Boulder (ROCK)
+rock_hull = generate_procedural_prop_mesh(
+    context=bpy.context,
+    target_obj=None,
+    category="ROCK",
+    name="Test_Convex_Hull_Boulder",
+    style="BOULDER",
+    size_x=2.2,
+    size_y=2.0,
+    size_z=1.6,
+    roughness=0.7,
+    tex_folder=r"Z:\MeshCreator\textures\Rock",
+    use_folder_tex=True,
+    selected_tex="",
+    seed=1002
+)
+print(f"-> 2. Convex Hull Round Boulder: Verts={len(rock_hull.data.vertices)}, Polys={len(rock_hull.data.polygons)}")
+
+print("=== ALL CONVEX HULL ROCK TESTS PASSED PERFECTLY! ===")

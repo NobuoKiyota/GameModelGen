@@ -760,85 +760,92 @@ def build_grass_tuft_clump(bm, size_x, size_y, size_z, blade_count=4, seed=0):
         bm.faces.new((v_bl, v_br, v_tr, v_tl))
     return bm.verts[:]
 
-def build_rock_base(bm, size_x, size_y, size_z, style="BOULDER"):
-    """Generates natural weathered rounded boulders & stones (従来の丸岩・巨石)"""
-    if style in ("SHARP", "FRACTURED", "CLIFF"):
-        verts = bmesh.ops.create_cube(bm, size=1.0)['verts']
-    else:
-        verts = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)['verts']
-    bmesh.ops.scale(bm, vec=(size_x, size_y, size_z), verts=verts)
-    return verts
-
-def build_crag_base(bm, size_x, size_y, size_z, style="JAGGED_CRAG", chisel_cuts=6, seed=0):
-    """Generates 100% SOLID ultra-rugged faceted crag rocks based on low-poly faceted icosphere clusters"""
+def build_convex_hull_rock(bm, size_x, size_y, size_z, point_count=18, is_crag=True, seed=0):
+    """Generates 100% SOLID ultra-realistic procedural rocks via Convex Hull algorithm (YouTube Sacoche Ito 3D method)"""
     random.seed(seed)
     
-    # 1. Main Central Solid Faceted Boulder (中身の詰まったローポリ多面体岩)
-    subdiv = 1 if style in ("SHARP", "FRACTURED") else 2
-    res_main = bmesh.ops.create_icosphere(bm, subdivisions=subdiv, radius=1.0)
+    # 1. 🌟 Distribute Random 3D Points & Cloud Cluster (動画手法: ランダム点群＆キューブ群の配置)
+    points = []
     
-    # Random non-uniform stretching
-    sx = size_x * random.uniform(0.8, 1.2) * 0.5
-    sy = size_y * random.uniform(0.8, 1.2) * 0.5
-    sz = size_z * random.uniform(0.85, 1.3) * 0.5
-    bmesh.ops.scale(bm, vec=(sx, sy, sz), verts=res_main['verts'])
-
-    # Random vertex jagged displacement on main body
-    for v in res_main['verts']:
-        v.co.x += (random.random() - 0.5) * (sx * 0.35)
-        v.co.y += (random.random() - 0.5) * (sy * 0.35)
-        v.co.z += (random.random() - 0.5) * (sz * 0.35)
-
-    # 2. Secondary Cluster Shards (合体する2〜3個のゴツゴツ副岩塊)
-    num_sub_rocks = random.randint(2, 4)
-    for i in range(num_sub_rocks):
-        sub_rad = random.uniform(0.35, 0.75)
-        res_sub = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=sub_rad)
-        
-        ssx = sx * random.uniform(0.5, 0.9)
-        ssy = sy * random.uniform(0.5, 0.9)
-        ssz = sz * random.uniform(0.4, 0.85)
-        bmesh.ops.scale(bm, vec=(ssx, ssy, ssz), verts=res_sub['verts'])
-        
-        # Position around main rock
-        ang = random.uniform(0, math.pi * 2)
-        dist = random.uniform(sx * 0.3, sx * 0.75)
-        off_x = math.cos(ang) * dist
-        off_y = math.sin(ang) * dist
-        off_z = random.uniform(-sz * 0.4, sz * 0.1)
-        bmesh.ops.translate(bm, vec=(off_x, off_y, off_z), verts=res_sub['verts'])
-
-    # 3. 🔪 Clean Solid Planar Chisel Cuts (断面を必ず閉じる cap_trim=True で殻化を完全防止)
-    num_cuts = max(3, min(8, chisel_cuts))
-    max_dim = max(size_x, size_y, size_z) * 0.5
+    # Main central bounding ellipsoid points
+    num_pts = max(10, min(36, point_count))
+    rx = size_x * 0.5
+    ry = size_y * 0.5
+    rz = size_z * 0.5
     
-    for _ in range(num_cuts):
+    for _ in range(num_pts):
+        u = random.random()
         theta = random.uniform(0, math.pi * 2)
-        phi = random.uniform(-math.pi * 0.4, math.pi * 0.4)
-        nx = math.cos(phi) * math.cos(theta)
-        ny = math.cos(phi) * math.sin(theta)
-        nz = math.sin(phi)
+        phi = random.uniform(-math.pi * 0.5, math.pi * 0.5)
+        # Power distribution for faceted corners
+        rad_scale = (u ** 0.5) if is_crag else (u ** 0.8)
+        px = math.cos(phi) * math.cos(theta) * rx * rad_scale
+        py = math.cos(phi) * math.sin(theta) * ry * rad_scale
+        pz = math.sin(phi) * rz * rad_scale
         
-        dist = random.uniform(max_dim * 0.4, max_dim * 0.8)
-        px = nx * dist
-        py = ny * dist
-        pz = nz * dist
-        
+        # Additional asymmetric directional push
+        if is_crag:
+            px += (random.random() - 0.5) * (rx * 0.3)
+            py += (random.random() - 0.5) * (ry * 0.3)
+            pz += (random.random() - 0.5) * (rz * 0.3)
+        points.append((px, py, pz))
+
+    # Add 2~4 sub-chunk satellite points for jagged mountain clusters
+    if is_crag:
+        sub_clusters = random.randint(2, 4)
+        for _ in range(sub_clusters):
+            c_center_x = random.uniform(-rx * 0.6, rx * 0.6)
+            c_center_y = random.uniform(-ry * 0.6, ry * 0.6)
+            c_center_z = random.uniform(-rz * 0.4, rz * 0.2)
+            c_rad = min(rx, ry, rz) * random.uniform(0.3, 0.6)
+            for _ in range(6):
+                ang = random.uniform(0, math.pi * 2)
+                p_phi = random.uniform(-math.pi * 0.5, math.pi * 0.5)
+                points.append((
+                    c_center_x + math.cos(p_phi) * math.cos(ang) * c_rad,
+                    c_center_y + math.cos(p_phi) * math.sin(ang) * c_rad,
+                    c_center_z + math.sin(p_phi) * c_rad
+                ))
+
+    # Create vertices in bmesh
+    created_verts = [bm.verts.new(p) for p in points]
+    bm.verts.ensure_lookup_table()
+
+    # 2. 📐 Execute CONVEX HULL (凸包を実行して一発で中身の詰まった多面体岩を形成)
+    res_hull = bmesh.ops.convex_hull(
+        bm,
+        input=created_verts,
+        use_existing_faces=False
+    )
+
+    # Delete un-used internal vertices
+    internal_verts = [v for v in created_verts if v not in res_hull['geom']]
+    bmesh.ops.delete(bm, geom=internal_verts, context='VERTS')
+
+    # 3. ⚡ Edge Chipping & Bevel (角の欠けと岩肌の微細ディテール)
+    hull_geom = [e for e in res_hull['geom'] if isinstance(e, bmesh.types.BMEdge)]
+    if hull_geom and is_crag:
         try:
-            bmesh.ops.bisect_plane(
+            bmesh.ops.bevel(
                 bm,
-                geom=bm.verts[:] + bm.edges[:] + bm.faces[:],
-                plane_co=(px, py, pz),
-                plane_no=(nx, ny, nz),
-                clear_outer=True,
-                clear_inner=False,
-                cap_trim=True,
-                cap_subsurface=False
+                geom=hull_geom,
+                offset=min(rx, ry, rz) * 0.04,
+                segments=1,
+                profile=0.7
             )
         except Exception:
             pass
 
     return bm.verts[:]
+
+def build_rock_base(bm, size_x, size_y, size_z, style="BOULDER"):
+    """Generates natural weathered rounded boulders & stones via Convex Hull"""
+    return build_convex_hull_rock(bm, size_x, size_y, size_z, point_count=24, is_crag=False)
+
+def build_crag_base(bm, size_x, size_y, size_z, style="JAGGED_CRAG", chisel_cuts=6, seed=0):
+    """Generates ultra-rugged jagged crags via Convex Hull with satellite cluster points"""
+    pts = 16 if style in ("SHARP", "FRACTURED") else 22
+    return build_convex_hull_rock(bm, size_x, size_y, size_z, point_count=pts, is_crag=True, seed=seed)
 
 def build_floor_base(bm, size_x, size_y, size_z, shape="SQUARE", seed=0):
     random.seed(seed)
