@@ -38,48 +38,202 @@ def get_textures_from_folder(folder_path):
     ]
     return sorted(files)
 
-def apply_image_texture_material(obj, image_path, scale=1.0, bump_strength=0.35, is_transparent=False, slot_index=None):
+def find_pbr_texture_set(image_path):
+    """PBR テクスチャファイル（ambientCG / Poly Haven / Textures.com 等）のセットを自動検出"""
+    if not os.path.exists(image_path):
+        return {}
+    
+    dir_path = os.path.dirname(image_path)
+    base_name = os.path.splitext(os.path.basename(image_path))[0]
+    
+    # プレフィックスの抽出 (例: Bricks023_1K_Color -> Bricks023_1K)
+    match_suffixes = [
+        '_color', '_basecolor', '_albedo', '_diffuse', '_col', '_alb', '_diff',
+        '_roughness', '_rough', '_rgh',
+        '_normalgl', '_normaldx', '_normal', '_norm', '_nor', '_nrm',
+        '_displacement', '_height', '_disp', '_depth',
+        '_ambientocclusion', '_ao'
+    ]
+    prefix = base_name
+    base_lower = base_name.lower()
+    for suff in match_suffixes:
+        if base_lower.endswith(suff):
+            prefix = base_name[:-len(suff)]
+            break
+    
+    pbr_set = {
+        'color': image_path if any(s in base_lower for s in ['color', 'albedo', 'diffuse', 'basecolor', 'col', 'alb']) else image_path,
+        'roughness': None,
+        'normal': None,
+        'displacement': None,
+        'ao': None,
+    }
+    
+    # ディレクトリ内の同プレフィックスファイルをスキャン
+    try:
+        valid_exts = ('.png', '.jpg', '.jpeg', '.tga', '.exr', '.hdr', '.tif', '.tiff')
+        files = [f for f in os.listdir(dir_path) if f.lower().endswith(valid_exts)]
+        for f in files:
+            f_path = os.path.join(dir_path, f)
+            f_stem = os.path.splitext(f)[0]
+            f_lower = f_stem.lower()
+            
+            # プレフィックスが一致するか (単一フォルダ内の場合)
+            if prefix and not f_stem.startswith(prefix) and len(files) > 10:
+                continue
+                
+            if any(k in f_lower for k in ['_roughness', '_rough', '_rgh']) and not pbr_set['roughness']:
+                pbr_set['roughness'] = f_path
+            elif any(k in f_lower for k in ['_normalgl', '_normal', '_norm', '_nor', '_nrm']) and not pbr_set['normal']:
+                pbr_set['normal'] = f_path
+            elif any(k in f_lower for k in ['_displacement', '_height', '_disp', '_depth']) and not pbr_set['displacement']:
+                pbr_set['displacement'] = f_path
+            elif any(k in f_lower for k in ['_ambientocclusion', '_ao']) and not pbr_set['ao']:
+                pbr_set['ao'] = f_path
+    except Exception:
+        pass
+        
+    return pbr_set
+
+
+def apply_image_texture_material(obj, image_path, scale=1.0, bump_strength=0.35,
+                                 displacement_strength=0.15, is_transparent=False, slot_index=None):
+    """動画 M_AoNzdC4gI 準拠: フル PBR テクスチャセット (Color, Roughness, Normal, Disp, AO)
+    および ShaderNodeDisplacement (Cycles Displacement & Bump) を自動構築"""
     if not os.path.exists(image_path):
         return None
     
-    mat_name = os.path.splitext(os.path.basename(image_path))[0] + "_Mat"
+    pbr_set = find_pbr_texture_set(image_path)
+    mat_name = os.path.splitext(os.path.basename(image_path))[0] + "_PBR_Mat"
     mat = bpy.data.materials.get(mat_name)
     if not mat:
         mat = bpy.data.materials.new(name=mat_name)
     
     mat.use_nodes = True
+    # Cycles 用ディスプレイスメント設定 (動画手法: Displacement and Bump)
+    try:
+        mat.cycles.displacement_method = 'BOTH'
+    except Exception:
+        pass
+
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
     nodes.clear()
 
+    # 1. Output & Principled BSDF
     node_out = nodes.new(type='ShaderNodeOutputMaterial')
-    node_out.location = (400, 0)
+    node_out.location = (600, 0)
 
     node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
-    node_bsdf.location = (100, 0)
-    node_bsdf.inputs['Roughness'].default_value = 0.8
+    node_bsdf.location = (300, 0)
     links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
 
-    node_img = nodes.new(type='ShaderNodeTexImage')
-    node_img.location = (-250, 0)
-    
-    img = bpy.data.images.load(image_path, check_existing=True)
-    node_img.image = img
-    links.new(node_img.outputs['Color'], node_bsdf.inputs['Base Color'])
+    # 2. UV & Mapping Nodes
+    node_coord = nodes.new(type='ShaderNodeTexCoord')
+    node_coord.location = (-900, 0)
+    node_map = nodes.new(type='ShaderNodeMapping')
+    node_map.location = (-700, 0)
+    if scale != 1.0:
+        node_map.inputs['Scale'].default_value = (scale, scale, scale)
+    links.new(node_coord.outputs['UV'], node_map.inputs['Vector'])
 
+    # 3. Base Color (Albedo)
+    node_col = nodes.new(type='ShaderNodeTexImage')
+    node_col.location = (-450, 150)
+    img_col = bpy.data.images.load(image_path, check_existing=True)
+    node_col.image = img_col
+    links.new(node_map.outputs['Vector'], node_col.inputs['Vector'])
+
+    # AO (Ambient Occlusion) がある場合は乗算合成
+    if pbr_set.get('ao'):
+        try:
+            node_ao = nodes.new(type='ShaderNodeTexImage')
+            node_ao.location = (-450, -50)
+            img_ao = bpy.data.images.load(pbr_set['ao'], check_existing=True)
+            img_ao.colorspace_settings.name = 'Non-Color'
+            node_ao.image = img_ao
+            links.new(node_map.outputs['Vector'], node_ao.inputs['Vector'])
+
+            node_mix_ao = nodes.new(type='ShaderNodeMix')
+            node_mix_ao.data_type = 'RGBA'
+            node_mix_ao.blend_type = 'MULTIPLY'
+            node_mix_ao.location = (-150, 150)
+            node_mix_ao.inputs['Factor'].default_value = 0.8
+            links.new(node_col.outputs['Color'], node_mix_ao.inputs[6])
+            links.new(node_ao.outputs['Color'], node_mix_ao.inputs[7])
+            links.new(node_mix_ao.outputs[2], node_bsdf.inputs['Base Color'])
+        except Exception:
+            links.new(node_col.outputs['Color'], node_bsdf.inputs['Base Color'])
+    else:
+        links.new(node_col.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+    # 4. Alpha Transparency
     if is_transparent:
         mat.blend_method = 'CLIP'
         mat.shadow_method = 'CLIP'
-        links.new(node_img.outputs['Alpha'], node_bsdf.inputs['Alpha'])
+        links.new(node_col.outputs['Alpha'], node_bsdf.inputs['Alpha'])
 
-    if bump_strength > 0.01:
+    # 5. Roughness Map
+    if pbr_set.get('roughness'):
+        try:
+            node_rough = nodes.new(type='ShaderNodeTexImage')
+            node_rough.location = (-450, -250)
+            img_rough = bpy.data.images.load(pbr_set['roughness'], check_existing=True)
+            img_rough.colorspace_settings.name = 'Non-Color'
+            node_rough.image = img_rough
+            links.new(node_map.outputs['Vector'], node_rough.inputs['Vector'])
+            links.new(node_rough.outputs['Color'], node_bsdf.inputs['Roughness'])
+        except Exception:
+            node_bsdf.inputs['Roughness'].default_value = 0.75
+    else:
+        node_bsdf.inputs['Roughness'].default_value = 0.75
+
+    # 6. Normal Map / Bump
+    if pbr_set.get('normal'):
+        try:
+            node_nor = nodes.new(type='ShaderNodeTexImage')
+            node_nor.location = (-450, -450)
+            img_nor = bpy.data.images.load(pbr_set['normal'], check_existing=True)
+            img_nor.colorspace_settings.name = 'Non-Color'
+            node_nor.image = img_nor
+            links.new(node_map.outputs['Vector'], node_nor.inputs['Vector'])
+
+            node_norm_map = nodes.new(type='ShaderNodeNormalMap')
+            node_norm_map.location = (-150, -450)
+            node_norm_map.inputs['Strength'].default_value = max(0.5, bump_strength * 2.0)
+            links.new(node_nor.outputs['Color'], node_norm_map.inputs['Color'])
+            links.new(node_norm_map.outputs['Normal'], node_bsdf.inputs['Normal'])
+        except Exception:
+            pass
+    elif bump_strength > 0.01:
         node_bump = nodes.new(type='ShaderNodeBump')
-        node_bump.location = (100, -150)
+        node_bump.location = (50, -250)
         node_bump.inputs['Strength'].default_value = bump_strength
         node_bump.inputs['Distance'].default_value = 0.08
-        links.new(node_img.outputs['Color'], node_bump.inputs['Height'])
+        links.new(node_col.outputs['Color'], node_bump.inputs['Height'])
         links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
 
+    # 7. 🌟 Shader Displacement (動画 00:00〜10:00 手法)
+    disp_img_path = pbr_set.get('displacement') or image_path
+    if displacement_strength > 0.001 and disp_img_path:
+        try:
+            node_disp_img = nodes.new(type='ShaderNodeTexImage')
+            node_disp_img.location = (-150, -650)
+            img_disp = bpy.data.images.load(disp_img_path, check_existing=True)
+            img_disp.colorspace_settings.name = 'Non-Color'
+            node_disp_img.image = img_disp
+            links.new(node_map.outputs['Vector'], node_disp_img.inputs['Vector'])
+
+            node_disp = nodes.new(type='ShaderNodeDisplacement')
+            node_disp.location = (300, -300)
+            node_disp.inputs['Scale'].default_value = displacement_strength
+            node_disp.inputs['Midlevel'].default_value = 0.5
+            links.new(node_disp_img.outputs['Color'], node_disp.inputs['Height'])
+            links.new(node_disp.outputs['Displacement'], node_out.inputs['Displacement'])
+        except Exception:
+            pass
+
+    # Assign to slot
     if slot_index is not None:
         while len(obj.data.materials) <= slot_index:
             obj.data.materials.append(None)
@@ -91,6 +245,68 @@ def apply_image_texture_material(obj, image_path, scale=1.0, bump_strength=0.35,
             obj.data.materials.append(mat)
     
     return mat
+
+
+def apply_geometry_displacement(obj, disp_image_path=None, strength=0.15, midlevel=0.5,
+                               subdivisions=2, apply_modifier=True):
+    """動画手法: Displace Modifier ＋ Subdivision Surface でメッシュ実ジオメトリを凸凹立体化
+    Unity / UE 用 FBX エクスポートに対応した本物の 3D ポリゴン凹凸を形成"""
+    if not obj or obj.type != 'MESH':
+        return
+    
+    ctx = bpy.context
+    if ctx.view_layer:
+        ctx.view_layer.objects.active = obj
+        obj.select_set(True)
+
+    # 1. 細分化 (Subdivision Surface)
+    if subdivisions > 0:
+        subsurf = obj.modifiers.new(name="Disp_Subsurf", type='SUBSURF')
+        subsurf.subdivision_type = 'SIMPLE' # UV歪みを防ぐシンプル細分化
+        subsurf.levels = min(3, subdivisions)
+        subsurf.render_levels = min(3, subdivisions)
+        if apply_modifier:
+            try:
+                bpy.ops.object.modifier_apply(modifier=subsurf.name)
+            except Exception:
+                try:
+                    with ctx.temp_override(active_object=obj, object=obj, selected_objects=[obj]):
+                        bpy.ops.object.modifier_apply(modifier=subsurf.name)
+                except Exception:
+                    pass
+
+    # 2. ディスプレイスメントテクスチャ作成
+    tex_disp = bpy.data.textures.new(name=obj.name + "_GeoDispTex", type='IMAGE' if (disp_image_path and os.path.exists(disp_image_path)) else 'CLOUDS')
+    if disp_image_path and os.path.exists(disp_image_path):
+        try:
+            img = bpy.data.images.load(disp_image_path, check_existing=True)
+            img.colorspace_settings.name = 'Non-Color'
+            tex_disp.image = img
+        except Exception:
+            tex_disp.type = 'CLOUDS'
+            tex_disp.noise_scale = 0.35
+    else:
+        tex_disp.noise_scale = 0.35
+        tex_disp.noise_depth = 3
+
+    # 3. Displace Modifier 適用
+    disp_mod = obj.modifiers.new(name="Disp_Geometry", type='DISPLACE')
+    disp_mod.texture = tex_disp
+    disp_mod.texture_coords = 'UV' if len(obj.data.uv_layers) > 0 else 'LOCAL'
+    disp_mod.strength = strength
+    disp_mod.mid_level = midlevel
+
+    if apply_modifier:
+        try:
+            bpy.ops.object.modifier_apply(modifier=disp_mod.name)
+        except Exception:
+            try:
+                with ctx.temp_override(active_object=obj, object=obj, selected_objects=[obj]):
+                    bpy.ops.object.modifier_apply(modifier=disp_mod.name)
+            except Exception:
+                pass
+
+
 
 def create_procedural_bark_material(mat_name, seed=0, species="OAK"):
     """Procedural Bark Material matching Sapling Tree Gen tutorials (Wave Texture vertical woodgrain + Noise + Bump)"""
@@ -1850,6 +2066,11 @@ def generate_procedural_prop_mesh(
     use_folder_tex=True,
     selected_tex="",
     tex_tiling=1.0,
+    enable_disp=False,
+    disp_strength=0.15,
+    disp_midlevel=0.5,
+    disp_subdiv=2,
+    apply_disp=True,
     seed=0
 ):
     if context.mode != 'OBJECT':
@@ -1881,6 +2102,7 @@ def generate_procedural_prop_mesh(
         obj = target_obj
         obj.name = name
         mesh = obj.data
+        mesh.name = name + "_Mesh"
         mesh.clear_geometry()
         obj.modifiers.clear()
         obj.data.materials.clear()
@@ -2031,7 +2253,7 @@ def generate_procedural_prop_mesh(
     else: # ROCK
         bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.02)
         
-    # 6. Material Assignment
+    # 6. Material Assignment & PBR Displacement
     if category == "TREE":
         # Slot 0: Bark (Wood Bark Texture)
         tex_files_wood = get_textures_from_folder(r"Z:\MeshCreator\textures\Wood")
@@ -2060,18 +2282,34 @@ def generate_procedural_prop_mesh(
         obj.data.materials.append(mat)
     else:
         tex_files = get_textures_from_folder(tex_folder)
+        disp_img = None
         if use_folder_tex and tex_files:
             chosen_tex = selected_tex if (selected_tex and selected_tex in tex_files) else random.choice(tex_files)
             full_tex_path = os.path.join(tex_folder, chosen_tex)
+            pbr_set = find_pbr_texture_set(full_tex_path)
+            disp_img = pbr_set.get('displacement') or full_tex_path
+
             apply_image_texture_material(
                 obj, full_tex_path,
                 scale=1.0 if uv_mode == "FIT" else tex_tiling,
                 bump_strength=0.35,
+                displacement_strength=disp_strength if enable_disp else 0.0,
                 is_transparent=False
             )
         else:
             mat = create_procedural_pbr_material(name + "_Mat", seed, is_grass=False)
             obj.data.materials.append(mat)
+
+        # 🌟 7. Geometry Displacement (動画手法: 実際の頂点を凹凸変形してゲームアセット化)
+        if enable_disp and disp_strength > 0.001 and category in ("WALL", "FLOOR", "ROCK", "CRAG", "PILLAR", "BEAM", "BEAM_ARCH", "TABLE", "PC_DESK", "CHEST"):
+            apply_geometry_displacement(
+                obj,
+                disp_image_path=disp_img,
+                strength=disp_strength,
+                midlevel=disp_midlevel,
+                subdivisions=disp_subdiv,
+                apply_modifier=apply_disp
+            )
 
     return obj
 
@@ -2460,6 +2698,11 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
             use_folder_tex=p["use_folder_tex"],
             selected_tex=p["selected_tex"],
             tex_tiling=p["tex_tiling"],
+            enable_disp=p["enable_disp"],
+            disp_strength=p["disp_strength"],
+            disp_midlevel=p["disp_midlevel"],
+            disp_subdiv=p["disp_subdiv"],
+            apply_disp=p["apply_disp"],
             seed=props.seed
         )
         self.report({'INFO'}, f"🎲 再抽選完了: {props.asset_name}")
@@ -2525,9 +2768,14 @@ class MESH_OT_create_new_prop(bpy.types.Operator):
             use_folder_tex=p["use_folder_tex"],
             selected_tex=p["selected_tex"],
             tex_tiling=p["tex_tiling"],
+            enable_disp=p["enable_disp"],
+            disp_strength=p["disp_strength"],
+            disp_midlevel=p["disp_midlevel"],
+            disp_subdiv=p["disp_subdiv"],
+            apply_disp=p["apply_disp"],
             seed=props.seed
         )
-        self.report({'INFO'}, f"➕ 新規作成完了: {props.asset_name}")
+        self.report({'INFO'}, f"✨ 新規作成完了: {props.asset_name}")
         return {'FINISHED'}
 
 class MESH_OT_apply_random_texture_only(bpy.types.Operator):
@@ -2973,6 +3221,34 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         description="ウェイトペイントのノイズスケール（動画 14:06 に相当）"
     )
 
+    # 🏔️ 3D ディスプレイスメント / 凹凸立体化 (動画 M_AoNzdC4gI 準拠)
+    enable_displacement: bpy.props.BoolProperty(
+        name="3D凹凸立体化 (Displacement)",
+        default=True,
+        description="テクスチャのハイトマップやノイズで実際のメッシュ表面を立体的に凸凹変形（動画 M_AoNzdC4gI 準拠）"
+    )
+    displacement_strength: bpy.props.FloatProperty(
+        name="凹凸の強さ (Strength)",
+        default=0.15, min=0.0, max=1.0,
+        description="ディスプレイスメントの凹凸押し出し量"
+    )
+    displacement_midlevel: bpy.props.FloatProperty(
+        name="基準高さ (Midlevel)",
+        default=0.5, min=0.0, max=1.0,
+        description="ディスプレイスメントの基準高さ (0.5 = 中間)"
+    )
+    displacement_subdiv: bpy.props.IntProperty(
+        name="メッシュ細分化 (Subdivisions)",
+        default=2, min=0, max=4,
+        description="リアルジオメトリ凹凸のための細分化レベル"
+    )
+    apply_disp_to_mesh: bpy.props.BoolProperty(
+        name="メッシュへベイク (Apply to Mesh)",
+        default=True,
+        description="Displace モディファイアを適用してUnity/FBXエクスポート可能な実メッシュにする"
+    )
+
+
 # =============================================================
 # 11. Sidebar Panel (N-Panel)
 # =============================================================
@@ -3172,6 +3448,18 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_tex.prop(props, "selected_texture", text="")
             
             box_tex.operator("mesh.apply_random_texture_only", text="🎨 テクスチャのみ再抽選", icon='IMAGE_DATA')
+
+            # 🏔️ 3D Displacement Box (動画 M_AoNzdC4gI 準拠)
+            box_disp = layout.box()
+            box_disp.label(text="🏔️ 3D ディスプレイスメント (凹凸立体化):", icon='MOD_DISPLACE')
+            box_disp.prop(props, "enable_displacement", text="3D凹凸立体化を有効化")
+            if props.enable_displacement:
+                col_d = box_disp.column(align=True)
+                col_d.prop(props, "displacement_strength", text="凹凸の強さ", slider=True)
+                col_d.prop(props, "displacement_midlevel", text="基準高さ", slider=True)
+                col_d.prop(props, "displacement_subdiv", text="メッシュ細分化 (0~4)")
+                col_d.prop(props, "apply_disp_to_mesh", text="🎮 メッシュへベイク (FBX用)")
+
 
         # 🌟 6. Tab 3: Export Settings
         elif props.studio_tab == 'EXPORT':
