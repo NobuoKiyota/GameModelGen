@@ -291,6 +291,172 @@ def create_procedural_leaf_material(mat_name, seed=0, species="OAK"):
 
     return mat
 
+def create_procedural_grass_blade_shader(mat_name, seed=0):
+    """動画 15:49 完全準拠: UV.Y→ColorRamp で根元(暗緑/黄土)→先端(ライムグリーン)グラデーション
+    + Object Info Random で株ごとの色ムラ + Translucent SSS 透け感 + Alpha Clip"""
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    mat.blend_method = 'CLIP'
+    mat.shadow_method = 'CLIP'
+    mat.alpha_threshold = 0.5
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (750, 0)
+
+    # Principled BSDF (main)
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (400, 0)
+    node_bsdf.inputs['Roughness'].default_value = 0.75
+    node_bsdf.inputs['Specular'].default_value = 0.05
+
+    # Translucent BSDF for back-lit grass glow
+    node_trans = nodes.new(type='ShaderNodeBsdfTranslucent')
+    node_trans.location = (400, -200)
+    node_trans.inputs['Color'].default_value = (0.38, 0.72, 0.12, 1.0)
+
+    node_mix_shader = nodes.new(type='ShaderNodeMixShader')
+    node_mix_shader.location = (580, 0)
+    node_mix_shader.inputs['Fac'].default_value = 0.15
+    links.new(node_bsdf.outputs['BSDF'], node_mix_shader.inputs[1])
+    links.new(node_trans.outputs['BSDF'], node_mix_shader.inputs[2])
+    links.new(node_mix_shader.outputs['Shader'], node_out.inputs['Surface'])
+
+    # 1. UV Map → Separate XYZ → ColorRamp (root-to-tip gradient)
+    node_uv = nodes.new(type='ShaderNodeTexCoord')
+    node_uv.location = (-750, 100)
+
+    node_uvmap = nodes.new(type='ShaderNodeUVMap')
+    node_uvmap.location = (-750, -50)
+
+    node_sep = nodes.new(type='ShaderNodeSeparateXYZ')
+    node_sep.location = (-550, 100)
+    links.new(node_uvmap.outputs['UV'], node_sep.inputs['Vector'])
+
+    node_ramp_grad = nodes.new(type='ShaderNodeValToRGB')
+    node_ramp_grad.location = (-330, 100)
+    node_ramp_grad.color_ramp.interpolation = 'EASE'
+    # Root: dark yellowish-green (base/soil tone)
+    node_ramp_grad.color_ramp.elements[0].position = 0.0
+    node_ramp_grad.color_ramp.elements[0].color = (0.06, 0.14, 0.03, 1.0)
+    # Mid: natural mid-green
+    mid_e = node_ramp_grad.color_ramp.elements.new(0.45)
+    mid_e.color = (0.14, 0.38, 0.06, 1.0)
+    # Tip: bright lime yellow-green
+    node_ramp_grad.color_ramp.elements[2].position = 1.0
+    node_ramp_grad.color_ramp.elements[2].color = (0.45, 0.72, 0.10, 1.0)
+    links.new(node_sep.outputs['Y'], node_ramp_grad.inputs['Fac'])
+
+    # 2. Object Info Random for per-blade hue variation
+    node_objinfo = nodes.new(type='ShaderNodeObjectInfo')
+    node_objinfo.location = (-750, -200)
+
+    node_hue = nodes.new(type='ShaderNodeHueSaturation')
+    node_hue.location = (-100, 100)
+    node_hue.inputs['Saturation'].default_value = 1.0
+    node_hue.inputs['Value'].default_value = 1.0
+
+    # Mix object random into hue
+    node_mix_hue = nodes.new(type='ShaderNodeMix')
+    node_mix_hue.data_type = 'FLOAT'
+    node_mix_hue.location = (-310, -150)
+    node_mix_hue.inputs['Factor'].default_value = 0.5
+    node_mix_hue.inputs[2].default_value = 0.0
+    node_mix_hue.inputs[3].default_value = 0.06
+    links.new(node_objinfo.outputs['Random'], node_mix_hue.inputs[2])
+    links.new(node_mix_hue.outputs[0], node_hue.inputs['Hue'])
+    links.new(node_ramp_grad.outputs['Color'], node_hue.inputs['Color'])
+    links.new(node_hue.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+    # 3. Micro surface noise for blade roughness variation
+    node_noise = nodes.new(type='ShaderNodeTexNoise')
+    node_noise.location = (-550, -250)
+    node_noise.inputs['Scale'].default_value = 22.0
+    node_noise.inputs['Detail'].default_value = 4.0
+    links.new(node_uv.outputs['UV'], node_noise.inputs['Vector'])
+
+    node_bump = nodes.new(type='ShaderNodeBump')
+    node_bump.location = (150, -250)
+    node_bump.inputs['Strength'].default_value = 0.18
+    node_bump.inputs['Distance'].default_value = 0.01
+    links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    return mat
+
+def create_procedural_ground_terrain_shader(mat_name, seed=0):
+    """動画 01:13 地面マテリアル: Noise×Voronoi → 土×枯草×芝のブレンド + Bump"""
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (650, 0)
+
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (380, 0)
+    node_bsdf.inputs['Roughness'].default_value = 0.92
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    node_coord = nodes.new(type='ShaderNodeTexCoord')
+    node_coord.location = (-800, 0)
+    node_map = nodes.new(type='ShaderNodeMapping')
+    node_map.location = (-620, 0)
+    node_map.inputs['Scale'].default_value = (1.8, 1.8, 1.8)
+    node_map.inputs['Location'].default_value = (float((seed * 23) % 10), float((seed * 47) % 10), 0.0)
+    links.new(node_coord.outputs['Object'], node_map.inputs['Vector'])
+
+    # Coarse soil noise
+    node_noise = nodes.new(type='ShaderNodeTexNoise')
+    node_noise.location = (-420, 120)
+    node_noise.inputs['Scale'].default_value = 4.0
+    node_noise.inputs['Detail'].default_value = 6.0
+    node_noise.inputs['Roughness'].default_value = 0.75
+    links.new(node_map.outputs['Vector'], node_noise.inputs['Vector'])
+
+    # Voronoi for soil clumps/pebbles
+    node_vor = nodes.new(type='ShaderNodeTexVoronoi')
+    node_vor.location = (-420, -150)
+    node_vor.inputs['Scale'].default_value = 8.0
+    links.new(node_map.outputs['Vector'], node_vor.inputs['Vector'])
+
+    node_mix = nodes.new(type='ShaderNodeMix')
+    node_mix.data_type = 'FLOAT'
+    node_mix.location = (-200, 0)
+    node_mix.inputs['Factor'].default_value = 0.35
+    links.new(node_noise.outputs['Fac'], node_mix.inputs[2])
+    links.new(node_vor.outputs['Distance'], node_mix.inputs[3])
+
+    # Tri-color ramp: soil brown → dry straw → mossy green
+    node_ramp = nodes.new(type='ShaderNodeValToRGB')
+    node_ramp.location = (-20, 0)
+    node_ramp.color_ramp.elements[0].position = 0.18
+    node_ramp.color_ramp.elements[0].color = (0.16, 0.10, 0.05, 1.0)   # dark soil
+    mid_g = node_ramp.color_ramp.elements.new(0.52)
+    mid_g.color = (0.30, 0.22, 0.08, 1.0)                               # dry straw
+    node_ramp.color_ramp.elements[2].position = 0.80
+    node_ramp.color_ramp.elements[2].color = (0.12, 0.28, 0.06, 1.0)   # mossy green
+    links.new(node_mix.outputs[0], node_ramp.inputs['Fac'])
+    links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+    # Bump for soil texture depth
+    node_bump = nodes.new(type='ShaderNodeBump')
+    node_bump.location = (170, -200)
+    node_bump.inputs['Strength'].default_value = 0.55
+    node_bump.inputs['Distance'].default_value = 0.04
+    links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    return mat
+
 def create_procedural_pbr_material(mat_name, seed=0, is_grass=False):
     mat = bpy.data.materials.get(mat_name)
     if not mat:
@@ -1089,49 +1255,86 @@ def build_bed_base(bm, size_x, size_y, size_z, bed_size="SINGLE", leg_style="ORN
 # =============================================================
 # 4. Standard Base Geometry Builders
 # =============================================================
+def build_grass_terrain_ground(bm, size_x, size_y, seed=0, undulation=0.35, subdivisions=12):
+    """動画 01:13 & 03:37: 自然な起伏地面（プロポーショナル編集相当の頂点変位）"""
+    random.seed(seed)
+    half_x = size_x * 0.5
+    half_y = size_y * 0.5
+    step_x = size_x / subdivisions
+    step_y = size_y / subdivisions
+    verts = []
+    for iy in range(subdivisions + 1):
+        row = []
+        for ix in range(subdivisions + 1):
+            x = -half_x + ix * step_x
+            y = -half_y + iy * step_y
+            # Gaussian-weighted proportional noise displacement (Proportional Edit equivalent)
+            nx = (math.sin(x * 0.55 + seed * 0.1) * math.cos(y * 0.45 + seed * 0.07)
+                + math.sin(x * 1.3 + seed * 0.3) * math.cos(y * 1.1 + seed * 0.2) * 0.35
+                + math.sin(x * 2.7 + seed * 0.7) * math.cos(y * 2.3 + seed * 0.5) * 0.12)
+            z = nx * undulation
+            row.append(bm.verts.new((x, y, z)))
+        verts.append(row)
+    # Build quads
+    for iy in range(subdivisions):
+        for ix in range(subdivisions):
+            bm.faces.new((verts[iy][ix], verts[iy][ix+1], verts[iy+1][ix+1], verts[iy+1][ix]))
+    bm.verts.ensure_lookup_table()
+    return [v for row in verts for v in row]
+
+def build_grass_blade_with_uv(bm, uv_layer, height=0.6, base_width=0.04, curve_x=0.0, curve_y=0.08, seed=0):
+    """動画 05:30: UV.Y=0(根元)〜UV.Y=1(先端)でグラデーション対応の5点先細りブレード"""
+    rng = random.Random(seed)
+    h = height * rng.uniform(0.82, 1.18)
+    bw = base_width * rng.uniform(0.8, 1.2)
+    mid_h = h * 0.55
+    mid_curve_x = curve_x * rng.uniform(0.6, 1.0)
+    mid_curve_y = curve_y * rng.uniform(0.6, 1.0)
+    tip_curve_x = curve_x * rng.uniform(0.9, 1.3)
+    tip_curve_y = curve_y * rng.uniform(0.9, 1.4)
+
+    v_bl  = bm.verts.new((-bw * 0.5, 0.0, 0.0))
+    v_br  = bm.verts.new(( bw * 0.5, 0.0, 0.0))
+    v_ml  = bm.verts.new((-bw * 0.25 + mid_curve_x, mid_curve_y, mid_h))
+    v_mr  = bm.verts.new(( bw * 0.25 + mid_curve_x, mid_curve_y, mid_h))
+    v_tip = bm.verts.new((tip_curve_x, tip_curve_y, h))
+
+    f_bot = bm.faces.new((v_bl, v_br, v_mr, v_ml))
+    f_top = bm.faces.new((v_ml, v_mr, v_tip))
+    bm.faces.ensure_lookup_table()
+
+    # Assign UV: Y = 0 at root, Y = 1 at tip (for gradient shader)
+    for face, verts_uv in [(f_bot, [(0.0, 0.0), (1.0, 0.0), (1.0, 0.5), (0.0, 0.5)]),
+                           (f_top, [(0.0, 0.5), (1.0, 0.5), (0.5, 1.0)])]:
+        for loop, uv in zip(face.loops, verts_uv):
+            loop[uv_layer].uv = uv
+
+    return [v_bl, v_br, v_ml, v_mr, v_tip]
+
+def build_grass_tuft_clump(bm, size_x, size_y, size_z, blade_count=5, seed=0):
+    """動画 05:30 (置き換え版): UV付きブレードによる草の株 (Tuft/Clump) — 3〜5本束"""
+    random.seed(seed)
+    uv_layer = bm.loops.layers.uv.verify()
+    blade_count = max(3, min(8, blade_count))
+    angles = [i * (180.0 / blade_count) for i in range(blade_count)]
+    for i, ang in enumerate(angles):
+        ang_rad = math.radians(ang + random.uniform(-12.0, 12.0))
+        height   = size_z * random.uniform(0.82, 1.22)
+        base_w   = max(size_x, size_y) * 0.06 * random.uniform(0.8, 1.2)
+        cx = math.cos(ang_rad + math.pi * 0.5) * random.uniform(0.01, 0.025)
+        cy = math.sin(ang_rad + math.pi * 0.5) * random.uniform(0.01, 0.025)
+        blade_verts = build_grass_blade_with_uv(bm, uv_layer, height=height, base_width=base_w,
+                                                 curve_x=cx, curve_y=cy, seed=seed + i * 37)
+        offset_x = random.uniform(-size_x * 0.06, size_x * 0.06)
+        offset_y = random.uniform(-size_y * 0.06, size_y * 0.06)
+        bmesh.ops.translate(bm, vec=(offset_x, offset_y, 0.0), verts=blade_verts)
+    return bm.verts[:]
+
 def build_grass_mound_base(bm, size_x, size_y, size_z, shape="SQUARE", seed=0):
-    random.seed(seed)
-    if shape == "CIRCLE":
-        bmesh.ops.create_cone(
-            bm, cap_ends=True, cap_tris=False, segments=32,
-            radius1=size_x * 0.5, radius2=size_x * 0.5, depth=size_z
-        )
-    elif shape == "HEXAGON":
-        bmesh.ops.create_cone(
-            bm, cap_ends=True, cap_tris=False, segments=6,
-            radius1=size_x * 0.5, radius2=size_x * 0.5, depth=size_z
-        )
-    else:
-        verts = bmesh.ops.create_cube(bm, size=1.0)['verts']
-        bmesh.ops.scale(bm, vec=(size_x, size_y, size_z), verts=verts)
+    """動画 01:13 & 03:37 (置き換え版): 草地丘陵地面テレイン (自然な起伏 = Proportional Edit 相当)"""
+    return build_grass_terrain_ground(bm, size_x, size_y, seed=seed,
+                                      undulation=size_z * 0.18, subdivisions=14)
 
-    bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=4, use_grid_fill=True)
-    for v in bm.verts:
-        if v.co.z > 0:
-            nx = math.sin(v.co.x * 1.8 + seed) * math.cos(v.co.y * 1.8 + seed)
-            ny = math.cos(v.co.x * 2.2 + seed * 2) * math.sin(v.co.y * 2.2 + seed * 2)
-            v.co.z += (nx + ny) * (size_z * 0.18)
-    return bm.verts[:]
-
-def build_grass_tuft_clump(bm, size_x, size_y, size_z, blade_count=4, seed=0):
-    random.seed(seed)
-    h = size_z
-    w = max(size_x, size_y) * 0.5
-    angles = [0, 45, 90, 135][:blade_count] if blade_count <= 4 else [i * (180.0 / blade_count) for i in range(blade_count)]
-    for ang in angles:
-        ang_rad = math.radians(ang + random.uniform(-8.0, 8.0))
-        cur_w = w * random.uniform(0.85, 1.15)
-        cur_h = h * random.uniform(0.85, 1.2)
-        dx = math.cos(ang_rad) * (cur_w * 0.5)
-        dy = math.sin(ang_rad) * (cur_w * 0.5)
-        tilt_x = random.uniform(-0.06, 0.06) * cur_h
-        tilt_y = random.uniform(-0.06, 0.06) * cur_h
-        v_bl = bm.verts.new((-dx, -dy, 0.0))
-        v_br = bm.verts.new((dx, dy, 0.0))
-        v_tr = bm.verts.new((dx + tilt_x, dy + tilt_y, cur_h))
-        v_tl = bm.verts.new((-dx + tilt_x, -dy + tilt_y, cur_h))
-        bm.faces.new((v_bl, v_br, v_tr, v_tl))
-    return bm.verts[:]
 
 def build_convex_hull_rock(bm, size_x, size_y, size_z, point_count=18, is_crag=True, seed=0):
     """Generates 100% SOLID ultra-realistic procedural rocks via Convex Hull algorithm (YouTube Sacoche Ito 3D method)"""
@@ -1847,6 +2050,14 @@ def generate_procedural_prop_mesh(
         else:
             mat_leaf = create_procedural_pbr_material(name + "_Leaves_Mat", seed + 7, is_grass=True)
             obj.data.materials.append(mat_leaf)
+    elif category == "GRASS":
+        # 動画 15:49 準拠: 専用シェーダーを使用
+        if grass_mode == "TUFT":
+            mat = create_procedural_grass_blade_shader(name + "_Blade_Mat", seed)
+        else:
+            mat = create_procedural_ground_terrain_shader(name + "_Ground_Mat", seed)
+        obj.data.materials.clear()
+        obj.data.materials.append(mat)
     else:
         tex_files = get_textures_from_folder(tex_folder)
         if use_folder_tex and tex_files:
@@ -1856,10 +2067,10 @@ def generate_procedural_prop_mesh(
                 obj, full_tex_path,
                 scale=1.0 if uv_mode == "FIT" else tex_tiling,
                 bump_strength=0.35,
-                is_transparent=(category == "GRASS" and grass_mode == "TUFT")
+                is_transparent=False
             )
         else:
-            mat = create_procedural_pbr_material(name + "_Mat", seed, is_grass=(category == "GRASS"))
+            mat = create_procedural_pbr_material(name + "_Mat", seed, is_grass=False)
             obj.data.materials.append(mat)
 
     return obj
@@ -2079,6 +2290,109 @@ class MESH_OT_open_export_folder(bpy.types.Operator):
         except Exception as e:
             self.report({'WARNING'}, f"Could not open folder: {e}")
         return {'FINISHED'}
+
+# =============================================================
+# 7b. Grass Field Scene Builder (動画 09:00 & 14:06 準拠)
+# =============================================================
+def create_grass_field_scene(context, name, seed=0,
+                             terrain_size_x=10.0, terrain_size_y=10.0,
+                             blade_height=0.6, grass_density=8000,
+                             undulation=0.35, weight_noise_scale=2.5):
+    """草原シーン一括生成: 地面テレイン + 草ブレードコレクション + Hair Particle System
+    動画 01:13 地面、05:30 草ブレード、09:00 パーティクル、14:06 ウェイトペイント を完全自動化"""
+    random.seed(seed)
+    col = context.collection
+
+    # ── 1. 草ブレードコレクション (動画 09:00: Collection Render)
+    grass_col_name = name + "_GrassCollection"
+    if grass_col_name in bpy.data.collections:
+        bpy.data.collections.remove(bpy.data.collections[grass_col_name])
+    grass_col = bpy.data.collections.new(grass_col_name)
+    context.scene.collection.children.link(grass_col)
+
+    blade_mat = create_procedural_grass_blade_shader(name + "_Blade_Mat", seed)
+
+    # 3種のブレードバリエーションを生成してコレクションに登録
+    blade_defs = [
+        ("Straight", 0.0, 0.0),
+        ("CurveLeft",  -0.04, 0.06),
+        ("CurveRight",  0.04, 0.06),
+    ]
+    for bname, cx, cy in blade_defs:
+        bm_b = bmesh.new()
+        uv_l = bm_b.loops.layers.uv.verify()
+        build_grass_blade_with_uv(bm_b, uv_l, height=blade_height,
+                                   base_width=0.032, curve_x=cx, curve_y=cy, seed=seed)
+        mesh_b = bpy.data.meshes.new(name + "_" + bname)
+        bm_b.to_mesh(mesh_b)
+        bm_b.free()
+        obj_b = bpy.data.objects.new(name + "_" + bname, mesh_b)
+        grass_col.objects.link(obj_b)
+        obj_b.data.materials.append(blade_mat)
+        # オリジンを根元に (地面接地)
+        for v in mesh_b.vertices:
+            if v.co.z < 0:
+                v.co.z = 0.0
+
+    # ── 2. 地面テレイン生成 (動画 01:13 & 03:37 プロポーショナル編集)
+    terrain_name = name + "_Terrain"
+    # 既存があれば削除
+    if terrain_name in bpy.data.objects:
+        bpy.data.objects.remove(bpy.data.objects[terrain_name], do_unlink=True)
+
+    bm_t = bmesh.new()
+    build_grass_terrain_ground(bm_t, terrain_size_x, terrain_size_y,
+                                seed=seed, undulation=undulation, subdivisions=16)
+    mesh_t = bpy.data.meshes.new(terrain_name)
+    bm_t.to_mesh(mesh_t)
+    bm_t.free()
+    terrain_obj = bpy.data.objects.new(terrain_name, mesh_t)
+    col.objects.link(terrain_obj)
+    context.view_layer.objects.active = terrain_obj
+
+    # 地面マテリアル
+    ground_mat = create_procedural_ground_terrain_shader(name + "_Ground_Mat", seed)
+    terrain_obj.data.materials.append(ground_mat)
+
+    # ── 3. 頂点グループ「Grass_Density」をノイズで自動ペイント (動画 14:06 ウェイトペイント)
+    vg = terrain_obj.vertex_groups.new(name="Grass_Density")
+    mesh_t.update()
+    for v in mesh_t.vertices:
+        x, y = v.co.x, v.co.y
+        w_raw = (math.sin(x * weight_noise_scale + seed * 0.17)
+                 * math.cos(y * weight_noise_scale + seed * 0.23) * 0.5 + 0.5)
+        w_raw += (math.sin(x * weight_noise_scale * 2.1 + seed * 0.5)
+                  * math.cos(y * weight_noise_scale * 1.9 + seed * 0.6) * 0.25)
+        weight = max(0.05, min(1.0, w_raw))
+        vg.add([v.index], weight, 'REPLACE')
+
+    # ── 4. Hair Particle System (動画 09:00)
+    ps_mod = terrain_obj.modifiers.new("GrassHair", 'PARTICLE_SYSTEM')
+    ps = ps_mod.particle_system
+    ps.name = "GrassHair"
+    pset = ps.settings
+    pset.type = 'HAIR'
+    pset.count = grass_density
+    pset.hair_length = blade_height * 1.8
+    pset.render_type = 'COLLECTION'
+    pset.instance_collection = grass_col
+    pset.use_collection_pick_random = True
+    pset.particle_size = 1.0
+    pset.size_random = 0.30             # Scale Random (動画 09:00)
+    pset.use_rotations = True
+    pset.rotation_mode = 'GLOB_Z'
+    pset.rotation_factor_random = 1.0  # Phase Random (動画 09:00): 全方位回転
+    pset.phase_factor = 0.0
+    pset.phase_factor_random = 2.0
+    pset.use_scale_instance = True
+    # ウェイトグループを密度マップに設定 (動画 14:06)
+    try:
+        ps.vertex_group_density = "Grass_Density"
+    except Exception:
+        pass
+
+    return terrain_obj, grass_col
+
 
 # =============================================================
 # 8. Core Operators
@@ -2645,6 +2959,20 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     seed: bpy.props.IntProperty(name="Seed", default=42, min=0)
     auto_random: bpy.props.BoolProperty(name="Auto Random", default=True)
 
+    # 🌾 Grass Field Studio (動画 09:00 パーティクル, 14:06 ウェイトペイント)
+    grass_density: bpy.props.IntProperty(
+        name="Grass Density", default=5000, min=100, max=50000,
+        description="Hair Particle の本数（動画 09:00 Count に相当）"
+    )
+    grass_undulation: bpy.props.FloatProperty(
+        name="Undulation", default=0.30, min=0.0, max=2.0,
+        description="地面の起伏強さ（動画 03:37 プロポーショナル編集に相当）"
+    )
+    grass_weight_noise: bpy.props.FloatProperty(
+        name="Weight Noise Scale", default=2.5, min=0.1, max=10.0,
+        description="ウェイトペイントのノイズスケール（動画 14:06 に相当）"
+    )
+
 # =============================================================
 # 11. Sidebar Panel (N-Panel)
 # =============================================================
@@ -2753,6 +3081,19 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_gmode.prop(props, "grass_mode", text="")
                 if props.grass_mode == 'MOUND':
                     box_gmode.prop(props, "floor_shape", text="床形状")
+                # Grass Field Scene ボタン群（動画全タイムライン対応）
+                box_gfield = layout.box()
+                box_gfield.label(text="🌾 Grass Field Studio (草原一括生成):", icon='OUTLINER_OB_POINTCLOUD')
+                row_gf = box_gfield.row(align=True)
+                row_gf.scale_y = 1.5
+                row_gf.operator("mesh.create_grass_field", text="🌾 草原シーンを生成", icon='PARTICLE_POINT')
+                box_gfield.prop(props, "grass_density", text="草の密度 (Hair Count)")
+                box_gfield.prop(props, "grass_undulation", text="地面の起伏 (Undulation)")
+                box_gfield.prop(props, "grass_weight_noise", text="ウェイトノイズ (密度ムラ)")
+                box_gfield.separator()
+                box_gfield.label(text="🎮 Unity / FBX ゲーム用変換:", icon='EXPORT')
+                box_gfield.operator("mesh.convert_grass_to_game_mesh",
+                                    text="🎮 実体化メッシュへ変換 (Make Real)", icon='MESH_DATA')
 
             # Floor Specific
             elif props.prop_category == 'FLOOR':
@@ -2843,6 +3184,67 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 # =============================================================
 # 12. Registration
 # =============================================================
+
+class MESH_OT_create_grass_field(bpy.types.Operator):
+    """動画全タイムライン準拠: 起伏地面+草ブレード+Hair Particle+ウェイトグループの草原シーン一括生成"""
+    bl_idname = "mesh.create_grass_field"
+    bl_label = "Create Grass Field Scene"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        seed = random.randint(0, 99999) if props.auto_random else props.seed
+        name = "GrassField_{:05d}".format(seed)
+        try:
+            terrain_obj, grass_col = create_grass_field_scene(
+                context, name=name, seed=seed,
+                terrain_size_x=props.size_x,
+                terrain_size_y=props.size_y,
+                blade_height=props.size_z,
+                grass_density=props.grass_density,
+                undulation=props.grass_undulation,
+                weight_noise_scale=props.grass_weight_noise
+            )
+            self.report({'INFO'}, "🌾 草原シーン生成完了: {} (density={}, seed={})".format(
+                terrain_obj.name, props.grass_density, seed))
+        except Exception as e:
+            self.report({'ERROR'}, "草原生成エラー: {}".format(str(e)))
+            return {'CANCELLED'}
+        return {'FINISHED'}
+
+
+class MESH_OT_convert_grass_to_game_mesh(bpy.types.Operator):
+    """🎮 Hair Particle をゲーム用実メッシュへ変換 (Unity/UE FBX エクスポート向け)"""
+    bl_idname = "mesh.convert_grass_to_game_mesh"
+    bl_label = "Convert Grass Particles to Game Mesh"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        obj = context.active_object
+        if obj is None:
+            self.report({'ERROR'}, "オブジェクトが選択されていません")
+            return {'CANCELLED'}
+        # パーティクルがなければスキップ
+        has_particle = any(m.type == 'PARTICLE_SYSTEM' for m in obj.modifiers)
+        if not has_particle:
+            self.report({'WARNING'}, "選択オブジェクトに Hair Particle System がありません")
+            return {'CANCELLED'}
+        try:
+            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.select_all(action='DESELECT')
+            obj.select_set(True)
+            context.view_layer.objects.active = obj
+            # Step 1: Hair パーティクルをジオメトリとして切り離し
+            bpy.ops.particle.disconnect_hair()
+            # Step 2: メッシュに変換（Blender 3.6 対応）
+            bpy.ops.object.convert(target='MESH')
+            self.report({'INFO'}, "🎮 ゲーム用メッシュ変換完了。FBX エクスポートが可能です。")
+        except Exception as e:
+            self.report({'ERROR'}, "変換エラー: {}".format(str(e)))
+            return {'CANCELLED'}
+        return {'FINISHED'}
+
+
 classes = (
     PropStudioProperties,
     MESH_OT_reroll_selected_prop,
@@ -2850,6 +3252,8 @@ classes = (
     MESH_OT_apply_random_texture_only,
     MESH_OT_export_selected_fbx,
     MESH_OT_open_export_folder,
+    MESH_OT_create_grass_field,
+    MESH_OT_convert_grass_to_game_mesh,
     VIEW3D_PT_prop_studio_panel,
 )
 
