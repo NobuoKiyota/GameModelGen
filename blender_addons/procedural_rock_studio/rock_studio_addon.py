@@ -1150,6 +1150,7 @@ def build_beam_arch_base(bm, size_x, size_y, size_z):
 
 def generate_sapling_real_tree(
     context,
+    target_obj=None,
     name="Real_Tree",
     species="OAK",
     has_leaves=True,
@@ -1170,14 +1171,31 @@ def generate_sapling_real_tree(
     except Exception:
         pass
 
-    # Clear previous active tree objects if any
-    for obj in list(bpy.data.objects):
-        if obj.name in ('tree', 'leaves'):
-            bpy.data.objects.remove(obj, do_unlink=True)
+    # Save target object's transform if re-rolling in place
+    old_loc = target_obj.location.copy() if target_obj else mathutils.Vector((0, 0, 0))
+    old_rot = target_obj.rotation_euler.copy() if target_obj else mathutils.Euler((0, 0, 0))
+    old_name = target_obj.name if target_obj else name
 
-    # Base game-optimized Sapling parameters per species
-    num_l = max(20, min(300, leaf_count))
+    # Clear previous active tree objects or old target if replacing
+    for obj in list(bpy.data.objects):
+        if obj.name in ('tree', 'leaves') or "treemesh" in obj.name.lower() or "leavesmesh" in obj.name.lower():
+            bpy.data.objects.remove(obj, do_unlink=True)
+    if target_obj and target_obj in bpy.data.objects.values():
+        bpy.data.objects.remove(target_obj, do_unlink=True)
+
+    # Deterministic random generator from seed for randomized leaves
+    rng = random.Random(seed)
+    num_l = max(20, min(300, leaf_count if not target_obj else leaf_count + rng.randint(-15, 25)))
     bl = max(1, min(3, branch_levels))
+
+    # Randomized leaf shapes and dynamics
+    leaf_shapes = ['hex', 'rect', 'dFace', 'dVert']
+    chosen_leaf_shape = rng.choice(leaf_shapes)
+    rand_leaf_scale = rng.uniform(0.25, 0.45)
+    rand_leaf_scale_x = rng.uniform(0.5, 1.0)
+    rand_leaf_down_angle = rng.uniform(30.0, 75.0)
+
+    base_scale = max(2.5, size_z)
 
     if species == "PINE":
         # 🌲 Pine / Conifer (円錐状・常緑針葉樹)
@@ -1189,16 +1207,18 @@ def generate_sapling_real_tree(
             'curveRes': (4, 3, 2, 1),
             'levels': bl,
             'branches': (35, 12, 0, 0),
-            'scale': size_z * 0.28,
+            'scale': base_scale,
             'scale0': 1.0,
             'shape': '7',
             'baseSize': 0.25,
-            'downAngle': (75.0, 45.0, 0.0, 0.0),
+            'downAngle': (75.0 + rng.uniform(-10, 10), 45.0, 0.0, 0.0),
             'rotate': (140.0, 140.0, 0.0, 0.0),
             'showLeaves': has_leaves,
             'leaves': num_l,
-            'leafScale': 0.25,
-            'leafScaleX': 0.5,
+            'leafScale': rand_leaf_scale * 0.75,
+            'leafScaleX': 0.35,
+            'leafShape': 'dFace',
+            'leafDownAngle': rand_leaf_down_angle,
             'seed': seed,
             'makeMesh': True
         }
@@ -1212,16 +1232,19 @@ def generate_sapling_real_tree(
             'curveRes': (4, 3, 2, 1),
             'levels': bl,
             'branches': (28, 16, 8, 0),
-            'scale': size_z * 0.25,
+            'scale': base_scale,
+            'scale0': 1.0,
             'shape': '2',
             'baseSize': 0.35,
-            'curve': (-30.0, -45.0, 0.0, 0.0),
-            'downAngle': (-15.0, 105.0, 45.0, 0.0),
+            'curve': (-30.0 + rng.uniform(-10, 5), -45.0, 0.0, 0.0),
+            'downAngle': (-15.0, 105.0 + rng.uniform(-15, 15), 45.0, 0.0),
             'rotate': (137.5, 137.5, 0.0, 0.0),
             'showLeaves': has_leaves,
             'leaves': num_l,
-            'leafScale': 0.32,
-            'leafScaleX': 0.6,
+            'leafScale': rand_leaf_scale,
+            'leafScaleX': rand_leaf_scale_x * 0.7,
+            'leafShape': chosen_leaf_shape,
+            'leafDownAngle': rand_leaf_down_angle + 20.0,
             'seed': seed,
             'makeMesh': True
         }
@@ -1235,15 +1258,18 @@ def generate_sapling_real_tree(
             'curveRes': (4, 3, 2, 1),
             'levels': bl,
             'branches': (22, 14, 6, 0),
-            'scale': size_z * 0.24,
+            'scale': base_scale,
+            'scale0': 1.0,
             'baseSplits': 2,
             'splitAngle': (35.0, 30.0, 0.0, 0.0),
-            'downAngle': (55.0, 60.0, 45.0, 0.0),
+            'downAngle': (55.0 + rng.uniform(-10, 10), 60.0, 45.0, 0.0),
             'rotate': (137.5, 137.5, 0.0, 0.0),
             'showLeaves': has_leaves,
             'leaves': num_l,
-            'leafScale': 0.28,
-            'leafScaleX': 0.85,
+            'leafScale': rand_leaf_scale * 0.85,
+            'leafScaleX': rand_leaf_scale_x,
+            'leafShape': 'hex',
+            'leafDownAngle': rand_leaf_down_angle,
             'seed': seed,
             'makeMesh': True
         }
@@ -1257,15 +1283,18 @@ def generate_sapling_real_tree(
             'curveRes': (4, 3, 2, 1),
             'levels': bl,
             'branches': (24, 12, 0, 0),
-            'scale': size_z * 0.3,
+            'scale': base_scale,
+            'scale0': 1.0,
             'shape': '4',
             'baseSize': 0.45,
-            'downAngle': (50.0, 45.0, 0.0, 0.0),
+            'downAngle': (50.0 + rng.uniform(-10, 10), 45.0, 0.0, 0.0),
             'rotate': (137.5, 137.5, 0.0, 0.0),
             'showLeaves': has_leaves,
             'leaves': num_l,
-            'leafScale': 0.3,
-            'leafScaleX': 0.7,
+            'leafScale': rand_leaf_scale * 0.9,
+            'leafScaleX': rand_leaf_scale_x,
+            'leafShape': chosen_leaf_shape,
+            'leafDownAngle': rand_leaf_down_angle,
             'seed': seed,
             'makeMesh': True
         }
@@ -1279,15 +1308,18 @@ def generate_sapling_real_tree(
             'curveRes': (4, 3, 2, 1),
             'levels': bl,
             'branches': (25, 15, 6, 0),
-            'scale': size_z * 0.26,
+            'scale': base_scale,
+            'scale0': 1.0,
             'baseSplits': 2,
-            'splitAngle': (30.0, 25.0, 0.0, 0.0),
-            'downAngle': (45.0, 50.0, 35.0, 0.0),
+            'splitAngle': (30.0 + rng.uniform(-8, 8), 25.0, 0.0, 0.0),
+            'downAngle': (45.0 + rng.uniform(-10, 10), 50.0, 35.0, 0.0),
             'rotate': (137.5, 137.5, 0.0, 0.0),
             'showLeaves': has_leaves,
             'leaves': num_l,
-            'leafScale': 0.35,
-            'leafScaleX': 0.8,
+            'leafScale': rand_leaf_scale,
+            'leafScaleX': rand_leaf_scale_x,
+            'leafShape': chosen_leaf_shape,
+            'leafDownAngle': rand_leaf_down_angle,
             'seed': seed,
             'makeMesh': True
         }
@@ -1314,7 +1346,7 @@ def generate_sapling_real_tree(
             bark_tex = random.choice(tex_files_wood)
             apply_image_texture_material(tree_obj, os.path.join(r"Z:\MeshCreator\textures\Wood", bark_tex), scale=1.0, bump_strength=0.45, slot_index=0)
         else:
-            mat_bark = create_procedural_pbr_material(name + "_Bark_Mat", seed)
+            mat_bark = create_procedural_pbr_material(old_name + "_Bark_Mat", seed)
             tree_obj.data.materials.append(mat_bark)
 
     if leaves_obj and has_leaves:
@@ -1323,10 +1355,10 @@ def generate_sapling_real_tree(
             leaf_tex = random.choice(tex_files_grass)
             apply_image_texture_material(leaves_obj, os.path.join(r"Z:\MeshCreator\textures\Grass", leaf_tex), scale=1.0, bump_strength=0.25, is_transparent=True, slot_index=1)
         else:
-            mat_leaf = create_procedural_pbr_material(name + "_Leaves_Mat", seed + 7, is_grass=True)
+            mat_leaf = create_procedural_pbr_material(old_name + "_Leaves_Mat", seed + 7, is_grass=True)
             leaves_obj.data.materials.append(mat_leaf)
 
-    # Join tree and leaves into single prop mesh if both exist
+    # Join tree and leaves into single unified prop mesh
     if tree_obj and leaves_obj and has_leaves:
         bpy.ops.object.select_all(action='DESELECT')
         leaves_obj.select_set(True)
@@ -1336,11 +1368,18 @@ def generate_sapling_real_tree(
 
     final_obj = tree_obj if tree_obj else (leaves_obj if leaves_obj else None)
     if final_obj:
-        final_obj.name = name
+        final_obj.name = old_name
         bpy.ops.object.select_all(action='DESELECT')
         final_obj.select_set(True)
         context.view_layer.objects.active = final_obj
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+        final_obj.location = old_loc
+        final_obj.rotation_euler = old_rot
+
+    # Clean any leftover intermediate meshes created by Sapling
+    for o in list(bpy.data.objects):
+        if o != final_obj and ("treemesh" in o.name.lower() or "leavesmesh" in o.name.lower() or o.name in ('tree', 'leaves')):
+            bpy.data.objects.remove(o, do_unlink=True)
 
     return final_obj
 
@@ -1403,6 +1442,7 @@ def generate_procedural_prop_mesh(
     if category == "TREE":
         return generate_sapling_real_tree(
             context=context,
+            target_obj=target_obj,
             name=name,
             species=tree_species,
             has_leaves=tree_has_leaves,

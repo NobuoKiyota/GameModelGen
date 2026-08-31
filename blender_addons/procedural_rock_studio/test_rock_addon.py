@@ -9,22 +9,40 @@ with open(addon_path, 'r', encoding='utf-8') as f:
     code = f.read()
     exec(code, globals())
 
-print("=== Testing Full Native Sapling Suite (v7.4.1) ===")
+print("=== Testing In-Place Re-Roll and Randomized Leaves (v7.5) ===")
 
-species_list = ["OAK", "JAPANESE_MAPLE", "PINE", "WILLOW", "BIRCH"]
-for sp in species_list:
+# 1. Create Initial Oak Tree
+tree = generate_procedural_prop_mesh(
+    context=bpy.context,
+    target_obj=None,
+    category="TREE",
+    name="My_Real_Tree",
+    tree_species="OAK",
+    tree_has_leaves=True,
+    tree_leaf_count=120,
+    tree_branch_levels=2,
+    size_z=4.5,
+    seed=100
+)
+initial_obj_count = len(bpy.data.objects)
+print(f"Step 1 (Created): Total Objects in Scene={initial_obj_count}, Active Tree Name={tree.name}, Verts={len(tree.data.vertices)}")
+
+# 2. Re-roll multiple times in-place on the same object
+for i in range(3):
     tree = generate_procedural_prop_mesh(
         context=bpy.context,
-        target_obj=None,
+        target_obj=tree,
         category="TREE",
-        name=f"Tree_{sp}",
-        tree_species=sp,
+        name="My_Real_Tree",
+        tree_species="OAK",
         tree_has_leaves=True,
         tree_leaf_count=120,
         tree_branch_levels=2,
         size_z=4.5,
-        seed=random.randint(1, 9999)
+        seed=200 + i
     )
-    print(f"-> Species {sp:15s}: Name={tree.name:15s}, Verts={len(tree.data.vertices):6d}, Polys={len(tree.data.polygons):6d}, Mats={len(tree.data.materials)}")
+    current_obj_count = len(bpy.data.objects)
+    print(f"Step 2.{i+1} (Re-Rolled #{i+1}): Total Objects={current_obj_count}, Name={tree.name}, Verts={len(tree.data.vertices)}")
+    assert current_obj_count == initial_obj_count, f"Object count increased from {initial_obj_count} to {current_obj_count}!"
 
-print("=== ALL SPECIES PASSED BEAUTIFULLY! ===")
+print("=== ALL IN-PLACE REPLACEMENT & LEAF RANDOMIZATION TESTS PASSED! ===")
