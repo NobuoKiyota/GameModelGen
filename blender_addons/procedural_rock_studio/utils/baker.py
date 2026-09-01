@@ -1,4 +1,4 @@
-import bpy
+﻿import bpy
 import os
 
 def apply_baked_pbr_material(obj, baked_textures):
@@ -47,7 +47,7 @@ def apply_baked_pbr_material(obj, baked_textures):
 
 
 def bake_procedural_material_to_pbr(obj, output_dir, res=1024, bake_diffuse=True, bake_normal=True):
-    """プロシージャルシェーダーを Cycles で一発画像ベイク (BaseColor + Tangent Normal)"""
+    """プロシージャルシェーダーを Cycles で画像ベイク (透過・水面シェーダー安全対応)"""
     if not obj or obj.type != 'MESH':
         return {}
 
@@ -70,73 +70,87 @@ def bake_procedural_material_to_pbr(obj, output_dir, res=1024, bake_diffuse=True
     base_name = obj.name
     baked_textures = {}
 
-    # 1. BaseColor
-    if bake_diffuse:
-        diff_img_name = f"{base_name}_BaseColor"
-        diff_img = bpy.data.images.new(diff_img_name, width=res, height=res, alpha=True)
-        
-        bake_nodes = []
-        for mat in obj.data.materials:
-            if mat and mat.use_nodes:
-                node = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
-                node.image = diff_img
-                mat.node_tree.nodes.active = node
-                bake_nodes.append((mat, node))
-        
-        try:
-            bpy.ops.object.bake(type='DIFFUSE', pass_filter={'COLOR'}, use_clear=True, margin=4)
-            diff_path = os.path.join(output_dir, f"{diff_img_name}.png")
-            diff_img.filepath_raw = diff_path
-            diff_img.file_format = 'PNG'
-            diff_img.save()
-            baked_textures['BaseColor'] = diff_path
-        except Exception as e:
-            print("DIFFUSE BAKE ERROR:", e)
-        finally:
-            for mat, node in bake_nodes:
-                try:
-                    mat.node_tree.nodes.remove(node)
-                except Exception:
-                    pass
+    # 透過（Transmission）ノードの一時退避（ベイク時のピンク/黒化エラー防止）
+    stored_transmissions = []
+    for mat in obj.data.materials:
+        if mat and mat.use_nodes:
+            for n in mat.node_tree.nodes:
+                if n.type == 'BSDF_PRINCIPLED':
+                    # Transmission を一時的に 0 に退避
+                    for t_name in ('Transmission Weight', 'Transmission'):
+                        if t_name in n.inputs:
+                            stored_transmissions.append((n, t_name, n.inputs[t_name].default_value))
+                            n.inputs[t_name].default_value = 0.0
 
-    # 2. Normal Map
-    if bake_normal:
-        norm_img_name = f"{base_name}_Normal"
-        norm_img = bpy.data.images.new(norm_img_name, width=res, height=res, alpha=False)
-        try:
+    try:
+        # 1. BaseColor (Diffuse Color)
+        if bake_diffuse:
+            diff_img_name = f"{base_name}_BaseColor"
+            diff_img = bpy.data.images.new(diff_img_name, width=res, height=res, alpha=True)
+            # 背景を透過色でクリア
+            diff_img.generated_color = (0.05, 0.55, 0.65, 1.0)
+            
+            bake_nodes = []
+            for mat in obj.data.materials:
+                if mat and mat.use_nodes:
+                    node = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
+                    node.image = diff_img
+                    mat.node_tree.nodes.active = node
+                    bake_nodes.append((mat, node))
+            
+            try:
+                bpy.ops.object.bake(type='DIFFUSE', pass_filter={'COLOR'}, use_clear=True, margin=4)
+                diff_path = os.path.join(output_dir, f"{diff_img_name}.png")
+                diff_img.filepath_raw = diff_path
+                diff_img.file_format = 'PNG'
+                diff_img.save()
+                baked_textures['BaseColor'] = diff_path
+            except Exception as e:
+                print("DIFFUSE BAKE ERROR:", e)
+            finally:
+                for mat, node in bake_nodes:
+                    try:
+                        mat.node_tree.nodes.remove(node)
+                    except Exception:
+                        pass
+
+        # 2. Normal (Tangent Normal)
+        if bake_normal:
+            norm_img_name = f"{base_name}_Normal"
+            norm_img = bpy.data.images.new(norm_img_name, width=res, height=res, alpha=False)
             norm_img.colorspace_settings.name = 'Non-Color'
-        except Exception:
-            pass
+            
+            bake_nodes = []
+            for mat in obj.data.materials:
+                if mat and mat.use_nodes:
+                    node = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
+                    node.image = norm_img
+                    mat.node_tree.nodes.active = node
+                    bake_nodes.append((mat, node))
+            
+            try:
+                bpy.ops.object.bake(type='NORMAL', normal_space='TANGENT', use_clear=True, margin=4)
+                norm_path = os.path.join(output_dir, f"{norm_img_name}.png")
+                norm_img.filepath_raw = norm_path
+                norm_img.file_format = 'PNG'
+                norm_img.save()
+                baked_textures['Normal'] = norm_path
+            except Exception as e:
+                print("NORMAL BAKE ERROR:", e)
+            finally:
+                for mat, node in bake_nodes:
+                    try:
+                        mat.node_tree.nodes.remove(node)
+                    except Exception:
+                        pass
 
-        bake_nodes = []
-        for mat in obj.data.materials:
-            if mat and mat.use_nodes:
-                node = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
-                node.image = norm_img
-                mat.node_tree.nodes.active = node
-                bake_nodes.append((mat, node))
-
-        try:
-            bpy.ops.object.bake(type='NORMAL', normal_space='TANGENT', use_clear=True, margin=4)
-            norm_path = os.path.join(output_dir, f"{norm_img_name}.png")
-            norm_img.filepath_raw = norm_path
-            norm_img.file_format = 'PNG'
-            norm_img.save()
-            baked_textures['Normal'] = norm_path
-        except Exception as e:
-            print("NORMAL BAKE ERROR:", e)
-        finally:
-            for mat, node in bake_nodes:
-                try:
-                    mat.node_tree.nodes.remove(node)
-                except Exception:
-                    pass
-
-    # レンダラー復帰
-    scene.render.engine = old_engine
-
-    # マテリアル差し替え
-    if baked_textures:
-        apply_baked_pbr_material(obj, baked_textures)
+    finally:
+        # Transmission を復元
+        for n, t_name, val in stored_transmissions:
+            try:
+                n.inputs[t_name].default_value = val
+            except Exception:
+                pass
+        scene.render.engine = old_engine
 
     return baked_textures
