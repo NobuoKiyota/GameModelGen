@@ -39,6 +39,7 @@ from .nature_gen import (
 )
 from .fence_gen import build_wooden_fence_mesh
 from .bush_gen import build_bush_mesh, apply_bush_spherical_normals
+from ..utils.water_anim_utils import setup_water_ocean_animation
 
 def cleanup_old_debris(context, parent_name):
     to_delete = [
@@ -476,21 +477,9 @@ def generate_procedural_prop_mesh(
             disp_crack.strength = -crack_depth * (0.25 if category == "CRAG" else 0.4)
             disp_crack.mid_level = 0.85
 
-    # 4-5. 水面微風アニメーション (Wave Modifier)
+    # 4-5. 水面微風アニメーション (動画 7:58 準拠 Ocean Modifier Timeキーフレーム)
     if category == "WATER" and water_animate:
-        if water_shape != "OCEAN":
-            mod_wave = obj.modifiers.new(name="Wind_Ripple", type='WAVE')
-            mod_wave.use_x = True
-            mod_wave.use_y = True
-            mod_wave.use_cyclic = True
-            mod_wave.height = 0.035 * min(2.5, water_wind_speed)
-            mod_wave.width = 1.2
-            mod_wave.narrowness = 1.5
-            mod_wave.speed = 0.22 * min(3.0, water_wind_speed)
-
-        # アニメーションフレーム設定
-        context.scene.frame_start = 1
-        context.scene.frame_end = water_anim_frames
+        setup_water_ocean_animation(obj, wind_speed=water_wind_speed, anim_frames=water_anim_frames)
 
     # Apply Modifiers
     for p in mesh.polygons:
