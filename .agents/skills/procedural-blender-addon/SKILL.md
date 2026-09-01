@@ -1,242 +1,97 @@
----
+﻿---
 name: procedural-blender-addon
 description: >-
-  Blenderのモデリング、PBRシェーディング、プロシージャルノイズ生成、およびPython (bpy) による
-  Geometry Nodesの自動構築とテクスチャベイク自動化のための総合開発ガイド。
+  Blender 3.6+ Python API, Procedural 3D Modeling, PBR & Procedural Shaders, Hair Particle Scattering,
+  and Game Asset (Unity/UE) Pipeline Knowledge Vault. Activate whenever generating, modifying, or designing
+  Blender procedural models, shaders, particle systems, or game-ready FBX export pipelines.
 ---
 
-# Blender Procedural Addon & Shader Development Guide
+# 📚 Blender Master Knowledge Vault (プロシージャル・アドオン総合開発ガイド)
 
-Blenderでプロシージャル（数式・アルゴリズム）ベースの形状およびリアルな質感を自動構築し、ゲームエンジン向けに最適化するための技術ガイド。
+Blender 3.6+ における **プロシージャル3Dモデリング、シェーダーネットワーク、パーティクル散布、Unity/UE向けゲーム最適化、および Blender Python API の実践ノウハウ** をカテゴリ別に分冊化した永続知識ベースです。
 
---------------------------------------------------------------------------------
+---
 
-## 1. Blender コアスキルのインデックス (動画学習の体系化)
+## 🧭 カテゴリ別・専門書インデックス (Specialized Recipe Books)
 
-### ① モデリング (Modeling)
-*   **ポリゴンモデリング**: BMeshを使用した面・辺・頂点の動的生成。
-*   **スプライン (Curve) モデリング**: ベジエ・パスカーブの制御点操作と、モデルの変形（カーブモディファイア）。
-*   **スカルプトモデリング**: 動的トポロジーを用いた有機的ディテールの追加。
-*   **ブーリアン**: `union`, `difference`, `intersect` を用いた幾何結合。
-*   **石壁モデリング (Cell Fracture & Subdiv)** (動画 `miUG801VlCA` 準拠): 
-    *   面を細分化し、**Cell Fracture（ボロノイ破砕アドオン）** を用いて不規則なブロックに粉砕。
-    *   各破片に Subdivision Surface や Bevel を適用することで、目地の詰まったリアルな石垣や崩れた石壁を極めて高速に作成する。
-*   **スカルプト不要の崖・岩面モデリング (Modifier Stacking)** (動画 `tCCNi_vx4A4` / `g9T3vDtTAPk` 準拠):
-    *   多重細分化したベースメッシュに対し、**Displace（ディスプレイス）モディファイアを複数積層**させる。
-    *   `第1層 (大)`: Clouds/Voronoiテクスチャ（スケール大）で崖の全体的なうねりや大きな岩のシルエットを作る。
-    *   `第2層 (小)`: Noiseテクスチャ（スケール小・高コントラスト）でエッジの切り立ちや細かな凹凸を適用。
-    *   テクスチャ座標を `Object` または `Global` に設定することで、メッシュを動かしてもリアルな崖の切り立ちが崩れず維持される。
+各動画・チュートリアルから得られた一次情報、数式、シェーダーノード構成、Pythonコードは以下の分冊に完全集約されています：
 
-### ② シェーディング & テクスチャリング (Shading & Texturing)
-*   **PBRマテリアル**: プリンシプルBSDFの `Albedo`, `Roughness`, `Metallic`, `Normal`, `Specular`, `Displacement` の物理的な役割と適切な接続法。
-*   **プロシージャルテクスチャ**: ノイズ (Noise)、ボロノイ (Voronoi)、ウェーブ (Wave) などのノードを掛け合わせて複雑な岩肌や木肌を生成する。
-*   **完全プロシージャル岩シェーダー (Shader Node Rock)** (動画 `LgOxUB1xhdA` 準拠):
-    *   **多重バンプリンク**: 大きいうねり用のバンプと、砂利・風化質感用の細かいノイズバンプを**直列（Normal ➔ Normal）に接続**して多層的な凹凸を表現。
-    *   **ColorRampによる風化色の制御**: 凸部（エッジ部）には削れた白い石の色、凹部（溝）には土や苔の暗い色をマッピングし、リアルな表情を作る。
-*   **バンプ vs ディスプレイスメント**:
-    *   `バンプ`: 法線情報（Normal）の擬似的な影絵表現。Non-Color空間必須。
-    *   `ディスプレイスメント`: Cyclesでの `Displacement and Bump` を有効にし、メッシュ頂点自体を実際に凸凹にする非破壊表現。
-*   **UVマッピング**: プロシージャルUV座標の生成、`スマートUV投影`による自動展開。
+1. 🌲 [**リアル樹木（TREE）生成 ＆ シェーディング完全レシピ**](references/tree_recipes.md)
+   - 6大樹種アーキテクチャ（Oak, Pine, Willow, Palm, Birch, Japanese Maple）
+   - 3〜4段階フラクタル枝分かれ、根張り（Root Flare）、樹冠球状法線転送（Canopy Normal Transfer）
+   - 樹皮縦木目シェーダー ＆ 葉Translucentシェーダー
 
-### ③ ライティング & レンダリング (Lighting)
-*   **エリア・サンライト & HDRI**: 物理ベースの光源設定と背景HDRI反射の統合。
-*   **ボリューメトリック**: 霧や水中の光の筋（Volumetric Absorption/Scatter）の表現。
+2. 🌾 [**草原・草地 ＆ 地形プロシージャル生成 完全レシピ**](references/grass_terrain_recipes.md)
+   - Mdesign様動画（`nVjq7rn97h0`）準拠
+   - 多重サイン波（FBM）起伏地面、UV.Y 5点先細り草ブレード
+   - Hair Particle ＋ Collection Render 散布 ＆ 密度頂点グループ
+   - ゲーム用メッシュ変換（`disconnect_hair` → `convert(MESH)`）
 
---------------------------------------------------------------------------------
+3. 🏔️ [**PBR ディスプレイスメント ＆ 3D 凹凸立体化 完全レシピ**](references/pbr_displacement_recipes.md)
+   - Mdesign様動画（`M_AoNzdC4gI`）準拠
+   - PBR テクスチャフルセット自動検知 ＆ Cycles Displacement
+   - Displace Modifier ＋ Subdivision による実ポリゴン 3D 頂点立体化
 
-## 2. アドオン強化用 Python (bpy) コードスニペット集
+4. 🌊 [**リアル水面・水域スタジオ 完全レシピ**](references/water_shader_recipes.md)
+   - 4大水面講座（Flow風アニメ水面、フォトリアル海洋、深海シェーダー、Chuck CG湖・池）
+   - IOR 1.333、Volume Absorption、二重波紋Bump、Foam白波属性
 
-### A. ChuckCG流：モディファイア積層による崖・岩の自動生成 (Modifier Stack)
-スカルプトを使用せず、モディファイアの自動積層とプロシージャルテクスチャ座標の制御によって、リアルな崖を1クリックで生成するコード：
-```python
-import bpy
+5. 🪨 [**岩石・巨石・断崖 プロシージャル生成 完全レシピ**](references/rock_crag_recipes.md)
+   - Sacoche Ito式 凸包（Convex Hull）100% ソリッド岩石
+   - Chuck CG式 スカルプト不要の多重Displace崖モデリング
+   - 直列多重バンプ ＆ ColorRampエッジ風化シェーダー
 
-def apply_procedural_cliff_modifiers(obj, scale_large=0.4, strength_large=0.25, scale_small=0.08, strength_small=0.06):
-    """Subdivision + Displace(大) + Displace(小) をスタックし、リアルな岩肌を形成"""
-    if not obj or obj.type != 'MESH':
-        return
-        
-    bpy.context.view_layer.objects.active = obj
-    
-    # 1. ベースの細分化 (Subdivision)
-    subdiv = obj.modifiers.new(name="Cliff_Subdiv", type='SUBSURF')
-    subdiv.subdivision_type = 'SIMPLE'
-    subdiv.levels = 3
-    subdiv.render_levels = 4
-    
-    # 2. ディスプレイス(大) - 大きなうねり用
-    tex_large = bpy.data.textures.new(name=obj.name + "_DispLarge", type='CLOUDS')
-    tex_large.noise_scale = scale_large
-    tex_large.noise_depth = 2
-    
-    disp_large = obj.modifiers.new(name="Disp_Large", type='DISPLACE')
-    disp_large.texture = tex_large
-    disp_large.texture_coords = 'LOCAL'
-    disp_large.strength = strength_large
-    
-    # 3. ディスプレイス(小) - エッジ・細部用
-    tex_small = bpy.data.textures.new(name=obj.name + "_DispSmall", type='NOISE')
-    # Noiseテクスチャはスケールが固定のため、マッピング等で制御するか、Cloudsの極小スケールで代用
-    tex_small_clouds = bpy.data.textures.new(name=obj.name + "_DispSmallClouds", type='CLOUDS')
-    tex_small_clouds.noise_scale = scale_small
-    tex_small_clouds.noise_depth = 4
-    
-    disp_small = obj.modifiers.new(name="Disp_Small", type='DISPLACE')
-    disp_small.texture = tex_small_clouds
-    disp_small.texture_coords = 'LOCAL'
-    disp_small.strength = strength_small
-    
-    # スムースシェードの適用
-    bpy.ops.object.shade_smooth()
+6. 🏛️ [**家具・建築 プロシージャル生成 完全レシピ**](references/furniture_architecture_recipes.md)
+   - アンティーク家具（椅子、テーブル、チェスト、ベッド、本棚）、PCデスク
+   - ろくろ挽き脚・装飾柱・アーチ梁・石畳/床タイル/壁ブロック
+
+7. 🎮 [**Unity / Unreal Engine パイプライン ＆ オーディオ連動**](references/game_pipeline_audio.md)
+   - FBX エクスポート標準軸（-Z forward, Y up）、スケールベイク
+   - マテリアルスロット分離による **足音・接触音（Footstep / Surface Switch）** 連携
+
+8. 🍞 [**Auto PBR Texture Baker 仕様書**](references/baking_recipes.md)
+   - Blender Headless 環境における Diffuse / Normal / Roughness 自動ベイク
+   - Unity インポート時のベタ塗り防止パイプライン
+
+9. ⚠️ [**Blender Python API 虎の巻**](references/blender_api_mastery.md)
+   - UV投影後の `OBJECT` モード復帰、ヘッドレス `temp_override`、Bmesh 解放
+
+---
+
+## 🔗 クロス・プリセット連携マップ (Cross-Preset Integration)
+
+各カテゴリの技術は以下のように相互にシームレス連携します：
+
+```mermaid
+graph TD
+    Terrain["🌾 起伏地面 (Grass Terrain)"] --> Scatter["散布システム (Scattering)"]
+    Scatter --> Tree["🌲 リアル樹木 (Tree)"]
+    Scatter --> Rock["🪨 巨石・岩石 (Rock/Crag)"]
+    Terrain --> Water["🌊 水面・湖・池 (Water Surface)"]
+    PBR["🏔️ PBR Displacement"] --> Rock
+    PBR --> Arch["🏛️ 家具・建築 (Architecture)"]
+    Tree --> Audio["🎮 Unity / Wwise サウンド連携 (Surface ID)"]
+    Rock --> Audio
+    Water --> Audio
+    Terrain --> Audio
+    Arch --> Audio
 ```
 
-### B. りりそん流：完全プロシージャル岩シェーダーの構築 (Shader Node Rock)
-テクスチャ画像を使わず、Blender内部のノイズと多層バンプを繋ぎ合わせてリアルな質感を作るノード構築スクリプト：
-```python
-def build_procedural_rock_material(mat_name):
-    """Noise + Voronoi + 直列多層バンプによる完全プロシージャル岩マテリアル"""
-    mat = bpy.data.materials.get(mat_name)
-    if not mat:
-        mat = bpy.data.materials.new(name=mat_name)
-    mat.use_nodes = True
-    nodes = mat.node_tree.nodes
-    links = mat.node_tree.links
-    nodes.clear()
-    
-    # Output & Principled BSDF
-    node_out = nodes.new('ShaderNodeOutputMaterial')
-    node_out.location = (600, 0)
-    node_bsdf = nodes.new('ShaderNodeBsdfPrincipled')
-    node_bsdf.location = (300, 0)
-    node_bsdf.inputs['Roughness'].default_value = 0.9  # 岩は反射を抑えてざらざらに
-    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
-    
-    # Texture Coordinate & Mapping
-    node_coord = nodes.new('ShaderNodeTexCoord')
-    node_coord.location = (-900, 0)
-    node_map = nodes.new('ShaderNodeMapping')
-    node_map.location = (-700, 0)
-    links.new(node_coord.outputs['Object'], node_map.inputs['Vector'])
-    
-    # 1. 大きな岩肌のうねり (Noise Texture)
-    node_noise_large = nodes.new('ShaderNodeTexNoise')
-    node_noise_large.location = (-450, 150)
-    node_noise_large.inputs['Scale'].default_value = 3.5
-    node_noise_large.inputs['Detail'].default_value = 6.0
-    node_noise_large.inputs['Distortion'].default_value = 1.2
-    links.new(node_map.outputs['Vector'], node_noise_large.inputs['Vector'])
-    
-    # 2. 細かい砂利の質感 (Voronoi & Fine Noise)
-    node_noise_fine = nodes.new('ShaderNodeTexNoise')
-    node_noise_fine.location = (-450, -150)
-    node_noise_fine.inputs['Scale'].default_value = 35.0
-    node_noise_fine.inputs['Detail'].default_value = 8.0
-    links.new(node_map.outputs['Vector'], node_noise_fine.inputs['Vector'])
-    
-    # 3. カラーランプによる風化グラデーション
-    node_ramp = nodes.new('ShaderNodeValToRGB')
-    node_ramp.location = (-150, 150)
-    node_ramp.color_ramp.elements[0].color = (0.15, 0.14, 0.12, 1.0) # 谷：湿った暗いグレー
-    node_ramp.color_ramp.elements[1].color = (0.42, 0.40, 0.38, 1.0) # 基本：標準の岩石色
-    
-    # 新しいストップを追加して凸部の風化を表現
-    elem = node_ramp.color_ramp.elements.new(0.75)
-    elem.color = (0.65, 0.64, 0.60, 1.0) # 凸部：削れて白っぽくなった石
-    
-    links.new(node_noise_large.outputs['Fac'], node_ramp.inputs['Fac'])
-    links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
-    
-    # 4. 直列多層バンプ (Bump 1: 大 ➔ Bump 2: 小)
-    node_bump_large = nodes.new('ShaderNodeBump')
-    node_bump_large.location = (-150, -150)
-    node_bump_large.inputs['Strength'].default_value = 0.45
-    node_bump_large.inputs['Distance'].default_value = 0.08
-    links.new(node_noise_large.outputs['Fac'], node_bump_large.inputs['Height'])
-    
-    node_bump_fine = nodes.new('ShaderNodeBump')
-    node_bump_fine.location = (80, -150)
-    node_bump_fine.inputs['Strength'].default_value = 0.18
-    node_bump_fine.inputs['Distance'].default_value = 0.015
-    # 大バンプのNormalを小バンプのNormalに入力して合成 (直列接続)
-    links.new(node_bump_large.outputs['Normal'], node_bump_fine.inputs['Normal'])
-    links.new(node_noise_fine.outputs['Fac'], node_bump_fine.inputs['Height'])
-    
-    # 最終出力をPrincipled BSDFに接続
-    links.new(node_bump_fine.outputs['Normal'], node_bsdf.inputs['Normal'])
-    
-    return mat
+---
+
+## 🛡️ AI 学習破綻防止チェックリスト（実装前に必ず実行）
+
+> **詳細は [`z:\MeshCreator\AI_LEARNING_RULES_FOR_GEMINI.md`](../../AI_LEARNING_RULES_FOR_GEMINI.md) を必ず確認すること。**
+
 ```
+実装前:
+  □ LEARNING_SOURCES.md を view_file で読んだか？
+  □ 対象プリセットの references/*.md を view_file で実際に読んだか？
+  □ YouTube URL の一次情報パラメータを確認したか？
 
-### C. Geometry Nodes (ジオメトリノード) のPython自動構築
-非破壊で形状をスライダー変更可能にするためのノードベース構築手法：
-```python
-def setup_geometry_nodes(obj):
-    # ジオメトリノードモディファイアの追加
-    gn_mod = obj.modifiers.new(name="OrganicGen", type='NODES')
-    node_group = bpy.data.node_groups.new(name="OrganicGroup", type='GeometryNodeTree')
-    gn_mod.node_group = node_group
-    
-    nodes = node_group.nodes
-    links = node_group.links
-    
-    # 入出力ノードの配置
-    node_in = nodes.new('NodeGroupInput')
-    node_out = nodes.new('NodeGroupOutput')
-    
-    # ノイズによる変形（Set Position ノード）
-    node_set_pos = nodes.new('GeometryNodeSetPosition')
-    node_noise = nodes.new('ShaderNodeTexNoise')
-    node_noise.inputs['Scale'].default_value = 5.0
-    
-    # 接続
-    links.new(node_in.outputs[0], node_set_pos.inputs['Geometry'])
-    links.new(node_noise.outputs['Color'], node_set_pos.inputs['Offset'])
-    links.new(node_set_pos.outputs['Geometry'], node_out.inputs[0])
+実装後:
+  □ python -m py_compile で全モジュールの構文チェックを実行したか？
+  □ blender.exe --background --python test_*.py で実機テストを実行したか？
+  □ 新たに実証したコード・数式を references/*.md に追記したか？
+  □ 1責務 1コミットで Git コミット＆プッシュしたか？
 ```
-
-### D. ゲームエンジン向けテクスチャベイク自動化
-プロシージャルな見た目を、Unity/UE用の画像として自動的にエクスポートする仕組み：
-```python
-def bake_procedural_to_texture(obj, mat, image_name="Baked_Diffuse", target_type='DIFFUSE'):
-    nodes = mat.node_tree.nodes
-    
-    # ベイク先画像を作成
-    img = bpy.data.images.new(image_name, width=2048, height=2048)
-    
-    # ベイク用画像ノードを作成して選択状態にする
-    node_img = nodes.new('ShaderNodeTexImage')
-    node_img.image = img
-    node_img.select = True
-    nodes.active = node_img # アクティブノードにする (ベイク対象の指定)
-    
-    # Cyclesでベイク実行
-    bpy.context.scene.render.engine = 'CYCLES'
-    bpy.ops.object.bake(type=target_type, margin=16)
-    
-    # 保存
-    img.filepath_raw = f"//textures/{image_name}.png"
-    img.save()
-```
-
---------------------------------------------------------------------------------
-
-## 3. プロシージャル樹木（TREE）モデリング & シェーディング技術体系 (5動画学習の体系化)
-
-### ① 幹と枝の骨格生成 (Trunk & Branching Hierarchy)
-*   **根張り（Root Flare / Buttress Roots）**: 地面付近（Z=0〜0.12H）から放射状に3〜5本の太い根が大地を踏ん張るように広がる形状（`flare_radius = base_radius * (1.8 + 0.4 * cos(n * angle))`）。
-*   **黄金比テーパー & 有機的うねり**: 根元の太い幹から頂点・枝先へ向かって自然な比率で細くなる滑らかなチューブ押し出し（`radii = base_radius * (1.0 - t * 0.7)`）と三角関数ノイズによるうねり。
-*   **6樹種アーキテクチャ**:
-    *   **オーク (OAK)**: どっしりとした太い幹＋四方に力強く広がる2段階分岐大枝。
-    *   **パイン (PINE)**: まっすぐ伸びる主幹＋下から上へ段々に広がる三角錐コーン状の層状枝（Whorls）。
-    *   **シダレヤナギ (WILLOW)**: 高い位置から弧を描き下へ長く垂れ下がる弓なり枝。
-    *   **ヤシの木 (PALM)**: 湾曲したフシ付き幹＋頂点から放射状に広がる大葉（羽状複葉）。
-    *   **シラカバ (BIRCH)**: すらりと高く伸びる細身の幹＋白樺専用樹皮（黒斑点）。
-    *   **モミジ (JAPANESE_MAPLE)**: 低い位置から二股に分かれる優美な曲がり枝＋紅葉パレット。
-
-### ② 葉（Foliage）の表現スタイル
-*   **十字リーフ (`QUAD_CROSS`)**: ゲーム・Unity FBXエクスポート向けの最適化十字ビルボード。
-*   **ボリューム樹冠 (`CANOPY_VOLUME`)**: CG Geek動画準拠のふんわりとした有機的変形（Icosphere + Noise）によるスタイライズド・アニメ風樹冠。
-
-### ③ 接地点原点（Z=0 Origin）
-*   メッシュ生成直後に最底面（Z=0.0）を検出し、**接地点にオブジェクト原点を厳密固定**。配置した瞬間に地面にピタリと接地させる。
-
