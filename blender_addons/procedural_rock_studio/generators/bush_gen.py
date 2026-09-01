@@ -1,16 +1,15 @@
-import bpy
+﻿import bpy
 import bmesh
 import math
 import mathutils
 import random
 
-def build_tapered_leaf_blade(bm, base_pos, length=0.35, width=0.06, curve_x=0.0, curve_y=0.05, rot_euler=None, mat_idx=0, uv_layer=None):
-    """【Mdesign式 5点先細り葉メッシュ】UV.Y(0.0〜1.0)縦グラデーション対応"""
+def build_tapered_leaf_blade(bm, base_pos, length=0.25, width=0.05, curve_x=0.0, curve_y=0.04, rot_euler=None, mat_idx=0, uv_layer=None):
+    """【Mdesign式 5点先細り葉メッシュ】"""
     half_w = width * 0.5
     mid_l = length * 0.55
     rot_mat = rot_euler.to_matrix().to_4x4() if rot_euler else mathutils.Matrix.Identity(4)
 
-    # 5頂点（根元2, 中間2, 先端1）
     p_bl  = rot_mat @ mathutils.Vector((-half_w, 0.0, 0.0))
     p_br  = rot_mat @ mathutils.Vector(( half_w, 0.0, 0.0))
     p_ml  = rot_mat @ mathutils.Vector((-half_w * 0.6 + curve_x * 0.5, curve_y * 0.5, mid_l))
@@ -37,22 +36,43 @@ def build_tapered_leaf_blade(bm, base_pos, length=0.35, width=0.06, curve_x=0.0,
     return [v_bl, v_br, v_ml, v_mr, v_tip]
 
 
-def build_leaf_cluster_tuft(bm, center_pos, size=0.35, blades_count=4, seed=0, mat_idx=0, uv_layer=None):
-    """【先細り葉クラスタ】放射状に3〜5枚の葉が広がる密集ユニット"""
+def build_foliage_puff(bm, center_pos, radius_x=0.3, radius_y=0.3, radius_z=0.25, seed=0, mat_idx=0, uv_layer=None):
+    """【モコモコ葉クラウドパフ】ボロノイノイズで有機的に波打つ個別の葉塊"""
     rng = random.Random(seed)
-    for b in range(blades_count):
-        ang = b * (2.0 * math.pi / blades_count) + rng.uniform(-0.25, 0.25)
-        pitch = rng.uniform(0.3, 0.8) # 外側に広がる傾斜
-        roll = rng.uniform(-0.3, 0.3)
-        rot = mathutils.Euler((pitch, roll, ang), 'XYZ')
+    res = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
+    v_list = res['verts']
+    
+    # 表面に葉っぱのモコモコした細かな凹凸を波打たせる
+    for v in v_list:
+        p = v.co.normalized()
+        # 多重周波数ノイズで「ブロッコリー・雲」のような有機的凹凸を形成
+        noise = (math.sin(p.x * 6.0 + seed) * math.cos(p.y * 6.0 + seed * 0.7) * 0.18
+               + math.sin(p.y * 12.0 + seed * 2.0) * math.cos(p.z * 12.0 + seed * 1.5) * 0.08)
+        r = 1.0 + noise
+        v.co = mathutils.Vector((p.x * radius_x * r, p.y * radius_y * r, p.z * radius_z * r))
+
+    bmesh.ops.translate(bm, vec=center_pos, verts=v_list)
+    for f in bm.faces:
+        if all(v in v_list for v in f.verts):
+            f.material_index = mat_idx
+
+    # パフの表面に先細り葉ブレードを数枚アクセント配置
+    for _ in range(rng.randint(4, 7)):
+        u = rng.random()
+        v = rng.random()
+        theta = u * 2.0 * math.pi
+        phi = math.acos(2.0 * v - 1.0)
+        nx = math.sin(phi) * math.cos(theta)
+        ny = math.sin(phi) * math.sin(theta)
+        nz = math.cos(phi)
         
-        b_len = size * rng.uniform(0.85, 1.25)
-        b_w = b_len * 0.25
-        cx = rng.uniform(-0.04, 0.04)
-        cy = rng.uniform(0.02, 0.08)
-        build_tapered_leaf_blade(bm, center_pos, length=b_len, width=b_w,
-                                 curve_x=cx, curve_y=cy, rot_euler=rot,
-                                 mat_idx=mat_idx, uv_layer=uv_layer)
+        pos = center_pos + mathutils.Vector((nx * radius_x * 0.95, ny * radius_y * 0.95, nz * radius_z * 0.95))
+        dir_out = mathutils.Vector((nx, ny, nz)).normalized()
+        rot = dir_out.to_track_quat('Z', 'Y').to_euler()
+        rot.x += rng.uniform(-0.25, 0.25)
+        rot.y += rng.uniform(-0.25, 0.25)
+        build_tapered_leaf_blade(bm, pos, length=radius_x * 0.65, width=radius_x * 0.18,
+                                 rot_euler=rot, mat_idx=mat_idx, uv_layer=uv_layer)
 
 
 def build_stem_tube(bm, pts, radii, segments=5, mat_idx=1, uv_layer=None):
@@ -91,12 +111,11 @@ def build_stem_tube(bm, pts, radii, segments=5, mat_idx=1, uv_layer=None):
 
 
 def build_fern_frond(bm, base_pos, frond_len=0.9, base_angle=0.0, mat_idx=0, uv_layer=None, seed=0):
-    """【リアルシダ羽状複葉】アーチを描く軸に沿って左右に先細り小葉がびっしり並ぶ"""
+    """【リアルシダ羽状複葉】"""
     rng = random.Random(seed)
     segs = 8
     arch_pts = []
     
-    # 軸の曲線
     for i in range(segs + 1):
         t = i / float(segs)
         dist = t * frond_len
@@ -106,11 +125,9 @@ def build_fern_frond(bm, base_pos, frond_len=0.9, base_angle=0.0, mat_idx=0, uv_
         z = base_pos.z + drop
         arch_pts.append(mathutils.Vector((x, y, z)))
 
-    # 葉軸チューブ
     radii = [(1.0 - (i/float(segs))*0.7) * 0.015 for i in range(segs+1)]
     build_stem_tube(bm, arch_pts, radii, segments=4, mat_idx=1, uv_layer=uv_layer)
 
-    # 左右の小葉（5点先細りメッシュ）
     for i in range(1, segs):
         pt = arch_pts[i]
         t = i / float(segs)
@@ -128,23 +145,6 @@ def build_fern_frond(bm, base_pos, frond_len=0.9, base_angle=0.0, mat_idx=0, uv_
             )
 
 
-def build_foliage_volume_core(bm, center_pos, radius=0.45, seed=0, mat_idx=0):
-    """【有機的Icosphere変形ボリュームコア】茂みの中心部を埋めるふんわりメッシュ"""
-    rng = random.Random(seed)
-    res = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=radius)
-    v_list = res['verts']
-    
-    for v in v_list:
-        p = v.co
-        noise = (math.sin(p.x * 5.0 + seed) * math.cos(p.y * 5.0 + seed * 0.7) * 0.15)
-        v.co = p * (1.0 + noise)
-
-    bmesh.ops.translate(bm, vec=center_pos, verts=v_list)
-    for f in bm.faces:
-        if all(v in v_list for v in f.verts):
-            f.material_index = mat_idx
-
-
 def build_bush_mesh(
     bm,
     bush_type="ROUND_BUSH",
@@ -157,14 +157,14 @@ def build_bush_mesh(
     seed=0,
     uv_layer=None
 ):
-    """低木・茂み・シダ植物のプロシージャル BMesh 生成エンジン（学習資産完全統合版）"""
+    """低木・茂み・シダ植物のプロシージャル BMesh 生成エンジン（多重クラウドパフ版）"""
     rng = random.Random(seed)
     half_x = size_x * 0.5
     half_y = size_y * 0.5
     center_z = size_z * 0.45
 
     if bush_type == "FERN_CLUMP":
-        # 🌿 シダ植物の株（放射状に広がるリアル羽状複葉）
+        # 🌿 シダ植物の株
         frond_count = max(10, int(density * 0.75))
         frond_len = max(size_x, size_y) * 0.65
         for fi in range(frond_count):
@@ -175,26 +175,25 @@ def build_bush_mesh(
                              mat_idx=0, uv_layer=uv_layer, seed=seed + fi * 31)
 
     elif bush_type == "HEDGE_ROW":
-        # 🧱 生垣ブロック（内部コア ＋ 表面の先細り葉クラスタ密集）
-        steps_x = max(3, int(size_x / max(0.25, leaf_size * 0.9)))
-        steps_y = max(2, int(size_y / max(0.25, leaf_size * 0.9)))
-        steps_z = max(2, int(size_z / max(0.25, leaf_size * 0.9)))
+        # 🧱 生垣ブロック（複数のパフが連なる生垣）
+        num_puffs_x = max(2, int(round(size_x / 0.75)))
+        num_puffs_y = max(1, int(round(size_y / 0.75)))
+        puff_rx = (size_x / num_puffs_x) * 0.65
+        puff_ry = (size_y / max(1, num_puffs_y)) * 0.65
+        puff_rz = size_z * 0.45
 
-        for ix in range(steps_x):
-            for iy in range(steps_y):
-                for iz in range(steps_z):
-                    tx = -half_x + (ix + 0.5) * (size_x / steps_x) + rng.uniform(-0.03, 0.03)
-                    ty = -half_y + (iy + 0.5) * (size_y / steps_y) + rng.uniform(-0.03, 0.03)
-                    tz = (iz + 0.5) * (size_z / steps_z) + rng.uniform(-0.03, 0.03)
-                    pos = mathutils.Vector((tx, ty, tz))
-                    
-                    # 葉クラスタ（先細りブレード×3枚）
-                    build_leaf_cluster_tuft(bm, pos, size=leaf_size, blades_count=3,
-                                            seed=seed + ix*50 + iy*10 + iz, mat_idx=0, uv_layer=uv_layer)
+        for ix in range(num_puffs_x):
+            for iy in range(num_puffs_y):
+                px = -half_x + (ix + 0.5) * (size_x / num_puffs_x) + rng.uniform(-0.04, 0.04)
+                py = -half_y + (iy + 0.5) * (size_y / max(1, num_puffs_y)) + rng.uniform(-0.04, 0.04)
+                pz = center_z + rng.uniform(-0.05, 0.05)
+                build_foliage_puff(bm, mathutils.Vector((px, py, pz)),
+                                   radius_x=puff_rx, radius_y=puff_ry, radius_z=puff_rz,
+                                   seed=seed + ix*10 + iy, mat_idx=0, uv_layer=uv_layer)
 
     elif bush_type == "WILD_SHRUB":
-        # 🌿 野生の藪（木製細枝 ＋ 枝先の先細り葉クラスタ密集）
-        stem_count = max(6, int(density * 0.4))
+        # 🌿 野生の藪（細枝 ＋ 枝先に重なるモコモコパフ）
+        stem_count = max(5, int(density * 0.35))
         for si in range(stem_count):
             ang = si * (2.0 * math.pi / stem_count) + rng.uniform(-0.25, 0.25)
             reach = rng.uniform(0.65, 1.0)
@@ -207,38 +206,43 @@ def build_bush_mesh(
             radii = [0.032 * (size_z / 0.9), 0.02 * (size_z / 0.9), 0.01 * (size_z / 0.9)]
             build_stem_tube(bm, pts, radii, segments=5, mat_idx=1, uv_layer=uv_layer)
 
-            # 中間部と先端部に葉クラスタ（各3〜5枚）
-            for pt in (mid_p, tip_p):
-                build_leaf_cluster_tuft(bm, pt, size=leaf_size * rng.uniform(0.9, 1.2),
-                                        blades_count=4, seed=seed + si*20, mat_idx=0, uv_layer=uv_layer)
+            # 枝先にモコモコパフ
+            p_rad = rng.uniform(0.22, 0.35) * (size_z / 0.9)
+            build_foliage_puff(bm, tip_p, radius_x=p_rad, radius_y=p_rad, radius_z=p_rad * 0.85,
+                               seed=seed + si * 20, mat_idx=0, uv_layer=uv_layer)
 
     else:
-        # 🌳 ROUND_BUSH（丸型ふんわり低木：内部ボリューム ＋ 5点先細り葉クラスタ超密集）
-        # 1. 内部ボリュームコア（隙間防止）
-        build_foliage_volume_core(bm, mathutils.Vector((0, 0, center_z)), radius=min(half_x, half_y)*0.75, seed=seed, mat_idx=0)
+        # 🌳 ROUND_BUSH（丸型低木：大小 7〜10 個のパフが有機的に重なり合うブドウの房/雲構造）
+        num_puffs = max(7, int(density * 0.45))
+        base_puff_r = min(half_x, half_y) * 0.55
+        
+        # 1. 根元の中心細枝（土台）
+        stem_pts = [mathutils.Vector((0, 0, 0)), mathutils.Vector((0, 0, center_z * 0.6))]
+        build_stem_tube(bm, stem_pts, [0.04, 0.025], segments=5, mat_idx=1, uv_layer=uv_layer)
 
-        # 2. 表面を覆い尽くす先細り葉クラスタ（40〜60箇所 × 各3〜4枚 = 計150〜200枚以上のリアルな葉）
-        clusters_count = max(20, density * 2)
-        for ci in range(clusters_count):
-            u = rng.random()
-            v = rng.random()
-            theta = u * 2.0 * math.pi
-            phi = math.acos(v) # 半球ドーム
-            r = rng.uniform(0.65, 1.05)
+        # 2. クラウド状に重なり合う複数のパフ
+        for pi in range(num_puffs):
+            if pi == 0:
+                # トップクラウン（頭頂部）
+                p_pos = mathutils.Vector((rng.uniform(-0.05, 0.05), rng.uniform(-0.05, 0.05), size_z * 0.65))
+                pr_x = base_puff_r * rng.uniform(0.95, 1.2)
+                pr_y = base_puff_r * rng.uniform(0.95, 1.2)
+                pr_z = base_puff_r * rng.uniform(0.75, 0.95)
+            else:
+                # 周囲に広がるサイドパフ
+                ang = (pi - 1) * (2.0 * math.pi / (num_puffs - 1)) + rng.uniform(-0.2, 0.2)
+                dist = min(half_x, half_y) * rng.uniform(0.45, 0.75)
+                pz = center_z * rng.uniform(0.55, 1.0)
+                px = math.cos(ang) * dist
+                py = math.sin(ang) * dist
+                p_pos = mathutils.Vector((px, py, pz))
+                
+                pr_x = base_puff_r * rng.uniform(0.8, 1.15)
+                pr_y = base_puff_r * rng.uniform(0.8, 1.15)
+                pr_z = base_puff_r * rng.uniform(0.7, 0.9)
 
-            rx = math.sin(phi) * math.cos(theta) * half_x * r
-            ry = math.sin(phi) * math.sin(theta) * half_y * r
-            rz = math.cos(phi) * (size_z * 0.55) * r + center_z * 0.25
-            pos = mathutils.Vector((rx, ry, rz))
-
-            build_leaf_cluster_tuft(
-                bm, pos,
-                size=leaf_size * rng.uniform(0.85, 1.2),
-                blades_count=rng.randint(3, 4),
-                seed=seed + ci * 17,
-                mat_idx=0,
-                uv_layer=uv_layer
-            )
+            build_foliage_puff(bm, p_pos, radius_x=pr_x, radius_y=pr_y, radius_z=pr_z,
+                               seed=seed + pi * 17, mat_idx=0, uv_layer=uv_layer)
 
     bm.verts.ensure_lookup_table()
     bm.faces.ensure_lookup_table()
