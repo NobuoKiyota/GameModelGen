@@ -1,7 +1,7 @@
 bl_info = {
-    "name": "Procedural Prop Studio Pro (Modular)",
+    "name": "Procedural Prop Studio Pro",
     "author": "Antigravity & User",
-    "version": (2, 5, 0),
+    "version": (8, 2, 0),
     "blender": (3, 6, 0),
     "location": "View3D > Sidebar > Prop Studio",
     "description": "Modular Procedural Generation for Photorealistic Rocks, Architecture, Furniture & Nature with 1-Click Unity FBX & Texture Baker",
