@@ -225,6 +225,9 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     )
     water_wave_strength: bpy.props.FloatProperty(name="波の強さ (Wave Strength)", default=0.12, min=0.0, max=1.0, description="水面のさざ波・うねりBump強度")
     water_include_bed: bpy.props.BoolProperty(name="池底スラブを生成 (Include Bed Slab)", default=True, description="池（POND）生成時に泥砂利の池底スラブを同時に生成するか")
+    water_animate: bpy.props.BoolProperty(name="湖面の微風アニメーション (Wind Loop Animation)", default=True, description="再生時(Space)に湖面がそよ風でゆらゆら動くループアニメーションを生成")
+    water_wind_speed: bpy.props.FloatProperty(name="風の強さ (Wind Speed)", default=1.0, min=0.2, max=5.0, description="そよ風〜強風の速度")
+    water_anim_frames: bpy.props.IntProperty(name="ループフレーム数 (Frames)", default=60, min=24, max=240, description="1サイクルのループフレーム数")
 
     # Tree Specific
     tree_species: bpy.props.EnumProperty(

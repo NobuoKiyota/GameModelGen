@@ -9,6 +9,7 @@ from ..generators.nature_gen import create_grass_field_scene
 from ..materials.image_shaders import apply_image_texture_material
 from ..utils.texture_utils import get_textures_from_folder
 from ..utils.baker import bake_procedural_material_to_pbr
+from ..utils.anim_baker import export_animated_water_fbx
 
 def get_next_available_fbx_path(export_dir, base_name):
     os.makedirs(export_dir, exist_ok=True)
@@ -390,3 +391,31 @@ class MESH_OT_convert_grass_to_game_mesh(bpy.types.Operator):
             self.report({'ERROR'}, f"変換エラー: {str(e)}")
             return {'CANCELLED'}
         return {'FINISHED'}
+
+
+class MESH_OT_export_animated_water_fbx(bpy.types.Operator):
+    """Bake Water Wave animation into Shape Keys and export FBX for Unity/UE"""
+    bl_idname = "mesh.export_animated_water_fbx"
+    bl_label = "🎮 アニメーション付き水面FBXを出力"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        obj = context.active_object
+        if not obj or obj.type != 'MESH':
+            self.report({'WARNING'}, "水面オブジェクトを選択してください")
+            return {'CANCELLED'}
+
+        export_dir = props.export_folder.strip() or r"Z:\MeshCreator\exports"
+        base_name = props.asset_name.strip() or obj.name
+        final_fbx_path = get_next_available_fbx_path(export_dir, base_name + "_Animated")
+
+        self.report({'INFO'}, f"🌊 水面波アニメーションをベイク中... ({props.water_anim_frames}フレーム)")
+        try:
+            export_animated_water_fbx(obj, final_fbx_path, frames_count=props.water_anim_frames)
+            self.report({'INFO'}, f"✅ アニメーションFBX出力完了: {os.path.basename(final_fbx_path)}")
+            return {'FINISHED'}
+        except Exception as e:
+            self.report({'ERROR'}, f"エクスポートエラー: {str(e)}")
+            return {'CANCELLED'}
+

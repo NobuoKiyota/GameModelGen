@@ -49,6 +49,15 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_water.prop(props, "water_wave_strength", text="波の強さ (Bump)", slider=True)
                 if props.water_shape == 'POND':
                     box_water.prop(props, "water_include_bed", text="🌿 泥砂利の池底スラブを生成")
+                
+                box_anim = layout.box()
+                box_anim.label(text="🌊 湖面の微風アニメーション (Wind Animation):", icon='ANIM')
+                box_anim.prop(props, "water_animate", text="微風アニメーションを有効化")
+                if props.water_animate:
+                    box_anim.prop(props, "water_wind_speed", text="風の強さ (Speed)")
+                    box_anim.prop(props, "water_anim_frames", text="ループフレーム数")
+                    box_anim.operator("mesh.export_animated_water_fbx", text="🎮 アニメーション付き水面FBXを出力", icon='EXPORT')
+
 
             # Tree Specific
             elif props.prop_category == 'TREE':

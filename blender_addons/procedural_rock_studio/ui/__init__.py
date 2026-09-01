@@ -6,7 +6,8 @@ from .operators import (
     MESH_OT_export_selected_fbx,
     MESH_OT_open_export_folder,
     MESH_OT_create_grass_field,
-    MESH_OT_convert_grass_to_game_mesh
+    MESH_OT_convert_grass_to_game_mesh,
+    MESH_OT_export_animated_water_fbx
 )
 from .panel import VIEW3D_PT_prop_studio_panel
 
@@ -19,6 +20,7 @@ classes = (
     MESH_OT_open_export_folder,
     MESH_OT_create_grass_field,
     MESH_OT_convert_grass_to_game_mesh,
+    MESH_OT_export_animated_water_fbx,
     VIEW3D_PT_prop_studio_panel,
 )
 
@@ -32,5 +34,6 @@ __all__ = [
     'MESH_OT_open_export_folder',
     'MESH_OT_create_grass_field',
     'MESH_OT_convert_grass_to_game_mesh',
+    'MESH_OT_export_animated_water_fbx',
     'VIEW3D_PT_prop_studio_panel'
 ]

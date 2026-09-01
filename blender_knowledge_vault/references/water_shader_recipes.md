@@ -132,3 +132,20 @@ def setup_ocean_modifier(obj, size_x=10.0, size_y=10.0, wave_height=1.0):
 - **サウンド判定（Wwise / FMOD / ADX2 / Unity C#）**:
   - `Water_Surface_Mat` 検知時: **水しぶき音 (Splash Sound)**、**水中泳ぎ足音 (Water Footstep)**、**水没アンビエント (Underwater Ambience)** の Surface ID に直結。
   - `Water_Bed_Mat` 検知時: **泥・湿地足音 (Mud Footstep)** に直結。
+
+---
+
+## 5. 湖面の微風ループアニメーション ＆ Unity/UE向けシェイプキーFBXエクスポート
+
+映画「Flow」風（`yRXMe-1N6_Y`）に、穏やかなそよ風で湖面がゆらゆら動くアニメーションを生成し、Unity/UEでそのまま再生可能なFBXとして出力する技術仕様です。
+
+### 5-1. さざ波モディファイア設定
+- `Wave Modifier`: `height=0.035 * WindSpeed`, `width=1.2`, `narrowness=1.5`, `speed=0.22 * WindSpeed`
+- 1〜60フレームの完全周期ループを形成。
+
+### 5-2. シェイプキー自動ベイク ＆ FBX出力
+1. `depsgraph.evaluated_get` により、各サンプリングフレームの頂点変位を **シェイプキー（`Wave_Frame_XXX`）** にベイク。
+2. 各キーに `0.0 -> 1.0 -> 0.0` のアニメーションキーフレーム（`Action`）を生成。
+3. `bpy.ops.export_scene.fbx(bake_anim=True, bake_anim_use_all_actions=True)` で出力。
+4. **Unity インポート時**: `SkinnedMeshRenderer` ＋ `Animation Clip` が最初から付与され、シーンに置くだけで永久ループ再生。
+

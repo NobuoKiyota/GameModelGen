@@ -199,6 +199,9 @@ def resolve_prop_parameters(props):
         "bush_foliage_style": props.bush_foliage_style,
         "bush_density": props.bush_density,
         "bush_leaf_size": props.bush_leaf_size,
+        "water_animate": props.water_animate,
+        "water_wind_speed": props.water_wind_speed,
+        "water_anim_frames": props.water_anim_frames,
     }
 
 
@@ -226,6 +229,9 @@ def generate_procedural_prop_mesh(
     water_color_type="TROPICAL",
     water_wave_strength=0.12,
     water_include_bed=True,
+    water_animate=True,
+    water_wind_speed=1.0,
+    water_anim_frames=60,
     tree_species="OAK",
     tree_has_leaves=True,
     tree_leaf_count=120,
@@ -470,11 +476,27 @@ def generate_procedural_prop_mesh(
             disp_crack.strength = -crack_depth * (0.25 if category == "CRAG" else 0.4)
             disp_crack.mid_level = 0.85
 
+    # 4-5. 水面微風アニメーション (Wave Modifier)
+    if category == "WATER" and water_animate:
+        if water_shape != "OCEAN":
+            mod_wave = obj.modifiers.new(name="Wind_Ripple", type='WAVE')
+            mod_wave.use_x = True
+            mod_wave.use_y = True
+            mod_wave.use_cyclic = True
+            mod_wave.height = 0.035 * min(2.5, water_wind_speed)
+            mod_wave.width = 1.2
+            mod_wave.narrowness = 1.5
+            mod_wave.speed = 0.22 * min(3.0, water_wind_speed)
+
+        # アニメーションフレーム設定
+        context.scene.frame_start = 1
+        context.scene.frame_end = water_anim_frames
+
     # Apply Modifiers
     for p in mesh.polygons:
         p.use_smooth = True
 
-    if not (category == "WATER" and water_shape == "OCEAN"):
+    if not (category == "WATER" and water_animate):
         for mod in list(obj.modifiers):
             try:
                 bpy.ops.object.modifier_apply(modifier=mod.name)
