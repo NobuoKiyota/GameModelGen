@@ -40,9 +40,11 @@ def setup_water_ocean_animation(obj, wind_speed=1.0, anim_frames=60):
     ocean_mod.time = 1.0 + time_delta
     ocean_mod.keyframe_insert(data_path="time", frame=anim_frames)
 
-    # リニア補間に設定（スムーズなループ）
+    # リニア補間 ＆ 無限リニア外挿に設定（タイムラインを何フレームに伸ばしても止まらない）
     if obj.animation_data and obj.animation_data.action:
         for fcurve in obj.animation_data.action.fcurves:
             if 'time' in fcurve.data_path:
+                fcurve.extrapolation = 'LINEAR'
                 for kf in fcurve.keyframe_points:
                     kf.interpolation = 'LINEAR'
+
