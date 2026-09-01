@@ -108,6 +108,16 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_shelf.prop(props, "column_ornament_style", text="側柱の装飾")
                 box_shelf.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
 
+            # Fence Specific
+            elif props.prop_category == 'FENCE':
+                box_fence = layout.box()
+                box_fence.label(text="Fence Architecture (柵・防壁タイプ):", icon='SNAP_INCREMENT')
+                box_fence.prop(props, "fence_type", text="")
+                if props.fence_type == 'POST_AND_RAIL':
+                    box_fence.prop(props, "fence_rails_count", text="横木の段数 (Rails)")
+                box_fence.prop(props, "fence_post_spacing", text="支柱の間隔 (Spacing)")
+                box_fence.prop(props, "fence_decay_jitter", text="経年劣化・歪み (Jitter)", slider=True)
+
             # Grass Specific
             elif props.prop_category == 'GRASS':
                 box_gmode = layout.box()

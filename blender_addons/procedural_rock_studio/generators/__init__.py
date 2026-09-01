@@ -22,6 +22,7 @@ from .nature_gen import (
     build_water_surface_base,
     generate_sapling_real_tree
 )
+from .fence_gen import build_wooden_fence_mesh
 from .core_orchestrator import generate_procedural_prop_mesh, resolve_prop_parameters, cleanup_old_debris
 
 __all__ = [
@@ -45,6 +46,7 @@ __all__ = [
     'build_grass_mound_base',
     'build_water_surface_base',
     'generate_sapling_real_tree',
+    'build_wooden_fence_mesh',
     'generate_procedural_prop_mesh',
     'resolve_prop_parameters',
     'cleanup_old_debris'

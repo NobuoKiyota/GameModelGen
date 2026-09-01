@@ -30,11 +30,17 @@ def update_category_preset(self, context):
         'TABLE': "Antique_Table",
         'CHAIR': "Antique_Chair",
         'CHEST': "Antique_Chest",
-        'BED': "Antique_Bed"
+        'BED': "Antique_Bed",
+        'FENCE': "Wooden_Fence"
     }
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
-    if cat == "TREE":
+    if cat == "FENCE":
+        props.size_x = 4.0
+        props.size_y = 0.4
+        props.size_z = 1.2
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "TREE":
         props.size_x = 3.5
         props.size_y = 3.5
         props.size_z = 4.5
@@ -138,7 +144,8 @@ def update_category_preset(self, context):
         'TABLE': r"Z:\MeshCreator\textures\Wood",
         'CHAIR': r"Z:\MeshCreator\textures\Wood",
         'CHEST': r"Z:\MeshCreator\textures\Wood",
-        'BED': r"Z:\MeshCreator\textures\Wood"
+        'BED': r"Z:\MeshCreator\textures\Wood",
+        'FENCE': r"Z:\MeshCreator\textures\Wood"
     }
     
     target_folder = folder_map.get(cat, r"Z:\MeshCreator\textures\Rock")
@@ -153,6 +160,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
+            ('FENCE', "🪵 木製の柵・フェンス・砦 (Wooden Fence / Palisade)", "textures/Wood/ と自動連動（牧場横木/先端尖りピケット/X筋交い/丸太防壁）"),
             ('WATER', "💧 水面・池・湖 (Water / Lake / Ocean)", "湖・池・四角プール・泉・大海原（物理屈折IOR 1.333＆二重波紋）"),
             ('TREE', "🌳 リアル樹木・自然木 (Real Tree / Sapling)", "textures/Wood/ と自動連動（オーク/針葉樹/柳/ヤシ/白樺/紅葉・幹枝葉生成）"),
             ('PC_DESK', "🖥️ 近代PCデスク (Modern PC Desk)", "textures/Wood/ と自動連動（モニタースタンド付き・スチール口の字脚・L字型）"),
@@ -501,3 +509,27 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     )
     bake_diffuse: bpy.props.BoolProperty(name="BaseColor (色・木目・草)", default=True)
     bake_normal: bpy.props.BoolProperty(name="Normal Map (凹凸法線)", default=True)
+
+    # ── FENCE Properties ──
+    fence_type: bpy.props.EnumProperty(
+        name="Fence Type",
+        items=[
+            ('POST_AND_RAIL', "牧場横木 (Post & Rail)", "シンプルな2〜3段横木のスタンダード柵"),
+            ('PICKET', "先端尖り (Picket Fence)", "先端山型の縦板が並ぶピケットフェンス"),
+            ('CROSS_BRACE', "X字筋交い (Cross Brace)", "X字斜め補強された頑丈な防護柵"),
+            ('PALISADE', "丸太砦・防壁 (Log Palisade)", "先端を尖らせた丸太の密集防壁＋結束ロープ")
+        ],
+        default='POST_AND_RAIL'
+    )
+    fence_rails_count: bpy.props.IntProperty(
+        name="Rails Count", default=2, min=1, max=4,
+        description="横木の段数 (Post & Rail用)"
+    )
+    fence_post_spacing: bpy.props.FloatProperty(
+        name="Post Spacing", default=1.8, min=0.8, max=4.0,
+        description="支柱の間隔 (m)"
+    )
+    fence_decay_jitter: bpy.props.FloatProperty(
+        name="経年劣化・歪み (Decay Jitter)", default=0.03, min=0.0, max=0.12,
+        description="支柱や板の微細な傾き・手作り感の揺らぎ"
+    )

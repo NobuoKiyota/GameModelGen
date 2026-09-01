@@ -37,6 +37,7 @@ from .nature_gen import (
     build_water_surface_base,
     generate_sapling_real_tree
 )
+from .fence_gen import build_wooden_fence_mesh
 
 def cleanup_old_debris(context, parent_name):
     to_delete = [
@@ -77,6 +78,10 @@ def resolve_prop_parameters(props):
             final_sx = round(random.uniform(4.0, 10.0), 2)
             final_sy = final_sx if props.water_shape in ('CIRCLE', 'POND') else round(random.uniform(4.0, 10.0), 2)
             final_sz = round(random.uniform(0.5, 1.5), 2)
+        elif cat == "FENCE":
+            final_sx = round(random.choice([3.0, 4.0, 5.0, 6.0]), 2)
+            final_sy = round(random.uniform(0.3, 0.5), 2)
+            final_sz = round(random.choice([1.0, 1.2, 1.5, 1.8]), 2)
         elif cat in ("FLOOR", "GRASS"):
             if cat == "GRASS" and props.grass_mode == 'TUFT':
                 final_sx = round(random.uniform(0.6, 1.2), 2)
@@ -162,7 +167,7 @@ def resolve_prop_parameters(props):
         "crack_depth": props.crack_depth,
         "big_chunk_cuts": props.big_chunk_cuts,
         "crack_count": props.floor_crack_count,
-        "create_debris": False if cat in ("FLOOR", "WALL", "GRASS", "BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED", "TREE", "WATER") else props.create_debris,
+        "create_debris": False if cat in ("FLOOR", "WALL", "GRASS", "BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED", "TREE", "WATER", "FENCE") else props.create_debris,
         "debris_count": props.debris_count,
         "detail_level": props.detail_level,
         "tex_folder": props.texture_folder,
@@ -175,6 +180,10 @@ def resolve_prop_parameters(props):
         "disp_subdiv": props.displacement_subdiv,
         "apply_disp": props.apply_disp_to_mesh,
         "rock_palette": props.rock_palette,
+        "fence_type": props.fence_type,
+        "fence_rails_count": props.fence_rails_count,
+        "fence_post_spacing": props.fence_post_spacing,
+        "fence_decay_jitter": props.fence_decay_jitter,
     }
 
 
@@ -209,6 +218,10 @@ def generate_procedural_prop_mesh(
     tree_leaf_style="QUAD_CROSS",
     tree_curvature=0.6,
     tree_mat_mode="PROCEDURAL",
+    fence_type="POST_AND_RAIL",
+    fence_rails_count=2,
+    fence_post_spacing=1.8,
+    fence_decay_jitter=0.03,
     uv_mode="FIT",
     size_x=2.0,
     size_y=2.0,
@@ -295,6 +308,17 @@ def generate_procedural_prop_mesh(
         build_bookshelf_base(bm, size_x, size_y, size_z, tiers=shelf_tiers, column_style=column_style, seed=seed)
     elif category in ("TABLE", "PC_DESK"):
         build_table_base(bm, size_x, size_y, size_z, shape=table_shape, leg_style=table_leg_style, seed=seed)
+    elif category == "FENCE":
+        build_wooden_fence_mesh(
+            bm,
+            fence_type=fence_type,
+            length=size_x,
+            height=size_z,
+            rails_count=fence_rails_count,
+            post_spacing=fence_post_spacing,
+            decay_jitter=fence_decay_jitter,
+            seed=seed
+        )
     elif category == "WATER":
         build_water_surface_base(bm, size_x, size_y, size_z, shape=water_shape, seed=seed, include_bed=water_include_bed)
     elif category == "GRASS":
@@ -439,7 +463,7 @@ def generate_procedural_prop_mesh(
     
     if category == "GRASS" and grass_mode == "TUFT":
         bpy.ops.uv.smart_project(angle_limit=88.0, island_margin=0.0)
-    elif category in ("FLOOR", "WALL", "BEAM", "BEAM_ARCH", "GRASS", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED", "WATER"):
+    elif category in ("FLOOR", "WALL", "BEAM", "BEAM_ARCH", "GRASS", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED", "WATER", "FENCE"):
         if uv_mode == "FIT":
             max_dim = max(size_x, size_y, size_z)
             bpy.ops.uv.cube_project(cube_size=max_dim, correct_aspect=True, clip_to_bounds=True)
@@ -451,7 +475,13 @@ def generate_procedural_prop_mesh(
     bpy.ops.object.mode_set(mode='OBJECT')
 
     # 6. Material Assignment
-    if category == "GRASS":
+    if category == "FENCE":
+        mat_wood = create_procedural_pbr_material(name + "_Wood_Mat", seed, is_grass=False)
+        mat_rope = create_procedural_pbr_material(name + "_Rope_Mat", seed + 10, is_grass=False)
+        obj.data.materials.clear()
+        obj.data.materials.append(mat_wood)
+        obj.data.materials.append(mat_rope)
+    elif category == "GRASS":
         if grass_mode == "TUFT":
             mat = create_procedural_grass_blade_shader(name + "_Blade_Mat", seed)
         else:
