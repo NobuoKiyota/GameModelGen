@@ -4,10 +4,14 @@ import os
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
-addon_path = r"z:\MeshCreator\blender_addons\procedural_rock_studio\rock_studio_addon.py"
-with open(addon_path, 'r', encoding='utf-8') as f:
-    code = f.read()
-    exec(code, globals())
+addon_parent = r"z:\MeshCreator\blender_addons"
+if addon_parent not in sys.path:
+    sys.path.insert(0, addon_parent)
+
+from procedural_rock_studio import rock_studio_addon
+rock_studio_addon.register()
+
+from procedural_rock_studio.generators.core_orchestrator import generate_procedural_prop_mesh
 
 print("=== Testing Dynamic Shader Seed Reactivity (v7.7) ===")
 

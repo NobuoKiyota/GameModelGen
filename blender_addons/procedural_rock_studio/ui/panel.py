@@ -169,10 +169,10 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
             elif props.prop_category in ("ROCK", "CRAG"):
                 box_rock = layout.box()
                 box_rock.label(text="Rock Type & Palette (岩石タイプ＆色彩):", icon='COLORSET_03_VEC')
-                    row_rt = box_rock.row(align=True)
-                    row_rt.prop(props, "rock_type", text="")
-                    row_rt.prop(props, "rand_type", text="🎲 形状")
-                    box_rock.prop(props, "rock_palette", text="🎨 カラーパレット")
+                row_rt = box_rock.row(align=True)
+                row_rt.prop(props, "rock_type", text="")
+                row_rt.prop(props, "rand_type", text="🎲 形状")
+                box_rock.prop(props, "rock_palette", text="🎨 カラーパレット")
 
                 box_surf = layout.box()
                 row_sh = box_surf.row(align=True)
