@@ -31,11 +31,17 @@ def update_category_preset(self, context):
         'CHAIR': "Antique_Chair",
         'CHEST': "Antique_Chest",
         'BED': "Antique_Bed",
-        'FENCE': "Wooden_Fence"
+        'FENCE': "Wooden_Fence",
+        'BUSH': "Bush_Shrub"
     }
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
-    if cat == "FENCE":
+    if cat == "BUSH":
+        props.size_x = 1.2
+        props.size_y = 1.2
+        props.size_z = 0.9
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "FENCE":
         props.size_x = 4.0
         props.size_y = 0.4
         props.size_z = 1.2
@@ -145,7 +151,8 @@ def update_category_preset(self, context):
         'CHAIR': r"Z:\MeshCreator\textures\Wood",
         'CHEST': r"Z:\MeshCreator\textures\Wood",
         'BED': r"Z:\MeshCreator\textures\Wood",
-        'FENCE': r"Z:\MeshCreator\textures\Wood"
+        'FENCE': r"Z:\MeshCreator\textures\Wood",
+        'BUSH': r"Z:\MeshCreator\textures\Grass"
     }
     
     target_folder = folder_map.get(cat, r"Z:\MeshCreator\textures\Rock")
@@ -160,6 +167,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
+            ('BUSH', "🌿 低木・茂み・シダ (Bush / Shrub / Fern)", "textures/Grass/ と自動連動（丸型低木/野生の藪/シダ株/生垣・球状法線転送）"),
             ('FENCE', "🪵 木製の柵・フェンス・砦 (Wooden Fence / Palisade)", "textures/Wood/ と自動連動（牧場横木/先端尖りピケット/X筋交い/丸太防壁）"),
             ('WATER', "💧 水面・池・湖 (Water / Lake / Ocean)", "湖・池・四角プール・泉・大海原（物理屈折IOR 1.333＆二重波紋）"),
             ('TREE', "🌳 リアル樹木・自然木 (Real Tree / Sapling)", "textures/Wood/ と自動連動（オーク/針葉樹/柳/ヤシ/白樺/紅葉・幹枝葉生成）"),
@@ -533,3 +541,32 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="経年劣化・歪み (Decay Jitter)", default=0.03, min=0.0, max=0.12,
         description="支柱や板の微細な傾き・手作り感の揺らぎ"
     )
+
+    # ── BUSH & SHRUB Properties ──
+    bush_type: bpy.props.EnumProperty(
+        name="Bush Type",
+        items=[
+            ('ROUND_BUSH', "丸型低木 (Round Bush)", "ふんわり丸型ドーム低木（庭園・公園・森）"),
+            ('WILD_SHRUB', "野生の藪 (Wild Shrub)", "細枝が四方に広がる自然な茂み・雑木"),
+            ('FERN_CLUMP', "シダの株 (Fern Clump)", "放射状にアーチを描く羽状複葉のシダ"),
+            ('HEDGE_ROW', "生垣ブロック (Hedge Row)", "境界・道沿いに長く連なる生垣")
+        ],
+        default='ROUND_BUSH'
+    )
+    bush_foliage_style: bpy.props.EnumProperty(
+        name="Foliage Style",
+        items=[
+            ('LEAF_CARDS', "葉クラスタカード (Leaf Cards)", "ゲーム用最適化（十字カード＆球状法線）"),
+            ('VOLUME_CANOPY', "ふんわりボリューム (Volume Canopy)", "アニメ・スタイライズド用有機的Icosphere")
+        ],
+        default='LEAF_CARDS'
+    )
+    bush_density: bpy.props.IntProperty(
+        name="Density (密度)", default=18, min=4, max=50,
+        description="葉カード/枝の散布枚数"
+    )
+    bush_leaf_size: bpy.props.FloatProperty(
+        name="Leaf Size (葉サイズ)", default=0.35, min=0.15, max=0.8,
+        description="葉カードのサイズ (m)"
+    )
+

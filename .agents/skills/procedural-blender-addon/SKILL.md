@@ -58,11 +58,16 @@ Blender 3.6+ における **プロシージャル3Dモデリング、シェー�
    - 4大アーキテクチャ（Post & Rail, Picket, Cross Brace, Palisade）
    - 先端尖り杭（Spike）、横木、X筋交い、木目PBRシェーダー
 
-10. 🍞 [**Auto PBR Texture Baker 仕様書**](references/baking_recipes.md)
+10. 🌿 [**低木・茂み・シダ植物 プロシージャル生成 完全レシピ**](references/bush_shrub_recipes.md)
+    - 4大アーキテクチャ（Round Bush, Wild Shrub, Fern Clump, Hedge Row）
+    - 樹冠球状法線転送（Spherical Normal Transfer）による板ポリ感解消
+    - 半透明透過光（Translucent）付き葉シェーダー ＆ 細枝チューブ
+
+11. 🍞 [**Auto PBR Texture Baker 仕様書**](references/baking_recipes.md)
     - Blender Headless 環境における Diffuse / Normal / Roughness 自動ベイク
     - Unity インポート時のベタ塗り防止パイプライン
 
-11. ⚠️ [**Blender Python API 虎の巻**](references/blender_api_mastery.md)
+12. ⚠️ [**Blender Python API 虎の巻**](references/blender_api_mastery.md)
     - UV投影後の `OBJECT` モード復帰、ヘッドレス `temp_override`、Bmesh 解放
 
 ---

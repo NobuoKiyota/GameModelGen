@@ -23,6 +23,7 @@ from .nature_gen import (
     generate_sapling_real_tree
 )
 from .fence_gen import build_wooden_fence_mesh
+from .bush_gen import build_bush_mesh, apply_bush_spherical_normals
 from .core_orchestrator import generate_procedural_prop_mesh, resolve_prop_parameters, cleanup_old_debris
 
 __all__ = [
@@ -47,6 +48,8 @@ __all__ = [
     'build_water_surface_base',
     'generate_sapling_real_tree',
     'build_wooden_fence_mesh',
+    'build_bush_mesh',
+    'apply_bush_spherical_normals',
     'generate_procedural_prop_mesh',
     'resolve_prop_parameters',
     'cleanup_old_debris'

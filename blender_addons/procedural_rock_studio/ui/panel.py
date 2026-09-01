@@ -108,6 +108,15 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_shelf.prop(props, "column_ornament_style", text="側柱の装飾")
                 box_shelf.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
 
+            # Bush Specific
+            elif props.prop_category == 'BUSH':
+                box_bush = layout.box()
+                box_bush.label(text="Bush & Shrub Settings (低木・茂み設定):", icon='FORCE_FORCE')
+                box_bush.prop(props, "bush_type", text="")
+                box_bush.prop(props, "bush_foliage_style", text="葉スタイル")
+                box_bush.prop(props, "bush_density", text="密度 (Density)")
+                box_bush.prop(props, "bush_leaf_size", text="葉サイズ (Leaf Size)")
+
             # Fence Specific
             elif props.prop_category == 'FENCE':
                 box_fence = layout.box()
