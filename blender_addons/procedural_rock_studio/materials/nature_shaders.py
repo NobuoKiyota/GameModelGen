@@ -204,32 +204,32 @@ def create_procedural_water_shader(mat_name, color_type='TROPICAL', wave_strengt
 
     node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
     node_bsdf.location = (380, 0)
-    try:
-        node_bsdf.inputs['Roughness'].default_value = 0.02
-    except Exception:
-        pass
 
+    colors = {
+        'TROPICAL': (0.05, 0.65, 0.72, 1.0),
+        'DEEP_OCEAN': (0.02, 0.12, 0.35, 1.0),
+        'POND_GREEN': (0.10, 0.35, 0.18, 1.0),
+        'CRYSTAL': (0.75, 0.90, 0.98, 1.0)
+    }
+    base_col = colors.get(color_type, (0.05, 0.65, 0.72, 1.0))
+    node_bsdf.inputs['Base Color'].default_value = base_col
     try:
+        node_bsdf.inputs['Roughness'].default_value = 0.05
         node_bsdf.inputs['IOR'].default_value = 1.333
     except Exception:
         pass
 
     try:
-        node_bsdf.inputs['Transmission Weight'].default_value = 1.0
+        node_bsdf.inputs['Transmission Weight'].default_value = 0.85
     except Exception:
         try:
-            node_bsdf.inputs['Transmission'].default_value = 1.0
+            node_bsdf.inputs['Transmission'].default_value = 0.85
         except Exception:
             pass
 
-    colors = {
-        'TROPICAL': (0.02, 0.45, 0.48, 1.0),
-        'DEEP_OCEAN': (0.01, 0.08, 0.22, 1.0),
-        'POND_GREEN': (0.08, 0.25, 0.12, 1.0),
-        'CRYSTAL': (0.75, 0.88, 0.95, 1.0)
-    }
-    base_col = colors.get(color_type, (0.02, 0.45, 0.48, 1.0))
-    node_bsdf.inputs['Base Color'].default_value = base_col
+    # マテリアル出力への接続（最重要）
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
 
     node_coord = nodes.new(type='ShaderNodeTexCoord')
     node_coord.location = (-900, 0)
