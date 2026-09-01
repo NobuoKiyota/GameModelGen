@@ -81,3 +81,35 @@
     1.  **L-System / フラクタル階層分岐**: 幹 ➔ 主枝（Level 1）➔ 側枝（Level 2）➔ 小枝（Level 3）の 3〜4 段階の再帰的分岐構造。
     2.  **葉っぱカード（Foliage Leaf Cards / Clusters）**: 単一板ポリの単純配置を廃止し、テクスチャ付き枝葉クラスター ＋ アルファ抜き ＋ ドーム状配置。
     3.  **樹冠法線転送（Tree Canopy Normal Transfer）**: 樹冠全体の法線を球状・外向きに整え、板ポリの角や平坦な陰影を解消してふんわりとした自然な陰影を実現。
+
+---
+
+## 6. 🏞️ 広大背景・グランドキャニオン・山脈・巨大地形スタジオ (Massive Landscapes)
+
+### ① グランドキャニオン・広大背景のテクスチャモデリング
+*   **URL**: [https://www.youtube.com/watch?v=B6Nktx0pvrw](https://www.youtube.com/watch?v=B6Nktx0pvrw)
+*   **動画タイトル**: 『【Blender】グランドキャニオンの作り方！リアルで広大な背景を手軽に作れる』
+*   **学習・実装技術**:
+    *   テクスチャベースの変位モデリングによる広大な峡谷地形の低負荷生成。
+    *   赤色砂岩の水平地層（Stratification / Layered Sandstone）シェーダー。
+    *   峡谷底の川（Riverbed）と大気霧（Volume Fog）の遠近感配置。
+
+### ② 簡単に広大な背景を作る方法（山脈・遠景環境）
+*   **URL**: [https://www.youtube.com/watch?v=8I6SYk_EBBA](https://www.youtube.com/watch?v=8I6SYk_EBBA)
+*   **動画タイトル**: 『【忙しい人向け】簡単に広大な背景を作る方法【Blender3.1】』
+*   **学習・実装技術**:
+    *   ambientCG / Poly Haven テクスチャを用いた遠景用山脈・岩壁のスケール感表現。
+    *   Ambient Occlusion、フォグ、被写界深度（DOF）による空気遠近法（Aerial Perspective）。
+
+### ③ リアル自然環境アドオン連携 (Real Environment)
+*   **URL**: [https://www.youtube.com/watch?v=l2-h7ktgFno](https://www.youtube.com/watch?v=l2-h7ktgFno)
+*   **動画タイトル**: 『【blenderアドオン】たった数クリックでリアルな自然を作り出す/Real Environment add on』
+*   **学習・実装技術**:
+    *   バイオーム（地形＋植生＋ライティング）の統合構築パイプライン。
+
+### ④ A.N.T. Landscape による本格地形モデリング
+*   **URL**: [https://www.youtube.com/watch?v=qUfTJyqba5E](https://www.youtube.com/watch?v=qUfTJyqba5E)
+*   **動画タイトル**: 『【blender】リアルな地形の作り方！（A.N.T landscapeを用いる方法）』
+*   **学習・実装技術**:
+    *   Blender標準アドオン `ant_landscape`（A.N.T. Landscape）APIの完全活用。
+    *   多重フラクタル地形生成: `Hetero Terrain`（不均一山岳）, `Ridged Multifractal`（切り立った岩山）, `Canyon`（峡谷）, `Mesa`（テーブルマウンテン台地）, `Erosion`（雨水浸食溝）。
