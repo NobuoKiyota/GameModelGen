@@ -1,4 +1,4 @@
-﻿---
+---
 name: procedural-blender-addon
 description: >-
   Blender 3.6+ Python API, Procedural 3D Modeling, PBR & Procedural Shaders, Hair Particle Scattering,
@@ -49,12 +49,21 @@ Blender 3.6+ における **プロシージャル3Dモデリング、シェー�
    - FBX エクスポート標準軸（-Z forward, Y up）、スケールベイク
    - マテリアルスロット分離による **足音・接触音（Footstep / Surface Switch）** 連携
 
-8. 🍞 [**Auto PBR Texture Baker 仕様書**](references/baking_recipes.md)
-   - Blender Headless 環境における Diffuse / Normal / Roughness 自動ベイク
-   - Unity インポート時のベタ塗り防止パイプライン
+8. 🏞️ [**広大背景・グランドキャニオン・山脈 ＆ 巨大地形 完全レシピ**](references/massive_landscape_recipes.md)
+   - グランドキャニオン赤色砂岩の水平地層（Stratified Rock）シェーダー
+   - A.N.T. Landscape API 自動呼び出し（Canyon, Mountain, Mesa, Ridge）
+   - 大気散乱・空気遠近法（Volume Scatter / Mist Pass）
 
-9. ⚠️ [**Blender Python API 虎の巻**](references/blender_api_mastery.md)
-   - UV投影後の `OBJECT` モード復帰、ヘッドレス `temp_override`、Bmesh 解放
+9. 🪵 [**木製の柵・フェンス・砦 プロシージャル生成 完全レシピ**](references/wooden_fence_recipes.md)
+   - 4大アーキテクチャ（Post & Rail, Picket, Cross Brace, Palisade）
+   - 先端尖り杭（Spike）、横木、X筋交い、木目PBRシェーダー
+
+10. 🍞 [**Auto PBR Texture Baker 仕様書**](references/baking_recipes.md)
+    - Blender Headless 環境における Diffuse / Normal / Roughness 自動ベイク
+    - Unity インポート時のベタ塗り防止パイプライン
+
+11. ⚠️ [**Blender Python API 虎の巻**](references/blender_api_mastery.md)
+    - UV投影後の `OBJECT` モード復帰、ヘッドレス `temp_override`、Bmesh 解放
 
 ---
 
