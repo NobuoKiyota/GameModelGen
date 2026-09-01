@@ -58,6 +58,11 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                     box_anim.prop(props, "water_anim_frames", text="ループフレーム数")
                     box_anim.operator("mesh.export_animated_water_fbx", text="🎮 アニメーション付き水面FBXを出力", icon='EXPORT')
 
+                box_sky = layout.box()
+                box_sky.label(text="🌅 フォトリアル環境光 (Lighting & Sky):", icon='LIGHT_SUN')
+                box_sky.operator("mesh.setup_water_sky_lighting", text="🌅 空と太陽光を自動セット (Nishita Sky)", icon='WORLD')
+
+
 
             # Tree Specific
             elif props.prop_category == 'TREE':

@@ -10,6 +10,7 @@ from ..materials.image_shaders import apply_image_texture_material
 from ..utils.texture_utils import get_textures_from_folder
 from ..utils.baker import bake_procedural_material_to_pbr
 from ..utils.anim_baker import export_animated_water_fbx
+from ..utils.sky_lighting import setup_procedural_sky_lighting
 
 def get_next_available_fbx_path(export_dir, base_name):
     os.makedirs(export_dir, exist_ok=True)
@@ -418,4 +419,21 @@ class MESH_OT_export_animated_water_fbx(bpy.types.Operator):
         except Exception as e:
             self.report({'ERROR'}, f"エクスポートエラー: {str(e)}")
             return {'CANCELLED'}
+
+
+class MESH_OT_setup_water_sky_lighting(bpy.types.Operator):
+    """Setup Nishita Physical Sky Texture & Eevee Refraction for Photorealistic Water Lighting"""
+    bl_idname = "mesh.setup_water_sky_lighting"
+    bl_label = "🌅 空と太陽光を自動セット (Nishita Sky)"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        try:
+            setup_procedural_sky_lighting(context)
+            self.report({'INFO'}, "🌅 Nishita 物理大気スカイ ＆ Eevee 屈折・反射を有効化しました！")
+            return {'FINISHED'}
+        except Exception as e:
+            self.report({'ERROR'}, f"スカイ設定エラー: {str(e)}")
+            return {'CANCELLED'}
+
 

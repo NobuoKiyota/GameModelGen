@@ -18,6 +18,9 @@ def setup_water_ocean_animation(obj, wind_speed=1.0, anim_frames=60):
     ocean_mod.wave_scale = 0.06 * min(2.0, max(0.3, wind_speed))
     ocean_mod.choppiness = 1.0
     ocean_mod.damping = 0.5 # 波の安定性
+    ocean_mod.use_foam = True
+    ocean_mod.foam_layer_name = "foam"
+    ocean_mod.foam_coverage = 0.25
 
     # Time キーフレーム（動画 7:58 準拠: 超ゆったり進行）
     # フレーム1 で Time=1.0, 終端フレーム で Time=2.2 (速度 0.02/frame)

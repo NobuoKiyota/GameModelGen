@@ -149,3 +149,17 @@ def setup_ocean_modifier(obj, size_x=10.0, size_y=10.0, wave_height=1.0):
 3. `bpy.ops.export_scene.fbx(bake_anim=True, bake_anim_use_all_actions=True)` で出力。
 4. **Unity インポート時**: `SkinnedMeshRenderer` ＋ `Animation Clip` が最初から付与され、シーンに置くだけで永久ループ再生。
 
+---
+
+## 6. 波頭の白波（Foam）自動合成 ＆ Nishita 物理大気スカイ（kasaharaCG様 vSgWZG2ugf0 準拠）
+
+### 6-1. 白波（Foam）合成シェーダー
+- `Ocean Modifier` の `use_foam=True`, `foam_layer_name="foam"` から波頭データを取得。
+- `Attribute(foam)` → `ColorRamp` → `Mix Shader` により、波が砕ける頂点に白い泡（Base Color: 白, Roughness: 0.4）を自動合成。
+
+### 6-2. Nishita 大気散乱スカイ ＆ Eevee 屈折・反射
+- 外部HDRI画像がなくても、Blender 3.6 内蔵 `ShaderNodeTexSky(NISHITA)` を World 背景にワンクリック自動接続。
+- Sun Elevation: 18°（美しい斜光・太陽反射）、Sun Rotation: 45°。
+- Eevee の `use_ssr=True`, `use_ssr_refraction=True` を有効化し、水面に鮮やかな青空と太陽光が映り込むフォトリアルライティングを実現。
+
+

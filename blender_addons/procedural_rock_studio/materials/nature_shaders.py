@@ -227,8 +227,32 @@ def create_procedural_water_shader(mat_name, color_type='TROPICAL', wave_strengt
         except Exception:
             pass
 
-    # マテリアル出力への接続（最重要）
-    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+    # 泡（Foam）マテリアルノード
+    node_foam_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_foam_bsdf.location = (380, -250)
+    node_foam_bsdf.inputs['Base Color'].default_value = (0.95, 0.98, 1.0, 1.0)
+    node_foam_bsdf.inputs['Roughness'].default_value = 0.4
+
+    node_attr = nodes.new(type='ShaderNodeAttribute')
+    node_attr.location = (80, -350)
+    node_attr.attribute_name = "foam"
+
+    node_foam_ramp = nodes.new(type='ShaderNodeValToRGB')
+    node_foam_ramp.location = (250, -350)
+    node_foam_ramp.color_ramp.elements[0].position = 0.2
+    node_foam_ramp.color_ramp.elements[1].position = 0.7
+    links.new(node_attr.outputs['Fac'], node_foam_ramp.inputs['Fac'])
+
+    # Mix Shader (水面 BSDF と 泡 BSDF の合成)
+    node_mix_shader = nodes.new(type='ShaderNodeMixShader')
+    node_mix_shader.location = (600, 0)
+    links.new(node_foam_ramp.outputs['Color'], node_mix_shader.inputs['Fac'])
+    links.new(node_bsdf.outputs['BSDF'], node_mix_shader.inputs[1])
+    links.new(node_foam_bsdf.outputs['BSDF'], node_mix_shader.inputs[2])
+
+    # マテリアル出力への接続
+    links.new(node_mix_shader.outputs['Shader'], node_out.inputs['Surface'])
+
 
 
     node_coord = nodes.new(type='ShaderNodeTexCoord')
