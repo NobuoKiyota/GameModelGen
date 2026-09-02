@@ -585,7 +585,43 @@ def create_procedural_telescope_shader(mat_name, part_type="SILVER", seed=0):
     node_bsdf.location = (350, 0)
     links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
 
-    if part_type == "SILVER":
+    if part_type == "BRASS":
+        # アンティーク磨き真鍮（ゴールド PBR）
+        node_bsdf.inputs['Base Color'].default_value = (0.85, 0.68, 0.28, 1.0)
+        node_bsdf.inputs['Metallic'].default_value = 0.95
+        node_bsdf.inputs['Roughness'].default_value = 0.18
+
+    elif part_type == "TEAL":
+        # ポップ・パステルティールブルー（Acuter風）
+        node_bsdf.inputs['Base Color'].default_value = (0.20, 0.72, 0.76, 1.0)
+        node_bsdf.inputs['Metallic'].default_value = 0.05
+        node_bsdf.inputs['Roughness'].default_value = 0.35
+
+    elif part_type == "EMISSION_LED":
+        # スマート望遠鏡 LED発光リング（シアン/ブルー）
+        node_bsdf.inputs['Base Color'].default_value = (0.0, 0.6, 1.0, 1.0)
+        try:
+            node_bsdf.inputs['Emission Color'].default_value = (0.0, 0.6, 1.0, 1.0)
+            node_bsdf.inputs['Emission Strength'].default_value = 4.0
+        except Exception:
+            try:
+                node_bsdf.inputs['Emission'].default_value = (0.0, 0.6, 1.0, 1.0)
+            except Exception:
+                pass
+
+    elif part_type == "CARBON":
+        # サテン・カーボンブラック（プロ用三脚）
+        node_bsdf.inputs['Base Color'].default_value = (0.08, 0.08, 0.09, 1.0)
+        node_bsdf.inputs['Metallic'].default_value = 0.30
+        node_bsdf.inputs['Roughness'].default_value = 0.38
+
+    elif part_type == "WHITE":
+        # 光沢ホワイト（Sky-Watcher / レトロクラシック）
+        node_bsdf.inputs['Base Color'].default_value = (0.92, 0.93, 0.95, 1.0)
+        node_bsdf.inputs['Metallic'].default_value = 0.10
+        node_bsdf.inputs['Roughness'].default_value = 0.25
+
+    elif part_type == "SILVER":
         # 鏡筒シルバー（サテンアルミヘアライン）
         node_bsdf.inputs['Base Color'].default_value = (0.78, 0.80, 0.83, 1.0)
         node_bsdf.inputs['Metallic'].default_value = 0.88
@@ -617,5 +653,6 @@ def create_procedural_telescope_shader(mat_name, part_type="SILVER", seed=0):
         node_bsdf.inputs['Roughness'].default_value = 0.42
 
     return mat
+
 
 

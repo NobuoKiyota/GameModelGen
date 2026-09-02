@@ -213,6 +213,7 @@ def resolve_prop_parameters(props):
         "pillar_radius": props.pillar_radius,
         "pillar_colonnettes": props.pillar_colonnettes,
         "pillar_flutes": props.pillar_flutes,
+        "telescope_style": props.telescope_style,
         "telescope_elevation": props.telescope_elevation_angle,
         "telescope_azimuth": props.telescope_azimuth_angle,
         "telescope_tripod_height": props.telescope_tripod_height,
@@ -246,6 +247,7 @@ def generate_procedural_prop_mesh(
     pillar_radius=0.4,
     pillar_colonnettes=6,
     pillar_flutes=18,
+    telescope_style="MODERN_REFRACTOR",
     telescope_elevation=25.0,
     telescope_azimuth=45.0,
     telescope_tripod_height=1.0,
@@ -311,6 +313,7 @@ def generate_procedural_prop_mesh(
         root_obj = create_procedural_telescope(
             context=context,
             name=name,
+            style=telescope_style,
             elevation_deg=telescope_elevation,
             azimuth_deg=telescope_azimuth,
             tripod_height=telescope_tripod_height,

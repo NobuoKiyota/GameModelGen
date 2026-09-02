@@ -613,6 +613,17 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     )
 
     # ── TELESCOPE Properties ──
+    telescope_style: bpy.props.EnumProperty(
+        name="Telescope Style",
+        items=[
+            ('MODERN_REFRACTOR', "🔭 近代屈折式 (Modern Refractor)", "王道のロング鏡筒＋先太りフード＋2段伸縮アルミ三脚"),
+            ('ANTIQUE_BRASS', "🏛️ アンティーク真鍮 (Antique Brass)", "磨き真鍮ゴールド＋扇形ギア＋優雅な3本脚卓上スタンド"),
+            ('SMART_DIGITAL', "🚀 最先端スマート望遠鏡 (Smart Digital)", "未来派シリンダー＋十字スパイダー＋LED発光＋カーボン三脚"),
+            ('CASSEGRAIN_POP', "🎨 カセグレン・ポップ (Cassegrain Pop)", "ずんぐり太短鏡筒＋前面補正板＆副鏡＋ティールブルー"),
+            ('TACTICAL_COMPACT', "📸 タクティカル卓上 (Tactical Compact)", "太鏡筒＋ローレット溝フード＋3ウェイ雲台＋3段レバー脚")
+        ],
+        default='MODERN_REFRACTOR'
+    )
     telescope_elevation_angle: bpy.props.FloatProperty(
         name="仰角 (Elevation)", default=25.0, min=0.0, max=90.0,
         description="鏡筒の上下チルト角度 (度)"
@@ -622,13 +633,14 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         description="架台の水平回転角度 (度)"
     )
     telescope_tripod_height: bpy.props.FloatProperty(
-        name="三脚の高さ (Tripod Height)", default=1.0, min=0.6, max=1.8,
+        name="三脚の高さ (Tripod Height)", default=1.0, min=0.3, max=1.8,
         description="三脚の全高 (m)"
     )
     telescope_tube_length: bpy.props.FloatProperty(
-        name="鏡筒の長さ (Tube Length)", default=0.75, min=0.4, max=1.5,
+        name="鏡筒の長さ (Tube Length)", default=0.75, min=0.3, max=1.5,
         description="望遠鏡の鏡筒の長さ (m)"
     )
+
 
 
 

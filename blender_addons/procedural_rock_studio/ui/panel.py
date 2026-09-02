@@ -74,6 +74,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
             elif props.prop_category == 'TELESCOPE':
                 box_tel = layout.box()
                 box_tel.label(text="Telescope Settings (天体望遠鏡設定):", icon='CAMERA_DATA')
+                box_tel.prop(props, "telescope_style", text="スタイル様式")
                 box_tel.prop(props, "telescope_elevation_angle", text="🔭 仰角 (Elevation)", slider=True)
                 box_tel.prop(props, "telescope_azimuth_angle", text="🧭 方位角 (Azimuth)", slider=True)
                 box_tel.prop(props, "telescope_tripod_height", text="三脚の高さ")
