@@ -43,7 +43,7 @@ class MESH_OT_bake_prop_textures(bpy.types.Operator):
         tex_out_dir = os.path.join(export_dir, "textures")
         res = int(props.bake_resolution)
 
-        self.report({'INFO'}, f"🔥 PBRベイク開始 ({res}x{res})...")
+        self.report({'INFO'}, f"[BAKE] PBR bake starting ({res}x{res})...")
         baked = bake_procedural_material_to_pbr(
             active_obj,
             output_dir=tex_out_dir,
@@ -53,10 +53,10 @@ class MESH_OT_bake_prop_textures(bpy.types.Operator):
         )
 
         if baked:
-            self.report({'INFO'}, f"✅ ベイク成功! 画像保存先: {tex_out_dir}")
+            self.report({'INFO'}, f"Bake succeeded! Saved to: {tex_out_dir}")
             return {'FINISHED'}
         else:
-            self.report({'WARNING'}, "ベイクに失敗しました。UV展開やマテリアルを確認してください。")
+            self.report({'WARNING'}, "Bake failed. Check UV unwrap or material.")
             return {'CANCELLED'}
 
 
@@ -75,6 +75,29 @@ class MESH_OT_export_selected_fbx(bpy.types.Operator):
 
         export_dir = props.export_folder.strip() or r"Z:\MeshCreator\exports"
         os.makedirs(export_dir, exist_ok=True)
+
+        # WATERカテゴリでOcean Modifierアニメーションが有効な場合、通常のFBXエクスポートでは
+        # モディファイアの変形(リアルタイムプロシージャル評価)がベイクされずアニメーションが失われる。
+        # FBXは頂点変形アニメーションをシェイプキー(BlendShape)としてしか持ち運べないため、
+        # この条件に該当する場合は専用のシェイプキーベイク付きエクスポートへ自動的に切り替える。
+        # (以前は専用ボタン「アニメーション付き水面FBXを出力」を押し忘れると、Ocean Modifierが
+        # モディファイアスタックに残ったまま静的な1フレーム分だけがエクスポートされ、Unity側で
+        # 波が全く動かない結果になっていた)
+        is_animated_water = (
+            props.prop_category == 'WATER'
+            and props.water_animate
+            and any(m.type == 'OCEAN' for m in active_obj.modifiers)
+        )
+        if is_animated_water:
+            base_name = props.asset_name.strip() or active_obj.name
+            final_fbx_path = get_next_available_fbx_path(export_dir, base_name + "_Animated")
+            try:
+                export_animated_water_fbx(active_obj, final_fbx_path, frames_count=props.water_anim_frames)
+                self.report({'INFO'}, f"Animated water FBX export complete (Ocean Modifier auto-baked to shape keys): {os.path.basename(final_fbx_path)}")
+                return {'FINISHED'}
+            except Exception as e:
+                self.report({'ERROR'}, f"Animated water export error: {str(e)}")
+                return {'CANCELLED'}
 
         if props.auto_bake_on_export:
             has_procedural = any(
@@ -128,9 +151,9 @@ class MESH_OT_export_selected_fbx(bpy.types.Operator):
             axis_up='Y'
         )
 
-        msg = f"✅ FBX出力完了: {file_name_only}"
+        msg = f"FBX export complete: {file_name_only}"
         if copied_textures:
-            msg += f" (テクスチャ同封: {', '.join(set(copied_textures))})"
+            msg += f" (textures copied: {', '.join(set(copied_textures))})"
         self.report({'INFO'}, msg)
         return {'FINISHED'}
 
@@ -227,7 +250,7 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
             rock_palette=p.get("rock_palette", "AUTO"),
             seed=props.seed
         )
-        self.report({'INFO'}, f"🎲 再抽選完了: {props.asset_name}")
+        self.report({'INFO'}, f"Re-roll complete: {props.asset_name}")
         return {'FINISHED'}
 
 
@@ -303,7 +326,7 @@ class MESH_OT_create_new_prop(bpy.types.Operator):
             rock_palette=p.get("rock_palette", "AUTO"),
             seed=props.seed
         )
-        self.report({'INFO'}, f"✨ 新規作成完了: {props.asset_name}")
+        self.report({'INFO'}, f"Created: {props.asset_name}")
         return {'FINISHED'}
 
 
@@ -358,9 +381,9 @@ class MESH_OT_create_grass_field(bpy.types.Operator):
                 undulation=props.grass_undulation,
                 weight_noise_scale=props.grass_weight_noise
             )
-            self.report({'INFO'}, f"🌾 草原シーン生成完了: {terrain_obj.name} (density={props.grass_density}, seed={seed})")
+            self.report({'INFO'}, f"Grass field scene created: {terrain_obj.name} (density={props.grass_density}, seed={seed})")
         except Exception as e:
-            self.report({'ERROR'}, f"草原生成エラー: {str(e)}")
+            self.report({'ERROR'}, f"Grass field generation error: {str(e)}")
             return {'CANCELLED'}
         return {'FINISHED'}
 
@@ -374,11 +397,11 @@ class MESH_OT_convert_grass_to_game_mesh(bpy.types.Operator):
     def execute(self, context):
         obj = context.active_object
         if obj is None:
-            self.report({'ERROR'}, "オブジェクトが選択されていません")
+            self.report({'ERROR'}, "No object selected")
             return {'CANCELLED'}
         has_particle = any(m.type == 'PARTICLE_SYSTEM' for m in obj.modifiers)
         if not has_particle:
-            self.report({'WARNING'}, "選択オブジェクトに Hair Particle System がありません")
+            self.report({'WARNING'}, "Selected object has no Hair Particle System")
             return {'CANCELLED'}
         try:
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -387,9 +410,9 @@ class MESH_OT_convert_grass_to_game_mesh(bpy.types.Operator):
             context.view_layer.objects.active = obj
             bpy.ops.particle.disconnect_hair()
             bpy.ops.object.convert(target='MESH')
-            self.report({'INFO'}, "🎮 ゲーム用メッシュ変換完了。FBX エクスポートが可能です。")
+            self.report({'INFO'}, "Converted to game mesh. Ready for FBX export.")
         except Exception as e:
-            self.report({'ERROR'}, f"変換エラー: {str(e)}")
+            self.report({'ERROR'}, f"Conversion error: {str(e)}")
             return {'CANCELLED'}
         return {'FINISHED'}
 
@@ -397,43 +420,41 @@ class MESH_OT_convert_grass_to_game_mesh(bpy.types.Operator):
 class MESH_OT_export_animated_water_fbx(bpy.types.Operator):
     """Bake Water Wave animation into Shape Keys and export FBX for Unity/UE"""
     bl_idname = "mesh.export_animated_water_fbx"
-    bl_label = "🎮 アニメーション付き水面FBXを出力"
+    bl_label = "Export Animated Water FBX"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         props = context.scene.prop_studio_props
         obj = context.active_object
         if not obj or obj.type != 'MESH':
-            self.report({'WARNING'}, "水面オブジェクトを選択してください")
+            self.report({'WARNING'}, "Please select a water surface object")
             return {'CANCELLED'}
 
         export_dir = props.export_folder.strip() or r"Z:\MeshCreator\exports"
         base_name = props.asset_name.strip() or obj.name
         final_fbx_path = get_next_available_fbx_path(export_dir, base_name + "_Animated")
 
-        self.report({'INFO'}, f"🌊 水面波アニメーションをベイク中... ({props.water_anim_frames}フレーム)")
+        self.report({'INFO'}, f"Baking water wave animation... ({props.water_anim_frames} frames)")
         try:
             export_animated_water_fbx(obj, final_fbx_path, frames_count=props.water_anim_frames)
-            self.report({'INFO'}, f"✅ アニメーションFBX出力完了: {os.path.basename(final_fbx_path)}")
+            self.report({'INFO'}, f"Animated FBX export complete: {os.path.basename(final_fbx_path)}")
             return {'FINISHED'}
         except Exception as e:
-            self.report({'ERROR'}, f"エクスポートエラー: {str(e)}")
+            self.report({'ERROR'}, f"Export error: {str(e)}")
             return {'CANCELLED'}
 
 
 class MESH_OT_setup_water_sky_lighting(bpy.types.Operator):
     """Setup Nishita Physical Sky Texture & Eevee Refraction for Photorealistic Water Lighting"""
     bl_idname = "mesh.setup_water_sky_lighting"
-    bl_label = "🌅 空と太陽光を自動セット (Nishita Sky)"
+    bl_label = "Setup Sky & Sun Light (Nishita Sky)"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         try:
             setup_procedural_sky_lighting(context)
-            self.report({'INFO'}, "🌅 Nishita 物理大気スカイ ＆ Eevee 屈折・反射を有効化しました！")
+            self.report({'INFO'}, "Nishita physical sky & Eevee refraction/reflection enabled.")
             return {'FINISHED'}
         except Exception as e:
-            self.report({'ERROR'}, f"スカイ設定エラー: {str(e)}")
+            self.report({'ERROR'}, f"Sky setup error: {str(e)}")
             return {'CANCELLED'}
-
-

@@ -9,7 +9,8 @@ from ..materials.nature_shaders import (
     create_procedural_grass_blade_shader,
     create_procedural_ground_terrain_shader,
     create_procedural_water_shader,
-    create_procedural_water_bed_shader
+    create_procedural_water_bed_shader,
+    create_procedural_pillar_shader
 )
 from ..materials.furniture_shaders import create_procedural_pbr_material
 from ..materials.image_shaders import apply_image_texture_material
@@ -39,7 +40,9 @@ from .nature_gen import (
 )
 from .fence_gen import build_wooden_fence_mesh
 from .bush_gen import build_bush_mesh, apply_bush_spherical_normals
+from .pillar_gen import create_procedural_pillar
 from ..utils.water_anim_utils import setup_water_ocean_animation
+
 
 def cleanup_old_debris(context, parent_name):
     to_delete = [
@@ -203,6 +206,12 @@ def resolve_prop_parameters(props):
         "water_animate": props.water_animate,
         "water_wind_speed": props.water_wind_speed,
         "water_anim_frames": props.water_anim_frames,
+        "pillar_type": props.pillar_type,
+        "pillar_mat_type": props.pillar_mat_type,
+        "pillar_height": props.pillar_height,
+        "pillar_radius": props.pillar_radius,
+        "pillar_colonnettes": props.pillar_colonnettes,
+        "pillar_flutes": props.pillar_flutes,
     }
 
 
@@ -226,6 +235,12 @@ def generate_procedural_prop_mesh(
     bed_size="SINGLE",
     shelf_tiers=3,
     column_style="ORNAMENTAL",
+    pillar_type="GOTHIC_CLUSTERED",
+    pillar_mat_type="MARBLE",
+    pillar_height=4.0,
+    pillar_radius=0.4,
+    pillar_colonnettes=6,
+    pillar_flutes=18,
     water_shape="LAKE",
     water_color_type="TROPICAL",
     water_wave_strength=0.12,
@@ -279,6 +294,29 @@ def generate_procedural_prop_mesh(
             pass
 
     random.seed(seed)
+
+    # 🏛️ Pillar Preset (ゴシック束ね柱 / ローマ溝彫り円柱 / 遺跡 / 角柱)
+    if category == "PILLAR":
+        if target_obj:
+            try:
+                bpy.data.objects.remove(target_obj, do_unlink=True)
+            except Exception:
+                pass
+        obj = create_procedural_pillar(
+            context=context,
+            name=name,
+            pillar_type=pillar_type,
+            height=size_z if size_z > 1.0 else pillar_height,
+            radius=min(size_x, size_y) * 0.35 if min(size_x, size_y) > 0.3 else pillar_radius,
+            colonnettes=pillar_colonnettes,
+            flutes=pillar_flutes,
+            mat_type=pillar_mat_type,
+            seed=seed
+        )
+        mat = create_procedural_pillar_shader(f"{name}_{pillar_mat_type}_Mat", mat_type=pillar_mat_type, seed=seed)
+        obj.data.materials.clear()
+        obj.data.materials.append(mat)
+        return obj
 
     # Tree Preset
     if category == "TREE":

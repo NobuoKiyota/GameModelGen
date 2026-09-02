@@ -573,3 +573,41 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         description="葉カードのサイズ (m)"
     )
 
+    # ── PILLAR & COLUMN Properties ──
+    pillar_type: bpy.props.EnumProperty(
+        name="Pillar Type",
+        items=[
+            ('GOTHIC_CLUSTERED', "ゴシック束ね柱 (Gothic Clustered)", "【yR3hx1l7nn8準拠】中央主柱＋6~8本の小柱Colonnettes束ね構造"),
+            ('ROMAN_FLUTED', "ギリシャ・ローマ溝彫り円柱 (Roman Fluted)", "【o6qQAKKbPRo準拠】16~24本フルーティング溝＋ドーリア式柱頭"),
+            ('RUINED_ANCIENT', "古代遺跡の崩壊石柱 (Ruined Ancient)", "上部斜め欠損・崩壊ドラム石積み＋ひび割れ侵食"),
+            ('SQUARE_MONUMENT', "西洋角柱・モニュメント (Square Monument)", "【b8g8j-7KWYM準拠】面取り多段角柱＋コーニス天頂装飾")
+        ],
+        default='GOTHIC_CLUSTERED'
+    )
+    pillar_mat_type: bpy.props.EnumProperty(
+        name="Pillar Material",
+        items=[
+            ('MARBLE', "白大理石 (Polished Marble)", "高級感のある筋模様と光沢"),
+            ('ANCIENT_STONE', "古代砂岩 (Ancient Sandstone)", "風化した砂利感と微細バンプ"),
+            ('MOSSY_RUINS', "苔むした遺跡 (Mossy Ruins)", "石肌に生える緑の苔")
+        ],
+        default='MARBLE'
+    )
+    pillar_height: bpy.props.FloatProperty(
+        name="Height (柱の高さ)", default=4.0, min=1.0, max=20.0,
+        description="柱の全高 (m)"
+    )
+    pillar_radius: bpy.props.FloatProperty(
+        name="Radius (柱の太さ)", default=0.4, min=0.1, max=3.0,
+        description="主柱の半径 (m)"
+    )
+    pillar_colonnettes: bpy.props.IntProperty(
+        name="小柱の数 (Colonnettes)", default=6, min=4, max=12,
+        description="ゴシック束ね柱の周囲小柱数"
+    )
+    pillar_flutes: bpy.props.IntProperty(
+        name="縦溝の数 (Flutes)", default=18, min=8, max=32,
+        description="ローマ円柱の縦溝（フルーティング）数"
+    )
+
+

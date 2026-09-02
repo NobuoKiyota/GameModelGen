@@ -62,7 +62,16 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_sky.label(text="🌅 フォトリアル環境光 (Lighting & Sky):", icon='LIGHT_SUN')
                 box_sky.operator("mesh.setup_water_sky_lighting", text="🌅 空と太陽光を自動セット (Nishita Sky)", icon='WORLD')
 
-
+            # Pillar Specific
+            elif props.prop_category == 'PILLAR':
+                box_pillar = layout.box()
+                box_pillar.label(text="Pillar Settings (柱・列柱設定):", icon='MOD_SOLIDIFY')
+                box_pillar.prop(props, "pillar_type", text="様式タイプ")
+                box_pillar.prop(props, "pillar_mat_type", text="石材マテリアル")
+                if props.pillar_type == 'GOTHIC_CLUSTERED':
+                    box_pillar.prop(props, "pillar_colonnettes", text="小柱の数 (Colonnettes)")
+                elif props.pillar_type == 'ROMAN_FLUTED':
+                    box_pillar.prop(props, "pillar_flutes", text="縦溝の数 (Flutes)")
 
             # Tree Specific
             elif props.prop_category == 'TREE':
