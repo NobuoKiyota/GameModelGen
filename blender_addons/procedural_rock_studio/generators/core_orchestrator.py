@@ -35,6 +35,7 @@ from .furniture_gen import (
 from .nature_gen import (
     build_grass_tuft_clump,
     build_grass_mound_base,
+    build_dense_meadow_field_mesh,
     build_water_surface_base,
     generate_sapling_real_tree
 )
@@ -431,7 +432,7 @@ def generate_procedural_prop_mesh(
         if grass_mode == "TUFT":
             build_grass_tuft_clump(bm, size_x, size_y, size_z, blade_count=4, seed=seed)
         else:
-            build_grass_mound_base(bm, size_x, size_y, size_z, shape=floor_shape, seed=seed, terrain_type=terrain_type)
+            build_dense_meadow_field_mesh(bm, size_x, size_y, size_z, seed=seed, density_level=detail_level, terrain_type=terrain_type)
     elif category == "FLOOR":
         build_floor_base(bm, size_x, size_y, size_z, shape=floor_shape, seed=seed)
     elif category == "WALL":
@@ -605,12 +606,41 @@ def generate_procedural_prop_mesh(
         obj.data.materials.append(mat_wood)
         obj.data.materials.append(mat_rope)
     elif category == "GRASS":
+        obj.data.materials.clear()
         if grass_mode == "TUFT":
             mat = create_procedural_grass_blade_shader(name + "_Blade_Mat", seed)
+            obj.data.materials.append(mat)
         else:
-            mat = create_procedural_ground_terrain_shader(name + "_Ground_Mat", seed=seed, terrain_type=terrain_type)
-        obj.data.materials.clear()
-        obj.data.materials.append(mat)
+            # Slot 0: Ground (PBR or Procedural)
+            tex_files = get_textures_from_folder(tex_folder)
+            # diffuse / basecolor を優先
+            diff_files = [f for f in tex_files if any(k in f.lower() for k in ('diff', 'basecolor', 'albedo', 'col'))]
+            candidate_files = diff_files if diff_files else tex_files
+
+            if use_folder_tex and candidate_files:
+                chosen_tex = selected_tex if (selected_tex and selected_tex in candidate_files) else random.choice(candidate_files)
+                full_tex_path = os.path.join(tex_folder, chosen_tex)
+                apply_image_texture_material(
+                    obj, full_tex_path,
+                    scale=2.0 if uv_mode == "FIT" else tex_tiling,
+                    bump_strength=0.35,
+                    displacement_strength=disp_strength if enable_disp else 0.0,
+                    is_transparent=False,
+                    slot_index=0
+                )
+            else:
+                mat_ground = create_procedural_ground_terrain_shader(name + "_Ground_Mat", seed=seed, terrain_type=terrain_type)
+                if len(obj.data.materials) > 0:
+                    obj.data.materials[0] = mat_ground
+                else:
+                    obj.data.materials.append(mat_ground)
+
+            # Slot 1: Grass Blades & Weeds (Translucent BSDF)
+            mat_blade = create_procedural_grass_blade_shader(name + "_Blade_Mat", seed=seed)
+            if len(obj.data.materials) > 1:
+                obj.data.materials[1] = mat_blade
+            else:
+                obj.data.materials.append(mat_blade)
     elif category == "WATER":
         mat_water = create_procedural_water_shader(
             name + "_Water_Surface_Mat",

@@ -395,11 +395,11 @@ def create_procedural_grass_blade_shader(mat_name, seed=0):
     # ── Translucent BSDF ──────────────────────────────────
     node_trans = nodes.new('ShaderNodeBsdfTranslucent'); node_trans.location = (580, -200)
     node_trans.inputs['Color'].default_value = (
-        0.10 + hue * 0.5, 0.55 + hue, 0.08, 1.0)
+        0.18 + hue * 0.5, 0.65 + hue, 0.08, 1.0)
 
     # ── Mix Shader (Principled + Translucent) ─────────────
     node_mix_shader = nodes.new('ShaderNodeMixShader'); node_mix_shader.location = (760, 0)
-    node_mix_shader.inputs['Fac'].default_value = 0.30   # 30% 透過
+    node_mix_shader.inputs['Fac'].default_value = 0.25   # 25% 透過
     links.new(node_bsdf.outputs['BSDF'],   node_mix_shader.inputs[1])
     links.new(node_trans.outputs['BSDF'],  node_mix_shader.inputs[2])
     links.new(node_mix_shader.outputs['Shader'], node_out.inputs['Surface'])
@@ -413,49 +413,34 @@ def create_procedural_grass_blade_shader(mat_name, seed=0):
 
     # ── Noise: 草の表面揺らぎ ───────────────────────────
     node_noise = nodes.new('ShaderNodeTexNoise'); node_noise.location = (-700, -150)
-    node_noise.inputs['Scale'].default_value  = 10.0
-    node_noise.inputs['Detail'].default_value = 3.0
+    node_noise.inputs['Scale'].default_value  = 8.0
+    node_noise.inputs['Detail'].default_value = 2.0
     links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
-
-    # ── Noise: 葉脈（細かい縦縞）────────────────────────
-    node_vein = nodes.new('ShaderNodeTexNoise'); node_vein.location = (-700, -380)
-    node_vein.inputs['Scale'].default_value  = 40.0
-    node_vein.inputs['Detail'].default_value = 2.0
-    node_vein.inputs['Roughness'].default_value = 0.3
-    links.new(node_coord.outputs['UV'], node_vein.inputs['Vector'])
 
     # ── Mix Float: UV.Y と Noise ブレンド（色グラデ制御）──
     node_mix_fac = nodes.new('ShaderNodeMix')
     node_mix_fac.data_type = 'FLOAT'
     node_mix_fac.location = (-440, 0)
     if 'Factor' in node_mix_fac.inputs:
-        node_mix_fac.inputs['Factor'].default_value = 0.28
+        node_mix_fac.inputs['Factor'].default_value = 0.20
     links.new(node_sep.outputs['Y'],     get_mix_input(node_mix_fac, ['A', 'Float1', 'Value', 'A_Float']))
     links.new(node_noise.outputs['Fac'], get_mix_input(node_mix_fac, ['B', 'Float2', 'Value', 'B_Float']))
 
     # ── ColorRamp: 色（根元暗緑〜先端明緑）──────────────
     node_ramp_col = nodes.new('ShaderNodeValToRGB'); node_ramp_col.location = (-180, 120)
     node_ramp_col.color_ramp.elements[0].position = 0.05
-    node_ramp_col.color_ramp.elements[0].color    = (0.04, 0.18 + hue, 0.03, 1.0)   # 根元 濃緑
+    node_ramp_col.color_ramp.elements[0].color    = (0.04, 0.20 + hue, 0.03, 1.0)   # 根元 濃緑
     node_ramp_col.color_ramp.elements[1].position = 0.90
-    node_ramp_col.color_ramp.elements[1].color    = (0.24, 0.58 + hue, 0.08, 1.0)   # 先端 明緑
+    node_ramp_col.color_ramp.elements[1].color    = (0.26, 0.62 + hue, 0.10, 1.0)   # 先端 明緑
     links.new(get_mix_output(node_mix_fac), node_ramp_col.inputs['Fac'])
-
-    # ── MixRGB: 葉脈を色に薄く重ねる ────────────────────
-    node_mix_vein = nodes.new('ShaderNodeMixRGB'); node_mix_vein.location = (60, 80)
-    node_mix_vein.blend_type = 'MULTIPLY'
-    if 'Fac' in node_mix_vein.inputs:
-        node_mix_vein.inputs['Fac'].default_value = 0.18
-    links.new(node_ramp_col.outputs['Color'], node_mix_vein.inputs[1])
-    links.new(node_vein.outputs['Color'],     node_mix_vein.inputs[2])
-    links.new(node_mix_vein.outputs['Color'], node_bsdf.inputs['Base Color'])
+    links.new(node_ramp_col.outputs['Color'], node_bsdf.inputs['Base Color'])
 
     # ── Roughness: 先端(高)〜根元(低) ────────────────────
     node_ramp_rough = nodes.new('ShaderNodeValToRGB'); node_ramp_rough.location = (-180, -200)
     node_ramp_rough.color_ramp.elements[0].position = 0.0
-    node_ramp_rough.color_ramp.elements[0].color    = (0.30, 0.30, 0.30, 1.0)   # 根元 湿潤
+    node_ramp_rough.color_ramp.elements[0].color    = (0.25, 0.25, 0.25, 1.0)   # 根元 湿潤
     node_ramp_rough.color_ramp.elements[1].position = 1.0
-    node_ramp_rough.color_ramp.elements[1].color    = (0.72, 0.72, 0.72, 1.0)   # 先端 乾燥
+    node_ramp_rough.color_ramp.elements[1].color    = (0.55, 0.55, 0.55, 1.0)   # 先端 乾燥
     links.new(node_sep.outputs['Y'], node_ramp_rough.inputs['Fac'])
     links.new(node_ramp_rough.outputs['Color'], node_bsdf.inputs['Roughness'])
 

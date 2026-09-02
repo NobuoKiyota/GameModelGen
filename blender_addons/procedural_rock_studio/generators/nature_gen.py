@@ -153,24 +153,191 @@ def build_grass_blade_with_uv(bm, uv_layer, height=0.6, base_width=0.04, curve_x
 
 def build_grass_tuft_clump(bm, size_x, size_y, size_z, blade_count=5, seed=0):
     """草の株 (Tuft/Clump)"""
-    random.seed(seed)
+    rng = random.Random(seed)
     uv_layer = bm.loops.layers.uv.verify()
     blade_count = max(3, min(8, blade_count))
     angles = [i * (180.0 / blade_count) for i in range(blade_count)]
+    verts_all = []
     for i, ang in enumerate(angles):
-        ang_rad = math.radians(ang + random.uniform(-12.0, 12.0))
-        height   = size_z * random.uniform(0.82, 1.22)
-        base_w   = max(size_x, size_y) * 0.06 * random.uniform(0.8, 1.2)
-        cx = math.cos(ang_rad + math.pi * 0.5) * random.uniform(0.01, 0.025)
-        cy = math.sin(ang_rad + math.pi * 0.5) * random.uniform(0.01, 0.025)
+        ang_rad = math.radians(ang + rng.uniform(-12.0, 12.0))
+        height   = size_z * rng.uniform(0.82, 1.22)
+        base_w   = max(size_x, size_y) * 0.06 * rng.uniform(0.8, 1.2)
+        cx = math.cos(ang_rad + math.pi * 0.5) * rng.uniform(0.01, 0.025)
+        cy = math.sin(ang_rad + math.pi * 0.5) * rng.uniform(0.01, 0.025)
         blade_verts = build_grass_blade_with_uv(bm, uv_layer, height=height, base_width=base_w,
                                                  curve_x=cx, curve_y=cy, seed=seed + i * 37)
-        offset_x = random.uniform(-size_x * 0.06, size_x * 0.06)
-        offset_y = random.uniform(-size_y * 0.06, size_y * 0.06)
+        offset_x = rng.uniform(-size_x * 0.06, size_x * 0.06)
+        offset_y = rng.uniform(-size_y * 0.06, size_y * 0.06)
         bmesh.ops.translate(bm, vec=(offset_x, offset_y, 0.0), verts=blade_verts)
+        verts_all.extend(blade_verts)
+    return verts_all
+
+
+def _get_terrain_height_at(x, y, seed=0, undulation=0.35, terrain_type="MEADOW"):
+    """特定(x,y)座標における地面テレインのZ標高を算出"""
+    if terrain_type == "ROCKY":
+        oct, lac, gain, base_sc = 5, 2.2, 0.45, 0.85
+        micro_amp   = undulation * 0.30
+        macro_amp   = undulation * 0.70
+        ridge_boost = 0.55
+    elif terrain_type == "FLAT_DIRT":
+        oct, lac, gain, base_sc = 3, 2.0, 0.55, 0.30
+        micro_amp   = undulation * 0.10
+        macro_amp   = undulation * 0.15
+        ridge_boost = 0.0
+    else:  # MEADOW
+        oct, lac, gain, base_sc = 4, 2.0, 0.55, 0.55
+        micro_amp   = undulation * 0.18
+        macro_amp   = undulation * 0.55
+        ridge_boost = 0.12
+
+    h_macro = _fbm(x, y, seed, octaves=oct, lacunarity=lac, gain=gain, base_scale=base_sc) * macro_amp
+    h_mid   = _fbm(x, y, seed + 1000, octaves=3, lacunarity=1.8, gain=0.5, base_scale=base_sc * 2.2) * undulation * 0.22
+    h_micro = _fbm(x, y, seed + 2000, octaves=2, lacunarity=2.5, gain=0.6, base_scale=base_sc * 5.0) * micro_amp
+    z = h_macro + h_mid + h_micro
+    if ridge_boost > 0:
+        t = max(0.0, (z / max(undulation, 0.001)) - 0.25)
+        z += t * t * ridge_boost * undulation
+    return z
+
+
+def build_broadleaf_weed(bm, uv_layer, size=0.15, leaf_count=3, seed=0, mat_idx=1):
+    """クローバー・広葉雑草の下草"""
+    rng = random.Random(seed)
+    leaf_count = max(3, leaf_count)
+    verts_all = []
+    for i in range(leaf_count):
+        ang = (i / leaf_count) * math.pi * 2 + rng.uniform(-0.2, 0.2)
+        lsz = size * rng.uniform(0.8, 1.25)
+        w = lsz * 0.45
+        
+        # 3角形または4角形の小葉
+        cos_a = math.cos(ang)
+        sin_a = math.sin(ang)
+        perp_x = -sin_a * (w * 0.5)
+        perp_y =  cos_a * (w * 0.5)
+        
+        tip_x = cos_a * lsz
+        tip_y = sin_a * lsz
+        tip_z = rng.uniform(0.02, 0.06) * size * 3.0
+        
+        v0 = bm.verts.new((0.0, 0.0, 0.0))
+        v1 = bm.verts.new((tip_x * 0.5 + perp_x, tip_y * 0.5 + perp_y, tip_z * 0.6))
+        v2 = bm.verts.new((tip_x, tip_y, tip_z))
+        v3 = bm.verts.new((tip_x * 0.5 - perp_x, tip_y * 0.5 - perp_y, tip_z * 0.6))
+        
+        f = bm.faces.new((v0, v1, v2, v3))
+        f.material_index = mat_idx
+        for loop, uv in zip(f.loops, [(0.5, 0.0), (0.0, 0.5), (0.5, 1.0), (1.0, 0.5)]):
+            loop[uv_layer].uv = uv
+        verts_all.extend([v0, v1, v2, v3])
+    return verts_all
+
+
+def build_dense_meadow_field_mesh(bm, size_x, size_y, size_z, seed=0,
+                                   density_level=2, terrain_type="MEADOW"):
+    """
+    一面に草が生い茂るリアルな草原フィールドメッシュ（地面＋高密度草ブレード統合）
+    - Slot 0: 地面テレインスラブ（土・PBRテクスチャ）
+    - Slot 1: 光透過草ブレード＆雑草群（数百〜数千インスタンス）
+    """
+    rng = random.Random(seed)
+    uv_layer = bm.loops.layers.uv.verify()
+    undulation = size_z * 0.22
+
+    # ── 1. 地面スラブメッシュの生成 (Material Slot 0) ──────
+    subdiv = 18 if terrain_type == "ROCKY" else 16
+    ground_verts = build_grass_terrain_ground(
+        bm, size_x, size_y, seed=seed,
+        undulation=undulation, subdivisions=subdiv, terrain_type=terrain_type
+    )
+    for f in bm.faces:
+        f.material_index = 0
+
+    # ── 2. 草株散布密度の決定 ──────────────────────────────
+    # density_level: 1(軽量: 120株), 2(標準: 240株), 3(高密度: 420株)
+    base_counts = {1: 120, 2: 260, 3: 450}
+    target_clumps = int(base_counts.get(density_level, 260) * (size_x * size_y / 9.0))
+    target_clumps = max(40, min(800, target_clumps))
+
+    half_x = size_x * 0.46
+    half_y = size_y * 0.46
+    
+    # ── 3. グリッドジッター＋ランダム散布 ──────────────────
+    for ci in range(target_clumps):
+        c_seed = seed + ci * 43 + 7
+        c_rng = random.Random(c_seed)
+        
+        # 散布座標
+        gx = c_rng.uniform(-half_x, half_x)
+        gy = c_rng.uniform(-half_y, half_y)
+        
+        # 地面標高の取得（完全に地面に接地）
+        gz = _get_terrain_height_at(gx, gy, seed=seed, undulation=undulation, terrain_type=terrain_type)
+        
+        # 草のタイプ抽選
+        prop_type = c_rng.random()
+        
+        if prop_type < 0.18:
+            # Type A: クローバー・広葉雑草
+            w_size = c_rng.uniform(0.08, 0.16)
+            w_verts = build_broadleaf_weed(bm, uv_layer, size=w_size,
+                                           leaf_count=c_rng.choice([3, 4]),
+                                           seed=c_seed, mat_idx=1)
+            bmesh.ops.translate(bm, vec=(gx, gy, gz), verts=w_verts)
+            
+        elif prop_type < 0.82:
+            # Type B: マルチブレード草の株 (Tuft: 4〜7枚のブレード)
+            blade_cnt = c_rng.randint(4, 7)
+            clump_h = c_rng.uniform(0.28, 0.55) * (size_z / 0.3)
+            clump_w = c_rng.uniform(0.025, 0.045)
+            
+            clump_verts = []
+            angles = [i * (360.0 / blade_cnt) for i in range(blade_cnt)]
+            for bi, base_ang in enumerate(angles):
+                ang_rad = math.radians(base_ang + c_rng.uniform(-18.0, 18.0))
+                bh = clump_h * c_rng.uniform(0.80, 1.25)
+                bw = clump_w * c_rng.uniform(0.85, 1.15)
+                
+                # 放射状に外側にしなる
+                spread = c_rng.uniform(0.04, 0.12)
+                cx = math.cos(ang_rad) * spread
+                cy = math.sin(ang_rad) * spread
+                
+                b_verts = build_grass_blade_with_uv(
+                    bm, uv_layer, height=bh, base_width=bw,
+                    curve_x=cx, curve_y=cy, seed=c_seed + bi * 19
+                )
+                
+                # 直近で作成されたフェースにマテリアルスロット 1 を割り当て
+                for f in bm.faces[-2:]:
+                    f.material_index = 1
+                
+                # 株の中心からの微小ジッター
+                ox = c_rng.uniform(-0.02, 0.02)
+                oy = c_rng.uniform(-0.02, 0.02)
+                bmesh.ops.translate(bm, vec=(gx + ox, gy + oy, gz), verts=b_verts)
+                clump_verts.extend(b_verts)
+                
+        else:
+            # Type C: 長身のしなりブレード（アクセント草）
+            tall_h = c_rng.uniform(0.45, 0.70) * (size_z / 0.3)
+            tall_w = c_rng.uniform(0.035, 0.055)
+            ang_rad = c_rng.uniform(0, math.pi * 2)
+            cx = math.cos(ang_rad) * c_rng.uniform(0.12, 0.22)
+            cy = math.sin(ang_rad) * c_rng.uniform(0.12, 0.22)
+            
+            t_verts = build_grass_blade_with_uv(
+                bm, uv_layer, height=tall_h, base_width=tall_w,
+                curve_x=cx, curve_y=cy, seed=c_seed
+            )
+            for f in bm.faces[-2:]:
+                f.material_index = 1
+            bmesh.ops.translate(bm, vec=(gx, gy, gz), verts=t_verts)
+
+    bm.verts.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
     return bm.verts[:]
-
-
 
 
 # =============================================================
