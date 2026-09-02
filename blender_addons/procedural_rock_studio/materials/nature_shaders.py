@@ -362,7 +362,11 @@ def create_procedural_water_bed_shader(mat_name, seed=0):
 
 
 def create_procedural_grass_blade_shader(mat_name, seed=0):
-    """草ブレード用プロシージャルシェーダー"""
+    """草ブレード用プロシージャルシェーダー（Translucency・葉脈パターン追加）
+    - Translucent BSDF Mix: 光透過（薄い葉に光が当たると裏から緑が透ける）
+    - 葉脈パターン: UV横グラデーション＋Noise（縦縞）
+    - 先端/根元 Roughness 変化: 先端 乾燥(Rough高) / 根元 湿潤(Rough低)
+    """
     mat = bpy.data.materials.get(mat_name)
     if not mat:
         mat = bpy.data.materials.new(name=mat_name)
@@ -371,58 +375,100 @@ def create_procedural_grass_blade_shader(mat_name, seed=0):
     links = mat.node_tree.links
     nodes.clear()
 
-    node_out = nodes.new(type='ShaderNodeOutputMaterial')
-    node_out.location = (600, 0)
+    hue = ((seed % 17) - 8) * 0.008
 
-    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
-    node_bsdf.location = (300, 0)
-    node_bsdf.inputs['Roughness'].default_value = 0.35
+    # ── 出力 ──────────────────────────────────────────────
+    node_out  = nodes.new('ShaderNodeOutputMaterial'); node_out.location  = (900, 0)
+
+    # ── Principled BSDF ───────────────────────────────────
+    node_bsdf = nodes.new('ShaderNodeBsdfPrincipled'); node_bsdf.location = (580, 50)
+    node_bsdf.inputs['Roughness'].default_value = 0.55
+    # Subsurface (Blender 3.x / 4.x 互換)
     try:
-        node_bsdf.inputs['Subsurface Weight'].default_value = 0.3
+        node_bsdf.inputs['Subsurface Weight'].default_value = 0.25
     except Exception:
         try:
-            node_bsdf.inputs['Subsurface'].default_value = 0.3
+            node_bsdf.inputs['Subsurface'].default_value = 0.25
         except Exception:
             pass
-    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
 
-    node_coord = nodes.new(type='ShaderNodeTexCoord')
-    node_coord.location = (-900, 0)
+    # ── Translucent BSDF ──────────────────────────────────
+    node_trans = nodes.new('ShaderNodeBsdfTranslucent'); node_trans.location = (580, -200)
+    node_trans.inputs['Color'].default_value = (
+        0.10 + hue * 0.5, 0.55 + hue, 0.08, 1.0)
 
-    node_sep = nodes.new(type='ShaderNodeSeparateXYZ')
-    node_sep.location = (-650, 100)
+    # ── Mix Shader (Principled + Translucent) ─────────────
+    node_mix_shader = nodes.new('ShaderNodeMixShader'); node_mix_shader.location = (760, 0)
+    node_mix_shader.inputs['Fac'].default_value = 0.30   # 30% 透過
+    links.new(node_bsdf.outputs['BSDF'],   node_mix_shader.inputs[1])
+    links.new(node_trans.outputs['BSDF'],  node_mix_shader.inputs[2])
+    links.new(node_mix_shader.outputs['Shader'], node_out.inputs['Surface'])
+
+    # ── TexCoord ──────────────────────────────────────────
+    node_coord = nodes.new('ShaderNodeTexCoord'); node_coord.location = (-950, 0)
+
+    # ── UV分離（縦=先端/根元 判定に使用）────────────────────
+    node_sep = nodes.new('ShaderNodeSeparateXYZ'); node_sep.location = (-700, 120)
     links.new(node_coord.outputs['UV'], node_sep.inputs['Vector'])
 
-    node_noise = nodes.new(type='ShaderNodeTexNoise')
-    node_noise.location = (-650, -150)
-    node_noise.inputs['Scale'].default_value = 8.0
-    node_noise.inputs['Detail'].default_value = 2.0
+    # ── Noise: 草の表面揺らぎ ───────────────────────────
+    node_noise = nodes.new('ShaderNodeTexNoise'); node_noise.location = (-700, -150)
+    node_noise.inputs['Scale'].default_value  = 10.0
+    node_noise.inputs['Detail'].default_value = 3.0
     links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
 
-    node_mix = nodes.new(type='ShaderNodeMix')
-    node_mix.data_type = 'FLOAT'
-    node_mix.location = (-400, 0)
-    if 'Factor' in node_mix.inputs:
-        node_mix.inputs['Factor'].default_value = 0.25
-    links.new(node_sep.outputs['Y'], get_mix_input(node_mix, ['A', 'Float1', 'Value', 'A_Float']))
-    links.new(node_noise.outputs['Fac'], get_mix_input(node_mix, ['B', 'Float2', 'Value', 'B_Float']))
+    # ── Noise: 葉脈（細かい縦縞）────────────────────────
+    node_vein = nodes.new('ShaderNodeTexNoise'); node_vein.location = (-700, -380)
+    node_vein.inputs['Scale'].default_value  = 40.0
+    node_vein.inputs['Detail'].default_value = 2.0
+    node_vein.inputs['Roughness'].default_value = 0.3
+    links.new(node_coord.outputs['UV'], node_vein.inputs['Vector'])
 
-    node_ramp = nodes.new(type='ShaderNodeValToRGB')
-    node_ramp.location = (-150, 100)
-    hue = ((seed % 17) - 8) * 0.008
-    node_ramp.color_ramp.elements[0].position = 0.05
-    node_ramp.color_ramp.elements[0].color = (0.06, 0.22 + hue, 0.04, 1.0)
-    node_ramp.color_ramp.elements[1].position = 0.90
-    node_ramp.color_ramp.elements[1].color = (0.28, 0.62 + hue, 0.10, 1.0)
+    # ── Mix Float: UV.Y と Noise ブレンド（色グラデ制御）──
+    node_mix_fac = nodes.new('ShaderNodeMix')
+    node_mix_fac.data_type = 'FLOAT'
+    node_mix_fac.location = (-440, 0)
+    if 'Factor' in node_mix_fac.inputs:
+        node_mix_fac.inputs['Factor'].default_value = 0.28
+    links.new(node_sep.outputs['Y'],     get_mix_input(node_mix_fac, ['A', 'Float1', 'Value', 'A_Float']))
+    links.new(node_noise.outputs['Fac'], get_mix_input(node_mix_fac, ['B', 'Float2', 'Value', 'B_Float']))
 
-    links.new(get_mix_output(node_mix), node_ramp.inputs['Fac'])
-    links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
+    # ── ColorRamp: 色（根元暗緑〜先端明緑）──────────────
+    node_ramp_col = nodes.new('ShaderNodeValToRGB'); node_ramp_col.location = (-180, 120)
+    node_ramp_col.color_ramp.elements[0].position = 0.05
+    node_ramp_col.color_ramp.elements[0].color    = (0.04, 0.18 + hue, 0.03, 1.0)   # 根元 濃緑
+    node_ramp_col.color_ramp.elements[1].position = 0.90
+    node_ramp_col.color_ramp.elements[1].color    = (0.24, 0.58 + hue, 0.08, 1.0)   # 先端 明緑
+    links.new(get_mix_output(node_mix_fac), node_ramp_col.inputs['Fac'])
+
+    # ── MixRGB: 葉脈を色に薄く重ねる ────────────────────
+    node_mix_vein = nodes.new('ShaderNodeMixRGB'); node_mix_vein.location = (60, 80)
+    node_mix_vein.blend_type = 'MULTIPLY'
+    if 'Fac' in node_mix_vein.inputs:
+        node_mix_vein.inputs['Fac'].default_value = 0.18
+    links.new(node_ramp_col.outputs['Color'], node_mix_vein.inputs[1])
+    links.new(node_vein.outputs['Color'],     node_mix_vein.inputs[2])
+    links.new(node_mix_vein.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+    # ── Roughness: 先端(高)〜根元(低) ────────────────────
+    node_ramp_rough = nodes.new('ShaderNodeValToRGB'); node_ramp_rough.location = (-180, -200)
+    node_ramp_rough.color_ramp.elements[0].position = 0.0
+    node_ramp_rough.color_ramp.elements[0].color    = (0.30, 0.30, 0.30, 1.0)   # 根元 湿潤
+    node_ramp_rough.color_ramp.elements[1].position = 1.0
+    node_ramp_rough.color_ramp.elements[1].color    = (0.72, 0.72, 0.72, 1.0)   # 先端 乾燥
+    links.new(node_sep.outputs['Y'], node_ramp_rough.inputs['Fac'])
+    links.new(node_ramp_rough.outputs['Color'], node_bsdf.inputs['Roughness'])
 
     return mat
 
 
-def create_procedural_ground_terrain_shader(mat_name, seed=0):
-    """草地地面プロシージャルシェーダー"""
+
+def create_procedural_ground_terrain_shader(mat_name, seed=0, terrain_type="MEADOW"):
+    """草地地面 多層PBRシェーダー（動画K1MMnQjvzZ8/M_AoNzdC4gI準拠）
+    - BaseColor: 土色+草色+石点在の3層ブレンド
+    - Normal:    大Bump+細Bump合成（動画準拠: Bumpノード多段）
+    - Roughness: 位置依存で変化（湿った低地～乾燥高地）
+    """
     mat = bpy.data.materials.get(mat_name)
     if not mat:
         mat = bpy.data.materials.new(name=mat_name)
@@ -431,39 +477,122 @@ def create_procedural_ground_terrain_shader(mat_name, seed=0):
     links = mat.node_tree.links
     nodes.clear()
 
-    node_out = nodes.new(type='ShaderNodeOutputMaterial')
-    node_out.location = (650, 0)
+    rng = __import__('random').Random(seed)
+    # terrain_type 別色相バリエーション
+    if terrain_type == "ROCKY":
+        soil_c  = (rng.uniform(0.10, 0.18), rng.uniform(0.08, 0.12), rng.uniform(0.05, 0.08), 1.0)
+        grass_c = (rng.uniform(0.10, 0.18), rng.uniform(0.20, 0.30), rng.uniform(0.04, 0.08), 1.0)
+        base_roughness = 0.92
+    elif terrain_type == "FLAT_DIRT":
+        soil_c  = (rng.uniform(0.18, 0.28), rng.uniform(0.12, 0.18), rng.uniform(0.06, 0.09), 1.0)
+        grass_c = (rng.uniform(0.08, 0.14), rng.uniform(0.18, 0.25), rng.uniform(0.03, 0.06), 1.0)
+        base_roughness = 0.88
+    else:  # MEADOW
+        hue_shift = (seed % 17 - 8) * 0.012
+        soil_c  = (rng.uniform(0.12, 0.20), rng.uniform(0.09, 0.13), rng.uniform(0.04, 0.07), 1.0)
+        grass_c = (rng.uniform(0.06, 0.12), rng.uniform(0.28 + hue_shift, 0.42 + hue_shift), rng.uniform(0.05, 0.10), 1.0)
+        base_roughness = 0.82
 
-    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
-    node_bsdf.location = (350, 0)
-    node_bsdf.inputs['Roughness'].default_value = 0.85
+    # ── ノード配置 ────────────────────────────────────────
+    node_out  = nodes.new('ShaderNodeOutputMaterial');   node_out.location  = (900, 0)
+    node_bsdf = nodes.new('ShaderNodeBsdfPrincipled');   node_bsdf.location = (620, 0)
+    node_bsdf.inputs['Roughness'].default_value = base_roughness
     links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
 
-    node_coord = nodes.new(type='ShaderNodeTexCoord')
-    node_coord.location = (-900, 0)
+    node_coord = nodes.new('ShaderNodeTexCoord');  node_coord.location = (-1100, 0)
 
-    node_noise = nodes.new(type='ShaderNodeTexNoise')
-    node_noise.location = (-650, 0)
-    node_noise.inputs['Scale'].default_value = 6.0
-    node_noise.inputs['Detail'].default_value = 4.0
-    links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
+    # ── Noise 1: 大スケール（土/草 マクロ分布）──────────────
+    n1 = nodes.new('ShaderNodeTexNoise');  n1.location = (-800, 200)
+    n1.inputs['Scale'].default_value  = 1.4
+    n1.inputs['Detail'].default_value = 5.0
+    n1.inputs['Roughness'].default_value = 0.55
+    n1.inputs['Distortion'].default_value = 0.2
+    links.new(node_coord.outputs['Object'], n1.inputs['Vector'])
 
-    node_ramp = nodes.new(type='ShaderNodeValToRGB')
-    node_ramp.location = (-350, 100)
-    node_ramp.color_ramp.elements[0].position = 0.2
-    node_ramp.color_ramp.elements[0].color = (0.12, 0.09, 0.05, 1.0)
-    node_ramp.color_ramp.elements[1].position = 0.7
-    node_ramp.color_ramp.elements[1].color = (0.08, 0.28, 0.06, 1.0)
+    # ── Noise 2: 中スケール（土肌の模様）──────────────────
+    n2 = nodes.new('ShaderNodeTexNoise');  n2.location = (-800, -80)
+    n2.inputs['Scale'].default_value  = 6.0
+    n2.inputs['Detail'].default_value = 4.0
+    n2.inputs['Roughness'].default_value = 0.5
+    links.new(node_coord.outputs['Object'], n2.inputs['Vector'])
 
-    links.new(node_noise.outputs['Fac'], node_ramp.inputs['Fac'])
-    links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
+    # ── Noise 3: 微細（表面ザラつき）────────────────────
+    n3 = nodes.new('ShaderNodeTexNoise');  n3.location = (-800, -360)
+    n3.inputs['Scale'].default_value  = 22.0
+    n3.inputs['Detail'].default_value = 3.0
+    n3.inputs['Roughness'].default_value = 0.4
+    links.new(node_coord.outputs['Object'], n3.inputs['Vector'])
 
-    node_bump = nodes.new(type='ShaderNodeBump')
-    node_bump.location = (100, -150)
-    node_bump.inputs['Strength'].default_value = 0.4
-    node_bump.inputs['Distance'].default_value = 0.05
-    links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
-    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+    # ── Voronoi: 小石・砂利の点在（斑点状）─────────────────
+    vorn = nodes.new('ShaderNodeTexVoronoi'); vorn.location = (-800, -620)
+    vorn.inputs['Scale'].default_value = 18.0
+    vorn.voronoi_dimensions = '3D'
+    links.new(node_coord.outputs['Object'], vorn.inputs['Vector'])
+
+    # ── ColorRamp: 土色────────────────────────────────
+    ramp_soil = nodes.new('ShaderNodeValToRGB');  ramp_soil.location = (-520, 200)
+    ramp_soil.color_ramp.elements[0].position = 0.20
+    ramp_soil.color_ramp.elements[0].color = soil_c
+    ramp_soil.color_ramp.elements[1].position = 0.80
+    ramp_soil.color_ramp.elements[1].color = (
+        soil_c[0] * 1.2, soil_c[1] * 1.15, soil_c[2] * 1.05, 1.0)
+    links.new(n1.outputs['Fac'], ramp_soil.inputs['Fac'])
+
+    # ── ColorRamp: 草色────────────────────────────────
+    ramp_grass = nodes.new('ShaderNodeValToRGB'); ramp_grass.location = (-520, -80)
+    ramp_grass.color_ramp.elements[0].position = 0.15
+    ramp_grass.color_ramp.elements[0].color = grass_c
+    ramp_grass.color_ramp.elements[1].position = 0.85
+    ramp_grass.color_ramp.elements[1].color = (
+        grass_c[0] * 1.25, grass_c[1] * 1.12, grass_c[2] * 0.92, 1.0)
+    links.new(n2.outputs['Fac'], ramp_grass.inputs['Fac'])
+
+    # ── ColorRamp: 小石色────────────────────────────────
+    ramp_stone = nodes.new('ShaderNodeValToRGB'); ramp_stone.location = (-520, -620)
+    ramp_stone.color_ramp.elements[0].position = 0.0
+    ramp_stone.color_ramp.elements[0].color = (0.45, 0.42, 0.38, 1.0)
+    ramp_stone.color_ramp.elements[1].position = 0.08
+    ramp_stone.color_ramp.elements[1].color    = soil_c
+    links.new(vorn.outputs['Distance'], ramp_stone.inputs['Fac'])
+
+    # ── MixColor: 土+草（n1 Factor でブレンド）──────────
+    mix_soil_grass = nodes.new('ShaderNodeMixRGB'); mix_soil_grass.location = (-200, 100)
+    mix_soil_grass.blend_type = 'MIX'
+    links.new(n1.outputs['Fac'],          mix_soil_grass.inputs[0])
+    links.new(ramp_soil.outputs['Color'],  mix_soil_grass.inputs[1])
+    links.new(ramp_grass.outputs['Color'], mix_soil_grass.inputs[2])
+
+    # ── MixColor: (土+草)+小石 ────────────────────────
+    mix_stone = nodes.new('ShaderNodeMixRGB'); mix_stone.location = (60, 0)
+    mix_stone.blend_type = 'MIX'
+    if 'Fac' in mix_stone.inputs:
+        mix_stone.inputs['Fac'].default_value = 0.06
+    links.new(ramp_stone.outputs['Color'],      mix_stone.inputs[0])
+    links.new(mix_soil_grass.outputs['Color'],  mix_stone.inputs[1])
+    links.new(ramp_stone.outputs['Color'],      mix_stone.inputs[2])
+    links.new(mix_stone.outputs['Color'],       node_bsdf.inputs['Base Color'])
+
+    # ── Roughness: 大ノイズで変化（湿-乾）────────────────
+    ramp_rough = nodes.new('ShaderNodeValToRGB'); ramp_rough.location = (-520, -360)
+    ramp_rough.color_ramp.elements[0].position = 0.30
+    ramp_rough.color_ramp.elements[0].color = (base_roughness - 0.12,) * 3 + (1.0,)
+    ramp_rough.color_ramp.elements[1].position = 0.70
+    ramp_rough.color_ramp.elements[1].color = (min(1.0, base_roughness + 0.05),) * 3 + (1.0,)
+    links.new(n1.outputs['Fac'], ramp_rough.inputs['Fac'])
+    links.new(ramp_rough.outputs['Color'], node_bsdf.inputs['Roughness'])
+
+    # ── Normal: 大Bump + 細Bump 合成（動画準拠多段Bump）────
+    bump_large = nodes.new('ShaderNodeBump'); bump_large.location = (200, -200)
+    bump_large.inputs['Strength'].default_value = 0.40
+    bump_large.inputs['Distance'].default_value = 0.08
+    links.new(n1.outputs['Fac'], bump_large.inputs['Height'])
+
+    bump_small = nodes.new('ShaderNodeBump'); bump_small.location = (200, -400)
+    bump_small.inputs['Strength'].default_value = 0.22
+    bump_small.inputs['Distance'].default_value = 0.02
+    links.new(n3.outputs['Fac'], bump_small.inputs['Height'])
+    links.new(bump_large.outputs['Normal'], bump_small.inputs['Normal'])
+    links.new(bump_small.outputs['Normal'], node_bsdf.inputs['Normal'])
 
     return mat
 

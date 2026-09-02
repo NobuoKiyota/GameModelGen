@@ -163,6 +163,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_gmode.label(text="Grass Type (草原タイプ):", icon='OUTLINER_OB_CURVE')
                 box_gmode.prop(props, "grass_mode", text="")
                 if props.grass_mode == 'MOUND':
+                    box_gmode.prop(props, "terrain_type", text="地形")
                     box_gmode.prop(props, "floor_shape", text="床形状")
                 box_gfield = layout.box()
                 box_gfield.label(text="🌾 Grass Field Studio (草原一括生成):", icon='OUTLINER_OB_POINTCLOUD')

@@ -18,30 +18,108 @@ from ..utils.texture_utils import get_textures_from_folder
 # =============================================================
 # 1. Grass & Terrain Generators
 # =============================================================
-def build_grass_terrain_ground(bm, size_x, size_y, seed=0, undulation=0.35, subdivisions=12):
-    """自然な起伏地面（頂点変位）"""
-    random.seed(seed)
+def _fbm(x, y, seed, octaves=4, lacunarity=2.0, gain=0.5, base_scale=0.55):
+    """Fractional Brownian Motion — sin/cos多層重ね合わせ（image不要）"""
+    rng = random.Random(seed)
+    offsets = [(rng.uniform(0, 100), rng.uniform(0, 100)) for _ in range(octaves)]
+    value = 0.0
+    amplitude = 1.0
+    frequency = base_scale
+    norm = 0.0
+    for i in range(octaves):
+        ox, oy = offsets[i]
+        sx = x * frequency + ox
+        sy = y * frequency + oy
+        # 2D smooth noise via trig
+        n = (math.sin(sx * 1.0) * math.cos(sy * 1.0)
+           + math.sin(sx * 2.0 + 1.5) * math.cos(sy * 2.0 - 0.7) * 0.5
+           + math.sin(sx * 0.5 - 0.3) * math.cos(sy * 0.7 + 1.2) * 0.4)
+        value += n * amplitude
+        norm  += amplitude
+        amplitude *= gain
+        frequency *= lacunarity
+    return value / norm
+
+
+def build_grass_terrain_ground(bm, size_x, size_y, seed=0, undulation=0.35,
+                                subdivisions=12, terrain_type="MEADOW"):
+    """多層FBMによる自然な起伏地面（terrain_type: MEADOW/ROCKY/FLAT_DIRT）"""
+    rng = random.Random(seed)
+
+    # terrain_type 別パラメーター
+    if terrain_type == "ROCKY":
+        oct, lac, gain, base_sc = 5, 2.2, 0.45, 0.85
+        micro_amp   = undulation * 0.30
+        macro_amp   = undulation * 0.70
+        ridge_boost = 0.55   # 稜線シャープ化
+        target_subdiv = max(subdivisions, 18)
+    elif terrain_type == "FLAT_DIRT":
+        oct, lac, gain, base_sc = 3, 2.0, 0.55, 0.30
+        micro_amp   = undulation * 0.10
+        macro_amp   = undulation * 0.15
+        ridge_boost = 0.0
+        target_subdiv = max(subdivisions, 14)
+    else:  # MEADOW
+        oct, lac, gain, base_sc = 4, 2.0, 0.55, 0.55
+        micro_amp   = undulation * 0.18
+        macro_amp   = undulation * 0.55
+        ridge_boost = 0.12
+        target_subdiv = max(subdivisions, 16)
+
     half_x = size_x * 0.5
     half_y = size_y * 0.5
-    step_x = size_x / subdivisions
-    step_y = size_y / subdivisions
+    step_x = size_x / target_subdiv
+    step_y = size_y / target_subdiv
+
     verts = []
-    for iy in range(subdivisions + 1):
+    for iy in range(target_subdiv + 1):
         row = []
-        for ix in range(subdivisions + 1):
+        for ix in range(target_subdiv + 1):
             x = -half_x + ix * step_x
             y = -half_y + iy * step_y
-            nx = (math.sin(x * 0.55 + seed * 0.1) * math.cos(y * 0.45 + seed * 0.07)
-                + math.sin(x * 1.3 + seed * 0.3) * math.cos(y * 1.1 + seed * 0.2) * 0.35
-                + math.sin(x * 2.7 + seed * 0.7) * math.cos(y * 2.3 + seed * 0.5) * 0.12)
-            z = nx * undulation
+
+            # 大スケール起伏（FBM）
+            h_macro = _fbm(x, y, seed,
+                           octaves=oct, lacunarity=lac, gain=gain,
+                           base_scale=base_sc) * macro_amp
+
+            # 中スケール起伏（別seed）
+            h_mid = _fbm(x, y, seed + 1000,
+                         octaves=3, lacunarity=1.8, gain=0.5,
+                         base_scale=base_sc * 2.2) * undulation * 0.22
+
+            # 微細バンプ（高周波小振幅）
+            h_micro = _fbm(x, y, seed + 2000,
+                           octaves=2, lacunarity=2.5, gain=0.6,
+                           base_scale=base_sc * 5.0) * micro_amp
+
+            z = h_macro + h_mid + h_micro
+
+            # ROCKY: 山稜シャープ化（値が高い部分を急峻に）
+            if ridge_boost > 0:
+                t = max(0.0, (z / max(undulation, 0.001)) - 0.25)
+                z += t * t * ridge_boost * undulation
+
             row.append(bm.verts.new((x, y, z)))
         verts.append(row)
-    for iy in range(subdivisions):
-        for ix in range(subdivisions):
-            bm.faces.new((verts[iy][ix], verts[iy][ix+1], verts[iy+1][ix+1], verts[iy+1][ix]))
+
+    for iy in range(target_subdiv):
+        for ix in range(target_subdiv):
+            bm.faces.new((verts[iy][ix], verts[iy][ix+1],
+                          verts[iy+1][ix+1], verts[iy+1][ix]))
     bm.verts.ensure_lookup_table()
     return [v for row in verts for v in row]
+
+
+def build_grass_mound_base(bm, size_x, size_y, size_z, shape="SQUARE",
+                            seed=0, terrain_type="MEADOW"):
+    """草地丘陵地面テレイン（多層FBM対応）"""
+    return build_grass_terrain_ground(
+        bm, size_x, size_y, seed=seed,
+        undulation=size_z * 0.22,
+        subdivisions=16,
+        terrain_type=terrain_type
+    )
 
 
 def build_grass_blade_with_uv(bm, uv_layer, height=0.6, base_width=0.04, curve_x=0.0, curve_y=0.08, seed=0):
@@ -93,10 +171,6 @@ def build_grass_tuft_clump(bm, size_x, size_y, size_z, blade_count=5, seed=0):
     return bm.verts[:]
 
 
-def build_grass_mound_base(bm, size_x, size_y, size_z, shape="SQUARE", seed=0):
-    """草地丘陵地面テレイン"""
-    return build_grass_terrain_ground(bm, size_x, size_y, seed=seed,
-                                      undulation=size_z * 0.18, subdivisions=14)
 
 
 # =============================================================

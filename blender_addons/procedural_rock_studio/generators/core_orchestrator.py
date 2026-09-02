@@ -152,6 +152,7 @@ def resolve_prop_parameters(props):
         "floor_shape": props.floor_shape,
         "wall_shape": props.wall_shape,
         "grass_mode": props.grass_mode,
+        "terrain_type": props.terrain_type,
         "water_shape": props.water_shape,
         "water_color_type": props.water_color_type,
         "water_wave_strength": props.water_wave_strength,
@@ -230,6 +231,7 @@ def generate_procedural_prop_mesh(
     floor_shape="SQUARE",
     wall_shape="STRAIGHT",
     grass_mode="MOUND",
+    terrain_type="MEADOW",
     table_shape="RECTANGLE",
     table_leg_style="ORNAMENTAL",
     chair_type="DINING_CHAIR",
@@ -429,7 +431,7 @@ def generate_procedural_prop_mesh(
         if grass_mode == "TUFT":
             build_grass_tuft_clump(bm, size_x, size_y, size_z, blade_count=4, seed=seed)
         else:
-            build_grass_mound_base(bm, size_x, size_y, size_z, shape=floor_shape, seed=seed)
+            build_grass_mound_base(bm, size_x, size_y, size_z, shape=floor_shape, seed=seed, terrain_type=terrain_type)
     elif category == "FLOOR":
         build_floor_base(bm, size_x, size_y, size_z, shape=floor_shape, seed=seed)
     elif category == "WALL":
@@ -606,7 +608,7 @@ def generate_procedural_prop_mesh(
         if grass_mode == "TUFT":
             mat = create_procedural_grass_blade_shader(name + "_Blade_Mat", seed)
         else:
-            mat = create_procedural_ground_terrain_shader(name + "_Ground_Mat", seed)
+            mat = create_procedural_ground_terrain_shader(name + "_Ground_Mat", seed=seed, terrain_type=terrain_type)
         obj.data.materials.clear()
         obj.data.materials.append(mat)
     elif category == "WATER":
@@ -672,7 +674,7 @@ def generate_procedural_prop_mesh(
             mat = create_procedural_pbr_material(name + "_Mat", seed, is_grass=False)
             obj.data.materials.append(mat)
 
-        if enable_disp and disp_strength > 0.001 and category in ("WALL", "FLOOR", "PILLAR", "BEAM", "BEAM_ARCH", "TABLE", "PC_DESK", "CHEST"):
+        if enable_disp and disp_strength > 0.001 and category in ("WALL", "FLOOR", "PILLAR", "BEAM", "BEAM_ARCH", "TABLE", "PC_DESK", "CHEST", "GRASS"):
             apply_geometry_displacement(
                 obj,
                 disp_image_path=disp_img,

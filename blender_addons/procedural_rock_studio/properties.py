@@ -379,6 +379,16 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default='MOUND'
     )
 
+    terrain_type: bpy.props.EnumProperty(
+        name="地形タイプ (Terrain Type)",
+        items=[
+            ('MEADOW', "🌿 なだらかな草原 (Meadow)", "自然な丘陵起伏と緑豊かな草地・土の混在"),
+            ('ROCKY', "🪨 岩盤露出地 (Rocky Ground)", "シャープな稜線起伏と岩盤・砂利・粗い土"),
+            ('FLAT_DIRT', "🟫 平坦な土・グラウンド (Flat Dirt)", "緩やかな微細凹凸と乾燥した土肌")
+        ],
+        default='MEADOW'
+    )
+
     uv_mapping_mode: bpy.props.EnumProperty(
         name="UV Mode",
         items=[
