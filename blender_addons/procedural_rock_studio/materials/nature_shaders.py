@@ -395,11 +395,11 @@ def create_procedural_grass_blade_shader(mat_name, seed=0):
     # ── Translucent BSDF ──────────────────────────────────
     node_trans = nodes.new('ShaderNodeBsdfTranslucent'); node_trans.location = (580, -200)
     node_trans.inputs['Color'].default_value = (
-        0.18 + hue * 0.5, 0.65 + hue, 0.08, 1.0)
+        0.12 + hue * 0.3, 0.70 + hue, 0.05, 1.0)
 
     # ── Mix Shader (Principled + Translucent) ─────────────
     node_mix_shader = nodes.new('ShaderNodeMixShader'); node_mix_shader.location = (760, 0)
-    node_mix_shader.inputs['Fac'].default_value = 0.25   # 25% 透過
+    node_mix_shader.inputs['Fac'].default_value = 0.20   # 20% 透過
     links.new(node_bsdf.outputs['BSDF'],   node_mix_shader.inputs[1])
     links.new(node_trans.outputs['BSDF'],  node_mix_shader.inputs[2])
     links.new(node_mix_shader.outputs['Shader'], node_out.inputs['Surface'])
@@ -422,16 +422,16 @@ def create_procedural_grass_blade_shader(mat_name, seed=0):
     node_mix_fac.data_type = 'FLOAT'
     node_mix_fac.location = (-440, 0)
     if 'Factor' in node_mix_fac.inputs:
-        node_mix_fac.inputs['Factor'].default_value = 0.20
+        node_mix_fac.inputs['Factor'].default_value = 0.15
     links.new(node_sep.outputs['Y'],     get_mix_input(node_mix_fac, ['A', 'Float1', 'Value', 'A_Float']))
     links.new(node_noise.outputs['Fac'], get_mix_input(node_mix_fac, ['B', 'Float2', 'Value', 'B_Float']))
 
-    # ── ColorRamp: 色（根元暗緑〜先端明緑）──────────────
+    # ── ColorRamp: 色（根元濃緑〜先端鮮緑）──────────────
     node_ramp_col = nodes.new('ShaderNodeValToRGB'); node_ramp_col.location = (-180, 120)
     node_ramp_col.color_ramp.elements[0].position = 0.05
-    node_ramp_col.color_ramp.elements[0].color    = (0.04, 0.20 + hue, 0.03, 1.0)   # 根元 濃緑
+    node_ramp_col.color_ramp.elements[0].color    = (0.02, 0.22 + hue, 0.02, 1.0)   # 根元 深いフォレストグリーン
     node_ramp_col.color_ramp.elements[1].position = 0.90
-    node_ramp_col.color_ramp.elements[1].color    = (0.26, 0.62 + hue, 0.10, 1.0)   # 先端 明緑
+    node_ramp_col.color_ramp.elements[1].color    = (0.18, 0.75 + hue, 0.06, 1.0)   # 先端 鮮やかライムグリーン
     links.new(get_mix_output(node_mix_fac), node_ramp_col.inputs['Fac'])
     links.new(node_ramp_col.outputs['Color'], node_bsdf.inputs['Base Color'])
 

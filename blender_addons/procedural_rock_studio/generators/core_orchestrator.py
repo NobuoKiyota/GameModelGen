@@ -572,9 +572,11 @@ def generate_procedural_prop_mesh(
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='SELECT')
     
-    if category == "GRASS" and grass_mode == "TUFT":
-        bpy.ops.uv.smart_project(angle_limit=88.0, island_margin=0.0)
-    elif category in ("FLOOR", "WALL", "BEAM", "BEAM_ARCH", "GRASS", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED", "WATER", "FENCE", "BUSH"):
+    if category == "GRASS":
+        # GRASS は build_dense_meadow_field_mesh / build_grass_blade_with_uv 内で
+        # 地面(Slot 0)と草ブレード(Slot 1)のUVが正しく分離生成されているため追加投影不要
+        pass
+    elif category in ("FLOOR", "WALL", "BEAM", "BEAM_ARCH", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED", "WATER", "FENCE", "BUSH"):
         if uv_mode == "FIT":
             max_dim = max(size_x, size_y, size_z)
             bpy.ops.uv.cube_project(cube_size=max_dim, correct_aspect=True, clip_to_bounds=True)

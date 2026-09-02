@@ -103,10 +103,21 @@ def build_grass_terrain_ground(bm, size_x, size_y, seed=0, undulation=0.35,
             row.append(bm.verts.new((x, y, z)))
         verts.append(row)
 
+    uv_layer = bm.loops.layers.uv.verify()
     for iy in range(target_subdiv):
         for ix in range(target_subdiv):
-            bm.faces.new((verts[iy][ix], verts[iy][ix+1],
-                          verts[iy+1][ix+1], verts[iy+1][ix]))
+            f = bm.faces.new((verts[iy][ix], verts[iy][ix+1],
+                              verts[iy+1][ix+1], verts[iy+1][ix]))
+            f.material_index = 0
+            # 地面専用の正規化UVマッピング
+            uvs = [
+                ((ix) / target_subdiv, (iy) / target_subdiv),
+                ((ix + 1) / target_subdiv, (iy) / target_subdiv),
+                ((ix + 1) / target_subdiv, (iy + 1) / target_subdiv),
+                ((ix) / target_subdiv, (iy + 1) / target_subdiv)
+            ]
+            for loop, uv in zip(f.loops, uvs):
+                loop[uv_layer].uv = uv
     bm.verts.ensure_lookup_table()
     return [v for row in verts for v in row]
 
@@ -243,10 +254,10 @@ def build_dense_meadow_field_mesh(bm, size_x, size_y, size_z, seed=0,
     """
     rng = random.Random(seed)
     uv_layer = bm.loops.layers.uv.verify()
-    undulation = size_z * 0.22
+    undulation = size_z * 0.75
 
     # ── 1. 地面スラブメッシュの生成 (Material Slot 0) ──────
-    subdiv = 18 if terrain_type == "ROCKY" else 16
+    subdiv = 20 if terrain_type == "ROCKY" else 18
     ground_verts = build_grass_terrain_ground(
         bm, size_x, size_y, seed=seed,
         undulation=undulation, subdivisions=subdiv, terrain_type=terrain_type
@@ -255,10 +266,10 @@ def build_dense_meadow_field_mesh(bm, size_x, size_y, size_z, seed=0,
         f.material_index = 0
 
     # ── 2. 草株散布密度の決定 ──────────────────────────────
-    # density_level: 1(軽量: 120株), 2(標準: 240株), 3(高密度: 420株)
-    base_counts = {1: 120, 2: 260, 3: 450}
-    target_clumps = int(base_counts.get(density_level, 260) * (size_x * size_y / 9.0))
-    target_clumps = max(40, min(800, target_clumps))
+    # density_level: 1(軽量: 180株), 2(標準: 380株), 3(高密度: 600株)
+    base_counts = {1: 180, 2: 380, 3: 600}
+    target_clumps = int(base_counts.get(density_level, 380) * (size_x * size_y / 9.0))
+    target_clumps = max(60, min(1200, target_clumps))
 
     half_x = size_x * 0.46
     half_y = size_y * 0.46
@@ -289,8 +300,8 @@ def build_dense_meadow_field_mesh(bm, size_x, size_y, size_z, seed=0,
         elif prop_type < 0.82:
             # Type B: マルチブレード草の株 (Tuft: 4〜7枚のブレード)
             blade_cnt = c_rng.randint(4, 7)
-            clump_h = c_rng.uniform(0.28, 0.55) * (size_z / 0.3)
-            clump_w = c_rng.uniform(0.025, 0.045)
+            clump_h = c_rng.uniform(0.12, 0.26)
+            clump_w = c_rng.uniform(0.015, 0.028)
             
             clump_verts = []
             angles = [i * (360.0 / blade_cnt) for i in range(blade_cnt)]
@@ -300,7 +311,7 @@ def build_dense_meadow_field_mesh(bm, size_x, size_y, size_z, seed=0,
                 bw = clump_w * c_rng.uniform(0.85, 1.15)
                 
                 # 放射状に外側にしなる
-                spread = c_rng.uniform(0.04, 0.12)
+                spread = c_rng.uniform(0.02, 0.05)
                 cx = math.cos(ang_rad) * spread
                 cy = math.sin(ang_rad) * spread
                 
@@ -314,18 +325,18 @@ def build_dense_meadow_field_mesh(bm, size_x, size_y, size_z, seed=0,
                     f.material_index = 1
                 
                 # 株の中心からの微小ジッター
-                ox = c_rng.uniform(-0.02, 0.02)
-                oy = c_rng.uniform(-0.02, 0.02)
+                ox = c_rng.uniform(-0.015, 0.015)
+                oy = c_rng.uniform(-0.015, 0.015)
                 bmesh.ops.translate(bm, vec=(gx + ox, gy + oy, gz), verts=b_verts)
                 clump_verts.extend(b_verts)
                 
         else:
             # Type C: 長身のしなりブレード（アクセント草）
-            tall_h = c_rng.uniform(0.45, 0.70) * (size_z / 0.3)
-            tall_w = c_rng.uniform(0.035, 0.055)
+            tall_h = c_rng.uniform(0.22, 0.38)
+            tall_w = c_rng.uniform(0.02, 0.035)
             ang_rad = c_rng.uniform(0, math.pi * 2)
-            cx = math.cos(ang_rad) * c_rng.uniform(0.12, 0.22)
-            cy = math.sin(ang_rad) * c_rng.uniform(0.12, 0.22)
+            cx = math.cos(ang_rad) * c_rng.uniform(0.05, 0.12)
+            cy = math.sin(ang_rad) * c_rng.uniform(0.05, 0.12)
             
             t_verts = build_grass_blade_with_uv(
                 bm, uv_layer, height=tall_h, base_width=tall_w,
