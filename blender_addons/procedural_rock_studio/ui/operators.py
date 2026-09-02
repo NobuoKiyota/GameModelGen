@@ -195,60 +195,18 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
         props.seed = random.randint(1, 999999)
         p = resolve_prop_parameters(props)
         
+        # カテゴリパラメータを kwargs として完全伝達
+        params = dict(p)
+        cat = params.pop("category", "ROCK")
+        seed_val = params.pop("seed", props.seed)
+        
         generate_procedural_prop_mesh(
             context=context,
             target_obj=target,
-            category=p["category"],
+            category=cat,
             name=props.asset_name if not target else target.name,
-            style=p["style"],
-            floor_shape=p["floor_shape"],
-            wall_shape=p["wall_shape"],
-            grass_mode=p["grass_mode"],
-            table_shape=p["table_shape"],
-            table_leg_style=p["table_leg_style"],
-            chair_type=p["chair_type"],
-            chair_seat_style=p["chair_seat_style"],
-            chair_back_style=p["chair_back_style"],
-            chair_leg_layout=p["chair_leg_layout"],
-            chest_tiers=p["chest_tiers"],
-            chest_handle_style=p["chest_handle_style"],
-            bed_size=p["bed_size"],
-            shelf_tiers=p["shelf_tiers"],
-            column_style=p["column_style"],
-            water_shape=p.get("water_shape", "LAKE"),
-            water_color_type=p.get("water_color_type", "TROPICAL"),
-            water_wave_strength=p.get("water_wave_strength", 0.12),
-            water_include_bed=p.get("water_include_bed", True),
-            tree_species=p["tree_species"],
-            tree_has_leaves=p["tree_has_leaves"],
-            tree_leaf_style=p["tree_leaf_style"],
-            tree_leaf_count=p["tree_leaf_count"],
-            tree_branch_levels=p["tree_branch_levels"],
-            tree_curvature=p["tree_curvature"],
-            tree_mat_mode=p["tree_mat_mode"],
-            uv_mode=p["uv_mode"],
-            size_x=p["size_x"],
-            size_y=p["size_y"],
-            size_z=p["size_z"],
-            roughness=p["roughness"],
-            chisel_strength=p["chisel_strength"],
-            crack_depth=p["crack_depth"],
-            big_chunk_cuts=p["big_chunk_cuts"],
-            crack_count=p["crack_count"],
-            create_debris=p["create_debris"],
-            debris_count=p["debris_count"],
-            detail_level=p["detail_level"],
-            tex_folder=p.get("tex_folder", r"Z:\MeshCreator\textures\Rock"),
-            use_folder_tex=p.get("use_folder_tex", True),
-            selected_tex=p.get("selected_tex", ""),
-            tex_tiling=p.get("tex_tiling", 1.0),
-            enable_disp=p.get("enable_disp", False),
-            disp_strength=p.get("disp_strength", 0.15),
-            disp_midlevel=p.get("disp_midlevel", 0.5),
-            disp_subdiv=p.get("disp_subdiv", 2),
-            apply_disp=p.get("apply_disp", True),
-            rock_palette=p.get("rock_palette", "AUTO"),
-            seed=props.seed
+            seed=seed_val,
+            **params
         )
         self.report({'INFO'}, f"Re-roll complete: {props.asset_name}")
         return {'FINISHED'}
@@ -271,60 +229,17 @@ class MESH_OT_create_new_prop(bpy.types.Operator):
         props.seed = random.randint(1, 999999) if props.auto_random else props.seed
         p = resolve_prop_parameters(props)
         
+        params = dict(p)
+        cat = params.pop("category", "ROCK")
+        seed_val = params.pop("seed", props.seed)
+        
         generate_procedural_prop_mesh(
             context=context,
             target_obj=None,
-            category=p["category"],
+            category=cat,
             name=props.asset_name,
-            style=p["style"],
-            floor_shape=p["floor_shape"],
-            wall_shape=p["wall_shape"],
-            grass_mode=p["grass_mode"],
-            table_shape=p["table_shape"],
-            table_leg_style=p["table_leg_style"],
-            chair_type=p["chair_type"],
-            chair_seat_style=p["chair_seat_style"],
-            chair_back_style=p["chair_back_style"],
-            chair_leg_layout=p["chair_leg_layout"],
-            chest_tiers=p["chest_tiers"],
-            chest_handle_style=p["chest_handle_style"],
-            bed_size=p["bed_size"],
-            shelf_tiers=p["shelf_tiers"],
-            column_style=p["column_style"],
-            water_shape=p.get("water_shape", "LAKE"),
-            water_color_type=p.get("water_color_type", "TROPICAL"),
-            water_wave_strength=p.get("water_wave_strength", 0.12),
-            water_include_bed=p.get("water_include_bed", True),
-            tree_species=p["tree_species"],
-            tree_has_leaves=p["tree_has_leaves"],
-            tree_leaf_style=p["tree_leaf_style"],
-            tree_leaf_count=p["tree_leaf_count"],
-            tree_branch_levels=p["tree_branch_levels"],
-            tree_curvature=p["tree_curvature"],
-            tree_mat_mode=p["tree_mat_mode"],
-            uv_mode=p["uv_mode"],
-            size_x=p["size_x"],
-            size_y=p["size_y"],
-            size_z=p["size_z"],
-            roughness=p["roughness"],
-            chisel_strength=p["chisel_strength"],
-            crack_depth=p["crack_depth"],
-            big_chunk_cuts=p["big_chunk_cuts"],
-            crack_count=p["crack_count"],
-            create_debris=p["create_debris"],
-            debris_count=p["debris_count"],
-            detail_level=p["detail_level"],
-            tex_folder=p.get("tex_folder", r"Z:\MeshCreator\textures\Rock"),
-            use_folder_tex=p.get("use_folder_tex", True),
-            selected_tex=p.get("selected_tex", ""),
-            tex_tiling=p.get("tex_tiling", 1.0),
-            enable_disp=p.get("enable_disp", False),
-            disp_strength=p.get("disp_strength", 0.15),
-            disp_midlevel=p.get("disp_midlevel", 0.5),
-            disp_subdiv=p.get("disp_subdiv", 2),
-            apply_disp=p.get("apply_disp", True),
-            rock_palette=p.get("rock_palette", "AUTO"),
-            seed=props.seed
+            seed=seed_val,
+            **params
         )
         self.report({'INFO'}, f"Created: {props.asset_name}")
         return {'FINISHED'}
