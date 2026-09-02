@@ -306,14 +306,8 @@ def generate_procedural_prop_mesh(
 
     # 🔭 Telescope Preset (天体望遠鏡: 三脚・マウント・鏡筒 独立階層)
     if category == "TELESCOPE":
-        if target_obj:
-            try:
-                # 既存の子オブジェクトもまとめて削除
-                for child in list(target_obj.children_recursive):
-                    bpy.data.objects.remove(child, do_unlink=True)
-                bpy.data.objects.remove(target_obj, do_unlink=True)
-            except Exception:
-                pass
+        from .cleanup_helper import cleanup_old_telescope
+        cleanup_old_telescope(context, target_obj, name)
         root_obj = create_procedural_telescope(
             context=context,
             name=name,
