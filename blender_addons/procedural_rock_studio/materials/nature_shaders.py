@@ -567,3 +567,55 @@ def create_procedural_pillar_shader(mat_name, mat_type="MARBLE", seed=0):
 
     return mat
 
+
+def create_procedural_telescope_shader(mat_name, part_type="SILVER", seed=0):
+    """天体望遠鏡用プロシージャル PBR シェーダー（サテンシルバー / マットブラック / セレストロンオレンジ / 光学ガラス）"""
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (650, 0)
+
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (350, 0)
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    if part_type == "SILVER":
+        # 鏡筒シルバー（サテンアルミヘアライン）
+        node_bsdf.inputs['Base Color'].default_value = (0.78, 0.80, 0.83, 1.0)
+        node_bsdf.inputs['Metallic'].default_value = 0.88
+        node_bsdf.inputs['Roughness'].default_value = 0.22
+
+    elif part_type == "ORANGE":
+        # セレストロン・シグネチャーオレンジ
+        node_bsdf.inputs['Base Color'].default_value = (0.90, 0.32, 0.0, 1.0)
+        node_bsdf.inputs['Metallic'].default_value = 0.0
+        node_bsdf.inputs['Roughness'].default_value = 0.30
+
+    elif part_type == "LENS":
+        # 対物・接眼光学ガラス
+        node_bsdf.inputs['Base Color'].default_value = (0.83, 0.92, 0.95, 1.0)
+        node_bsdf.inputs['Roughness'].default_value = 0.02
+        node_bsdf.inputs['IOR'].default_value = 1.52
+        try:
+            node_bsdf.inputs['Transmission Weight'].default_value = 0.95
+        except Exception:
+            try:
+                node_bsdf.inputs['Transmission'].default_value = 0.95
+            except Exception:
+                pass
+
+    else:
+        # マットブラック（三脚・マウント・接眼部）
+        node_bsdf.inputs['Base Color'].default_value = (0.09, 0.10, 0.11, 1.0)
+        node_bsdf.inputs['Metallic'].default_value = 0.20
+        node_bsdf.inputs['Roughness'].default_value = 0.42
+
+    return mat
+
+

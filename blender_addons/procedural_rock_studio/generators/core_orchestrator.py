@@ -41,6 +41,7 @@ from .nature_gen import (
 from .fence_gen import build_wooden_fence_mesh
 from .bush_gen import build_bush_mesh, apply_bush_spherical_normals
 from .pillar_gen import create_procedural_pillar
+from .telescope_gen import create_procedural_telescope
 from ..utils.water_anim_utils import setup_water_ocean_animation
 
 
@@ -212,6 +213,10 @@ def resolve_prop_parameters(props):
         "pillar_radius": props.pillar_radius,
         "pillar_colonnettes": props.pillar_colonnettes,
         "pillar_flutes": props.pillar_flutes,
+        "telescope_elevation": props.telescope_elevation_angle,
+        "telescope_azimuth": props.telescope_azimuth_angle,
+        "telescope_tripod_height": props.telescope_tripod_height,
+        "telescope_tube_length": props.telescope_tube_length,
     }
 
 
@@ -241,6 +246,10 @@ def generate_procedural_prop_mesh(
     pillar_radius=0.4,
     pillar_colonnettes=6,
     pillar_flutes=18,
+    telescope_elevation=25.0,
+    telescope_azimuth=45.0,
+    telescope_tripod_height=1.0,
+    telescope_tube_length=0.75,
     water_shape="LAKE",
     water_color_type="TROPICAL",
     water_wave_strength=0.12,
@@ -295,8 +304,30 @@ def generate_procedural_prop_mesh(
 
     random.seed(seed)
 
+    # 🔭 Telescope Preset (天体望遠鏡: 三脚・マウント・鏡筒 独立階層)
+    if category == "TELESCOPE":
+        if target_obj:
+            try:
+                # 既存の子オブジェクトもまとめて削除
+                for child in list(target_obj.children_recursive):
+                    bpy.data.objects.remove(child, do_unlink=True)
+                bpy.data.objects.remove(target_obj, do_unlink=True)
+            except Exception:
+                pass
+        root_obj = create_procedural_telescope(
+            context=context,
+            name=name,
+            elevation_deg=telescope_elevation,
+            azimuth_deg=telescope_azimuth,
+            tripod_height=telescope_tripod_height,
+            tube_length=telescope_tube_length,
+            seed=seed
+        )
+        return root_obj
+
     # 🏛️ Pillar Preset (ゴシック束ね柱 / ローマ溝彫り円柱 / 遺跡 / 角柱)
     if category == "PILLAR":
+
         if target_obj:
             try:
                 bpy.data.objects.remove(target_obj, do_unlink=True)

@@ -168,7 +168,9 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="Category",
         items=[
             ('BUSH', "🌿 低木・茂み・シダ (Bush / Shrub / Fern)", "textures/Grass/ と自動連動（丸型低木/野生の藪/シダ株/生垣・球状法線転送）"),
+            ('TELESCOPE', "🔭 天体望遠鏡 (Astronomical Telescope)", "Celestron StarSense風（三脚・経緯台・鏡筒・接眼部・スマホドック・可動ピボット）"),
             ('FENCE', "🪵 木製の柵・フェンス・砦 (Wooden Fence / Palisade)", "textures/Wood/ と自動連動（牧場横木/先端尖りピケット/X筋交い/丸太防壁）"),
+
             ('WATER', "💧 水面・池・湖 (Water / Lake / Ocean)", "湖・池・四角プール・泉・大海原（物理屈折IOR 1.333＆二重波紋）"),
             ('TREE', "🌳 リアル樹木・自然木 (Real Tree / Sapling)", "textures/Wood/ と自動連動（オーク/針葉樹/柳/ヤシ/白樺/紅葉・幹枝葉生成）"),
             ('PC_DESK', "🖥️ 近代PCデスク (Modern PC Desk)", "textures/Wood/ と自動連動（モニタースタンド付き・スチール口の字脚・L字型）"),
@@ -609,5 +611,24 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="縦溝の数 (Flutes)", default=18, min=8, max=32,
         description="ローマ円柱の縦溝（フルーティング）数"
     )
+
+    # ── TELESCOPE Properties ──
+    telescope_elevation_angle: bpy.props.FloatProperty(
+        name="仰角 (Elevation)", default=25.0, min=0.0, max=90.0,
+        description="鏡筒の上下チルト角度 (度)"
+    )
+    telescope_azimuth_angle: bpy.props.FloatProperty(
+        name="方位角 (Azimuth)", default=45.0, min=0.0, max=360.0,
+        description="架台の水平回転角度 (度)"
+    )
+    telescope_tripod_height: bpy.props.FloatProperty(
+        name="三脚の高さ (Tripod Height)", default=1.0, min=0.6, max=1.8,
+        description="三脚の全高 (m)"
+    )
+    telescope_tube_length: bpy.props.FloatProperty(
+        name="鏡筒の長さ (Tube Length)", default=0.75, min=0.4, max=1.5,
+        description="望遠鏡の鏡筒の長さ (m)"
+    )
+
 
 
