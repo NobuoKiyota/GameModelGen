@@ -238,6 +238,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
+            ('FLASK', "🧪 魔法フラスコ・ポーション (Potion Flask)", "透過屈折ガラス容器・色変更・表面波歪み・傾き水平追従液体"),
             ('IMAGE_DISPLACE', "🖼️ 2D画像立体化 (Image Displace Studio)", "2D画像から3Dレリーフ・コイン・地形を半自動立体化（アスペクト比自動同期＆クローズド密閉）"),
             ('BUSH', "🌿 低木・茂み・シダ (Bush / Shrub / Fern)", "textures/Grass/ と自動連動（丸型低木/野生の藪/シダ株/生垣・球状法線転送）"),
             ('TELESCOPE', "🔭 天体望遠鏡 (Astronomical Telescope)", "Celestron StarSense風（三脚・経緯台・鏡筒・接眼部・スマホドック・可動ピボット）"),
@@ -866,6 +867,49 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('MOSSY_RUINS', "🌿 苔むした遺跡 (Mossy Ruins)", "足元から這い上がる緑苔")
         ],
         default='ORIGINAL_COLOR'
+    )
+
+    # ── FLASK & POTION STUDIO Properties ──
+    flask_shape: bpy.props.EnumProperty(
+        name="フラスコ形状",
+        items=[
+            ('CONICAL', "🔺 三角フラスコ (Erlenmeyer Flask)", "実験室やポーション定番の錐形フラスコ"),
+            ('ROUND', "🔮 丸底ポーション (Round Flask)", "ファンタジーRPG定番の球形ポーションボトル")
+        ],
+        default='CONICAL'
+    )
+    flask_has_cork: bpy.props.BoolProperty(
+        name="コルク栓を付ける", default=True,
+        description="フラスコの口元に木製コルク栓を生成"
+    )
+    flask_tilt: bpy.props.FloatProperty(
+        name="容器の傾き (Tilt °)", default=0.0, min=-45.0, max=45.0,
+        description="フラスコ容器自体の傾き角度 (度)"
+    )
+    liquid_level: bpy.props.FloatProperty(
+        name="液面の高さ (Level)", default=0.55, min=0.10, max=0.90,
+        description="容器内部の液体の量・高さ比率"
+    )
+    liquid_tilt: bpy.props.FloatProperty(
+        name="液面の傾き補正 (Tilt °)", default=0.0, min=-45.0, max=45.0,
+        description="容器の傾きに合わせて液面を水平に保つ微調整角度 (度)"
+    )
+    liquid_surface_noise: bpy.props.FloatProperty(
+        name="液面の波・表面歪み", default=0.02, min=0.0, max=0.10,
+        description="静止画でもトロンとした表面張力やゆらぎを出す微小ノイズ歪み"
+    )
+    liquid_color: bpy.props.FloatVectorProperty(
+        name="液体の色", subtype='COLOR', size=4,
+        default=(0.9, 0.15, 0.25, 1.0), min=0.0, max=1.0,
+        description="ポーション液体のカラー"
+    )
+    liquid_glow: bpy.props.FloatProperty(
+        name="液体の発光 (Glow)", default=0.25, min=0.0, max=2.0,
+        description="暗闇でほんのり光るファンタジーポーションの発光強度"
+    )
+    flask_scale: bpy.props.FloatProperty(
+        name="スケール (Scale)", default=1.0, min=0.1, max=5.0,
+        description="フラスコの全体サイズ倍率"
     )
 
 

@@ -40,8 +40,34 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
         # 🌟 4. Tab 1: Shape & Dimensions & Specific Controls
         if props.studio_tab == 'SHAPE':
+            # Flask & Potion Specific
+            if props.prop_category == 'FLASK':
+                box_flask = layout.box()
+                box_flask.label(text="🧪 魔法フラスコ・ポーション設定:", icon='MATERIAL')
+                box_flask.prop(props, "flask_shape", text="形状")
+                box_flask.prop(props, "flask_scale", text="スケール")
+                box_flask.prop(props, "flask_has_cork", text="コルク栓を付ける")
+
+                # 傾き設定
+                box_tilt = box_flask.box()
+                box_tilt.label(text="📐 容器の傾き & 液面の水平補正:", icon='ORIENTATION_LOCAL')
+                box_tilt.prop(props, "flask_tilt", text="フラスコ傾き (度)", slider=True)
+                box_tilt.prop(props, "liquid_tilt", text="液面水平補正 (度)", slider=True)
+
+                # 液体設定
+                box_liq = box_flask.box()
+                box_liq.label(text="🌊 液体 & 表面歪み設定:", icon='MOD_OCEAN')
+                box_liq.prop(props, "liquid_level", text="液面の高さ", slider=True)
+                box_liq.prop(props, "liquid_surface_noise", text="表面波・歪み", slider=True)
+                box_liq.prop(props, "liquid_color", text="液体の色")
+                box_liq.prop(props, "liquid_glow", text="発光の強さ", slider=True)
+
+                col_btn = box_flask.column(align=True)
+                col_btn.scale_y = 1.4
+                col_btn.operator("mesh.generate_flask_potion", text="🧪 液体入りフラスコを生成", icon='MATERIAL')
+
             # Image Displace Studio Specific
-            if props.prop_category == 'IMAGE_DISPLACE':
+            elif props.prop_category == 'IMAGE_DISPLACE':
                 box_disp = layout.box()
                 box_disp.label(text="Image Displace Studio (2D画像立体化):", icon='IMAGE_DATA')
                 box_disp.prop(props, "img_disp_path", text="画像ファイル")

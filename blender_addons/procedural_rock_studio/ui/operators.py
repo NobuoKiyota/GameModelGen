@@ -537,3 +537,30 @@ class MESH_OT_auto_detect_background_color(bpy.types.Operator):
         props.img_disp_key_color = (r, g, b, 1.0)
         self.report({'INFO'}, f"背景色を自動検出しました: R={r:.2f}, G={g:.2f}, B={b:.2f}")
         return {'FINISHED'}
+
+
+class MESH_OT_generate_flask_potion(bpy.types.Operator):
+    """Generate Procedural Flask Potion with Glass Container, Surface-Distorted Liquid, and Tilt Compensation"""
+    bl_idname = "mesh.generate_flask_potion"
+    bl_label = "🧪 液体入りフラスコを生成"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..generators.flask_potion_gen import generate_flask_potion_asset
+        name = props.asset_name.strip() or "Potion_Flask"
+        obj_glass, obj_liq, obj_cork = generate_flask_potion_asset(
+            context=context,
+            name=name,
+            shape_type=props.flask_shape,
+            liquid_level=props.liquid_level,
+            flask_tilt_deg=props.flask_tilt,
+            liquid_tilt_deg=props.liquid_tilt,
+            surface_noise=props.liquid_surface_noise,
+            liquid_color=props.liquid_color,
+            glow=props.liquid_glow,
+            has_cork=props.flask_has_cork,
+            scale=props.flask_scale
+        )
+        self.report({'INFO'}, f"フラスコ・ポーション生成完了: {obj_glass.name}")
+        return {'FINISHED'}
