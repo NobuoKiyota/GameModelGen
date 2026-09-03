@@ -440,9 +440,36 @@ class MESH_OT_bake_game_ready_displace(bpy.types.Operator):
             obj,
             depth=props.img_disp_solidify_thickness,
             decimate_ratio=props.img_disp_decimate_ratio,
-            close_mesh=props.img_disp_close_mesh
+            close_mesh=props.img_disp_close_mesh,
+            planar_angle=props.img_disp_planar_angle
         )
         self.report({'INFO'}, f"ゲーム用確定完了（クローズド密閉＆軽量化済み）: {obj.name}")
+        return {'FINISHED'}
+
+
+class MESH_OT_optimize_displace_mesh(bpy.types.Operator):
+    """Dissolve unnecessary planar vertices and reconstruct smart UV without texture distortion"""
+    bl_idname = "mesh.optimize_displace_mesh"
+    bl_label = "⚡ 不要頂点消去 ＆ スマートUV化"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        obj = context.active_object
+        if not obj or obj.type != 'MESH':
+            self.report({'WARNING'}, "最適化するメッシュを選択してください")
+            return {'CANCELLED'}
+
+        from ..generators.image_displace_gen import optimize_and_smart_uv_clean
+        init_v, final_v = optimize_and_smart_uv_clean(
+            obj,
+            planar_angle=props.img_disp_planar_angle,
+            clean_loose=True,
+            top_down_uv=True
+        )
+        reduced = init_v - final_v
+        pct = (reduced / max(init_v, 1)) * 100.0
+        self.report({'INFO'}, f"不要頂点消去完了: {init_v} ➔ {final_v} 頂点 (削減率: {pct:.1f}%)")
         return {'FINISHED'}
 
 

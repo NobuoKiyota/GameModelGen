@@ -853,6 +853,10 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="軽量化比率 (Decimate)", default=0.5, min=0.05, max=1.0,
         description="ゲーム向けポリゴン削減率 (1.0で削減なし)"
     )
+    img_disp_planar_angle: bpy.props.FloatProperty(
+        name="平面溶解の角度 (Angle)", default=2.5, min=0.1, max=20.0,
+        description="この角度以内の平坦な面・底面・側面にある不要な頂点をすべて溶解・消去 (度)"
+    )
     img_disp_mat_style: bpy.props.EnumProperty(
         name="マテリアル質感",
         items=[

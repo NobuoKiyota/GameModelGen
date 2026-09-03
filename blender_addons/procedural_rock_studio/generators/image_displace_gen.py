@@ -1,4 +1,4 @@
-import bpy
+﻿import bpy
 import bmesh
 import math
 import os
@@ -691,7 +691,7 @@ def generate_image_displace_asset(
         mod_disp = obj.modifiers.new(name="Displace_Relief", type='DISPLACE')
         mod_disp.texture = tex
         mod_disp.texture_coords = 'UV'
-        mod_disp.vertex_group = "" if enable_cutout else "Displace_Mask"
+        mod_disp.vertex_group = "" if (enable_cutout or enable_color_cutout) else "Displace_Mask"
         mod_disp.strength = strength if abs(strength) > 0.0001 else height
         mod_disp.mid_level = midlevel
 
@@ -728,8 +728,93 @@ def generate_image_displace_asset(
     return obj
 
 
-def finalize_game_ready_displace(obj, depth=0.15, decimate_ratio=0.5, close_mesh=True):
-    """ゲーム用確定処理: モディファイア適用 ➔ クローズド密閉化 ➔ スマート軽量化 ➔ ベベル"""
+def optimize_and_smart_uv_clean(obj, planar_angle=2.5, clean_loose=True, top_down_uv=True):
+    """
+    平坦面・底面・側面の不要頂点を Limited Dissolve で溶解し、
+    テクスチャが歪まないスマートUVを再構築する超軽量化処理
+    """
+    if not obj or obj.type != 'MESH':
+        return 0, 0
+
+    mesh = obj.data
+    initial_verts = len(mesh.vertices)
+
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.verts.ensure_lookup_table()
+    bm.edges.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+
+    # 1. 縮退ポリゴン・重複頂点の事前クリーンアップ
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0005)
+    bmesh.ops.dissolve_degenerate(bm, dist=0.0005, edges=bm.edges)
+
+    # 2. 平面不要頂点溶解 (Limited Dissolve)
+    # angle_limit 以内の同一平面上にある格子頂点・エッジを溶解
+    try:
+        angle_rad = math.radians(max(0.1, planar_angle))
+        bmesh.ops.dissolve_limit(
+            bm,
+            angle_limit=angle_rad,
+            use_dissolve_boundaries=False,
+            delimit={'MATERIAL'},
+            edges=bm.edges
+        )
+    except Exception as e:
+        print(f"[OptimizeMesh] Dissolve limit warning: {e}")
+
+    # 3. 孤立頂点のクリーンアップ
+    if clean_loose:
+        loose_verts = [v for v in bm.verts if not v.link_edges]
+        if loose_verts:
+            bmesh.ops.delete(bm, geom=loose_verts, context='VERTS')
+
+    # 4. スマートUV再構築 (上面: 元画像合致 Top-Down UV, 側面・底面: シームレスUV)
+    if top_down_uv:
+        bm.verts.ensure_lookup_table()
+        bm.faces.ensure_lookup_table()
+        uv_layer = bm.loops.layers.uv.verify()
+
+        if bm.verts:
+            xs = [v.co.x for v in bm.verts]
+            ys = [v.co.y for v in bm.verts]
+            min_x, max_x = min(xs), max(xs)
+            min_y, max_y = min(ys), max(ys)
+            width = max(max_x - min_x, 0.0001)
+            height = max(max_y - min_y, 0.0001)
+
+            for f in bm.faces:
+                # 法線方向で上面判定 (normal.z > 0.3)
+                if f.normal.z > 0.3:
+                    for loop in f.loops:
+                        vx = loop.vert.co.x
+                        vy = loop.vert.co.y
+                        u = (vx - min_x) / width
+                        v = (vy - min_y) / height
+                        loop[uv_layer].uv = (u, v)
+                else:
+                    # 側面・底面: 側面の角度に応じたシームレスUV
+                    for loop in f.loops:
+                        vx = loop.vert.co.x
+                        vy = loop.vert.co.y
+                        vz = loop.vert.co.z
+                        u = (math.atan2(vy, vx) / (2.0 * math.pi)) + 0.5
+                        v = vz * 2.0
+                        loop[uv_layer].uv = (u, v)
+
+    # 5. 法線再計算
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
+    bm.to_mesh(mesh)
+    final_verts = len(bm.verts)
+    bm.free()
+    mesh.update()
+
+    return initial_verts, final_verts
+
+
+def finalize_game_ready_displace(obj, depth=0.15, decimate_ratio=0.5, close_mesh=True, planar_angle=2.5):
+    """ゲーム用確定処理: モディファイア適用 ➔ クローズド密閉化 ➔ 不要頂点溶解＆スマートUV化 ➔ ベベル"""
     if bpy.context.mode != 'OBJECT':
         try:
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -750,7 +835,10 @@ def finalize_game_ready_displace(obj, depth=0.15, decimate_ratio=0.5, close_mesh
     if close_mesh:
         solidify_and_close_mesh(obj, depth=depth)
 
-    # 3. スマート軽量化 (Decimate)
+    # 3. 平坦面の不要頂点溶解 ＆ スマートUV再構築
+    optimize_and_smart_uv_clean(obj, planar_angle=planar_angle, clean_loose=True, top_down_uv=True)
+
+    # 4. スマート軽量化 (Decimate)
     if decimate_ratio < 0.99:
         dec_mod = obj.modifiers.new(name="Decimate_Opt", type='DECIMATE')
         dec_mod.ratio = max(0.05, min(1.0, decimate_ratio))
@@ -759,14 +847,14 @@ def finalize_game_ready_displace(obj, depth=0.15, decimate_ratio=0.5, close_mesh
         except Exception:
             pass
 
-    # 4. 輪郭エッジの保護ベベル
+    # 5. 輪郭エッジの保護ベベル
     bev_mod = obj.modifiers.new(name="Edge_Bevel", type='BEVEL')
     bev_mod.width = 0.012
     bev_mod.segments = 2
     bev_mod.limit_method = 'ANGLE'
     bev_mod.angle_limit = math.radians(35.0)
 
-    # 5. 原点を底面にスナップ
+    # 6. 原点を底面にスナップ
     mesh = obj.data
     min_z = min((v.co.z for v in mesh.vertices), default=0.0)
     for v in mesh.vertices:

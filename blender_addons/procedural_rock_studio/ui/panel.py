@@ -94,14 +94,19 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_cube.prop(props, "img_disp_block_style", text="立体様式")
 
                 box_opt = box_disp.box()
-                box_opt.label(text="ゲーム最適化 & 軽量化設定:", icon='MOD_DECIM')
-                box_opt.prop(props, "img_disp_close_mesh", text="裏面・底面を完全密閉 (Closed Solid)")
+                box_opt.label(text="ゲーム最適化 & 超軽量化設定:", icon='MOD_DECIM')
+                box_opt.prop(props, "img_disp_planar_angle", text="平面溶解の角度 (Angle)", slider=True)
                 box_opt.prop(props, "img_disp_decimate_ratio", text="軽量化比率 (Decimate)", slider=True)
+                box_opt.prop(props, "img_disp_close_mesh", text="裏面・底面を完全密閉 (Closed Solid)")
+
+                row_opt_btn = box_opt.row(align=True)
+                row_opt_btn.scale_y = 1.2
+                row_opt_btn.operator("mesh.optimize_displace_mesh", text="⚡ 不要頂点消去 ＆ スマートUV化", icon='UV')
 
                 col_btn = box_disp.column(align=True)
                 col_btn.scale_y = 1.3
                 col_btn.operator("mesh.generate_image_displace", text="🖼️ 2D画像から立体プレビュー生成", icon='MOD_DISPLACE')
-                col_btn.operator("mesh.bake_game_ready_displace", text="🎮 ゲーム用確定 (裏面密閉 & 軽量化)", icon='CHECKMARK')
+                col_btn.operator("mesh.bake_game_ready_displace", text="🎮 ゲーム用確定 (裏面密閉 & 超軽量化)", icon='CHECKMARK')
 
             # Water Specific
             elif props.prop_category == 'WATER':
