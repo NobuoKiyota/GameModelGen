@@ -186,16 +186,24 @@ def update_displace_realtime(self, context):
 
 
 def update_cutout_realtime(self, context):
-    """型抜き（Cutout）を Geometry Nodes でリアルタイム反映"""
+    """型抜き（Cutout）＆ 色抜き（Color Keying）を Geometry Nodes でリアルタイム反映"""
     obj = context.active_object
     if not obj or obj.type != 'MESH':
         return
     from .generators.image_displace_gen import setup_or_update_cutout_modifier
+
+    mode_map = {'OR': 0, 'AND': 1, 'COLOR_ONLY': 2, 'HEIGHT_ONLY': 3}
+    c_mode = mode_map.get(getattr(self, 'img_disp_cutout_mode', 'OR'), 0)
+
     setup_or_update_cutout_modifier(
         obj,
-        enable=self.img_disp_enable_cutout,
+        enable=(self.img_disp_enable_cutout or getattr(self, 'img_disp_enable_color_cutout', False)),
         threshold=self.img_disp_cutout_threshold,
-        invert=self.img_disp_cutout_invert
+        invert=self.img_disp_cutout_invert,
+        enable_color=getattr(self, 'img_disp_enable_color_cutout', False),
+        key_color=getattr(self, 'img_disp_key_color', (1.0, 1.0, 1.0, 1.0)),
+        color_tolerance=getattr(self, 'img_disp_color_tolerance', 0.15),
+        cutout_mode=c_mode
     )
 
 
@@ -805,6 +813,33 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="型抜き反転 (Invert)", default=False,
         update=update_cutout_realtime,
         description="型抜きの対象を反転（浮き彫り/彫り込み）"
+    )
+    img_disp_enable_color_cutout: bpy.props.BoolProperty(
+        name="🎨 指定色で型抜き (Color Cutout)", default=False,
+        update=update_cutout_realtime,
+        description="指定した背景色や透明部分をリアルタイムに型抜き（消去）する"
+    )
+    img_disp_key_color: bpy.props.FloatVectorProperty(
+        name="対象色 (Key Color)", subtype='COLOR', size=4,
+        default=(1.0, 1.0, 1.0, 1.0), min=0.0, max=1.0,
+        update=update_cutout_realtime,
+        description="型抜き（消去）する背景色"
+    )
+    img_disp_color_tolerance: bpy.props.FloatProperty(
+        name="色の許容差 (Tolerance)", default=0.15, min=0.0, max=1.0,
+        update=update_cutout_realtime,
+        description="指定色との類似度の許容範囲（大きいほど広い色を型抜き）"
+    )
+    img_disp_cutout_mode: bpy.props.EnumProperty(
+        name="型抜き併用モード",
+        items=[
+            ('OR', "色 または 高さ (OR)", "指定色に近い、または高さが低い部分を消去"),
+            ('AND', "色 かつ 高さ (AND)", "指定色であり、かつ高さが低い部分を消去"),
+            ('COLOR_ONLY', "色抜きのみ (Color Only)", "画像の色差・透明度だけで型抜き"),
+            ('HEIGHT_ONLY', "高さ型抜きのみ (Height Only)", "高さ閾値だけで型抜き")
+        ],
+        default='OR',
+        update=update_cutout_realtime
     )
     img_disp_resolution: bpy.props.IntProperty(
         name="細分化解像度 (Resolution)", default=96, min=16, max=256,

@@ -406,6 +406,10 @@ class MESH_OT_generate_image_displace(bpy.types.Operator):
             enable_cutout=props.img_disp_enable_cutout,
             cutout_threshold=props.img_disp_cutout_threshold,
             cutout_invert=props.img_disp_cutout_invert,
+            enable_color_cutout=props.img_disp_enable_color_cutout,
+            key_color=props.img_disp_key_color,
+            color_tolerance=props.img_disp_color_tolerance,
+            cutout_mode={'OR': 0, 'AND': 1, 'COLOR_ONLY': 2, 'HEIGHT_ONLY': 3}.get(props.img_disp_cutout_mode, 0),
             resolution=props.img_disp_resolution,
             close_mesh=props.img_disp_close_mesh,
             decimate_ratio=props.img_disp_decimate_ratio,
@@ -485,4 +489,24 @@ class MESH_OT_import_dropped_image(bpy.types.Operator):
 
         # 即座に立体プレビューを生成
         bpy.ops.mesh.generate_image_displace()
+        return {'FINISHED'}
+
+
+class MESH_OT_auto_detect_background_color(bpy.types.Operator):
+    """Auto detect background color from image corner pixel"""
+    bl_idname = "mesh.auto_detect_background_color"
+    bl_label = "🪄 背景色を自動取得"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        img_path = bpy.path.abspath(props.img_disp_path).strip()
+        if not img_path or not os.path.isfile(img_path):
+            self.report({'WARNING'}, "有効な画像ファイルを先に指定してください")
+            return {'CANCELLED'}
+
+        from ..generators.image_displace_gen import detect_image_corner_color
+        r, g, b = detect_image_corner_color(img_path)
+        props.img_disp_key_color = (r, g, b, 1.0)
+        self.report({'INFO'}, f"背景色を自動検出しました: R={r:.2f}, G={g:.2f}, B={b:.2f}")
         return {'FINISHED'}

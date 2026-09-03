@@ -119,7 +119,7 @@ def create_base_displace_grid(bm, shape_type="SLAB_RELIEF", aspect=1.0, size=2.0
 
 
 def get_or_create_cutout_node_group():
-    """同階層型抜き（Cutout）用の Geometry Nodes グループを取得または新規作成"""
+    """同階層型抜き（Cutout）＆ 色抜き（Color Keying）用の Geometry Nodes グループを取得または新規作成"""
     group_name = "PRS_RealtimeCutoutTree"
     if group_name in bpy.data.node_groups:
         return bpy.data.node_groups[group_name]
@@ -129,17 +129,35 @@ def get_or_create_cutout_node_group():
     # Blender 3.6 / 4.x の互換性吸収
     if hasattr(tree, "interface"):
         tree.interface.new_socket("Geometry", in_out='INPUT', socket_type='NodeSocketGeometry')
+        sock_img = tree.interface.new_socket("Image", in_out='INPUT', socket_type='NodeSocketImage')
         sock_th = tree.interface.new_socket("Threshold", in_out='INPUT', socket_type='NodeSocketFloat')
         sock_th.default_value = 0.02
         sock_inv = tree.interface.new_socket("Invert", in_out='INPUT', socket_type='NodeSocketBool')
         sock_inv.default_value = False
+        sock_enc = tree.interface.new_socket("Enable_Color", in_out='INPUT', socket_type='NodeSocketBool')
+        sock_enc.default_value = False
+        sock_col = tree.interface.new_socket("Key_Color", in_out='INPUT', socket_type='NodeSocketColor')
+        sock_col.default_value = (1.0, 1.0, 1.0, 1.0)
+        sock_tol = tree.interface.new_socket("Color_Tolerance", in_out='INPUT', socket_type='NodeSocketFloat')
+        sock_tol.default_value = 0.15
+        sock_mode = tree.interface.new_socket("Cutout_Mode", in_out='INPUT', socket_type='NodeSocketInt')
+        sock_mode.default_value = 0
         tree.interface.new_socket("Geometry", in_out='OUTPUT', socket_type='NodeSocketGeometry')
     else:
         tree.inputs.new('NodeSocketGeometry', "Geometry")
+        tree.inputs.new('NodeSocketImage', "Image")
         sock_th = tree.inputs.new('NodeSocketFloat', "Threshold")
         sock_th.default_value = 0.02
         sock_inv = tree.inputs.new('NodeSocketBool', "Invert")
         sock_inv.default_value = False
+        sock_enc = tree.inputs.new('NodeSocketBool', "Enable_Color")
+        sock_enc.default_value = False
+        sock_col = tree.inputs.new('NodeSocketColor', "Key_Color")
+        sock_col.default_value = (1.0, 1.0, 1.0, 1.0)
+        sock_tol = tree.inputs.new('NodeSocketFloat', "Color_Tolerance")
+        sock_tol.default_value = 0.15
+        sock_mode = tree.inputs.new('NodeSocketInt', "Cutout_Mode")
+        sock_mode.default_value = 0
         tree.outputs.new('NodeSocketGeometry', "Geometry")
 
     nodes = tree.nodes
@@ -147,37 +165,145 @@ def get_or_create_cutout_node_group():
     nodes.clear()
 
     n_in = nodes.new('NodeGroupInput')
-    n_in.location = (-450, 0)
+    n_in.location = (-600, 0)
     n_out = nodes.new('NodeGroupOutput')
-    n_out.location = (450, 0)
+    n_out.location = (600, 0)
 
-    # Position ➔ Separate XYZ (Z)
+    # 1. 高さ判定 (Height Mask: Z < Threshold)
     n_pos = nodes.new('GeometryNodeInputPosition')
-    n_pos.location = (-450, -180)
+    n_pos.location = (-600, -180)
 
     n_sep = nodes.new('ShaderNodeSeparateXYZ')
-    n_sep.location = (-250, -180)
+    n_sep.location = (-400, -180)
     links.new(n_pos.outputs['Position'], n_sep.inputs['Vector'])
 
-    # Compare (Z < Threshold)
-    n_cmp = nodes.new('FunctionNodeCompare')
-    n_cmp.data_type = 'FLOAT'
-    n_cmp.operation = 'LESS_THAN'
-    n_cmp.location = (-50, -180)
-    links.new(n_sep.outputs['Z'], n_cmp.inputs['A'])
-    links.new(n_in.outputs['Threshold'], n_cmp.inputs['B'])
+    n_cmp_h = nodes.new('FunctionNodeCompare')
+    n_cmp_h.data_type = 'FLOAT'
+    n_cmp_h.operation = 'LESS_THAN'
+    n_cmp_h.location = (-200, -180)
+    links.new(n_sep.outputs['Z'], n_cmp_h.inputs['A'])
+    links.new(n_in.outputs['Threshold'], n_cmp_h.inputs['B'])
 
-    # Invert は Boolean Math (XOR) で一元制御
+    # 2. 色判定 (Color Mask: Distance(Color, Key_Color) < Tolerance OR Alpha < 0.5)
+    n_uv = nodes.new('GeometryNodeInputNamedAttribute')
+    n_uv.data_type = 'FLOAT_VECTOR'
+    n_uv.inputs['Name'].default_value = 'UVMap'
+    n_uv.location = (-600, -360)
+
+    n_tex = nodes.new('GeometryNodeImageTexture')
+    n_tex.location = (-400, -360)
+    links.new(n_in.outputs['Image'], n_tex.inputs['Image'])
+    links.new(n_uv.outputs[0], n_tex.inputs['Vector'])
+
+    n_dist = nodes.new('ShaderNodeVectorMath')
+    n_dist.operation = 'DISTANCE'
+    n_dist.location = (-200, -360)
+    links.new(n_tex.outputs['Color'], n_dist.inputs[0])
+    links.new(n_in.outputs['Key_Color'], n_dist.inputs[1])
+
+    n_cmp_col = nodes.new('FunctionNodeCompare')
+    n_cmp_col.data_type = 'FLOAT'
+    n_cmp_col.operation = 'LESS_THAN'
+    n_cmp_col.location = (0, -360)
+    links.new(n_dist.outputs['Value'], n_cmp_col.inputs['A'])
+    links.new(n_in.outputs['Color_Tolerance'], n_cmp_col.inputs['B'])
+
+    n_cmp_alpha = nodes.new('FunctionNodeCompare')
+    n_cmp_alpha.data_type = 'FLOAT'
+    n_cmp_alpha.operation = 'LESS_THAN'
+    n_cmp_alpha.location = (0, -500)
+    links.new(n_tex.outputs['Alpha'], n_cmp_alpha.inputs['A'])
+    n_cmp_alpha.inputs['B'].default_value = 0.5
+
+    n_or_col = nodes.new('FunctionNodeBooleanMath')
+    n_or_col.operation = 'OR'
+    n_or_col.location = (160, -400)
+    links.new(n_cmp_col.outputs['Result'], n_or_col.inputs[0])
+    links.new(n_cmp_alpha.outputs['Result'], n_or_col.inputs[1])
+
+    # 3. 併用モード合成 (OR / AND / COLOR / HEIGHT)
+    n_or_both = nodes.new('FunctionNodeBooleanMath')
+    n_or_both.operation = 'OR'
+    n_or_both.location = (0, -180)
+    links.new(n_cmp_h.outputs['Result'], n_or_both.inputs[0])
+    links.new(n_or_col.outputs['Boolean'], n_or_both.inputs[1])
+
+    n_and_both = nodes.new('FunctionNodeBooleanMath')
+    n_and_both.operation = 'AND'
+    n_and_both.location = (0, -60)
+    links.new(n_cmp_h.outputs['Result'], n_and_both.inputs[0])
+    links.new(n_or_col.outputs['Boolean'], n_and_both.inputs[1])
+
+    # モード切り替え (Compare Cutout_Mode)
+    # mode == 1: AND
+    n_cmp_is_and = nodes.new('FunctionNodeCompare')
+    n_cmp_is_and.data_type = 'INT'
+    n_cmp_is_and.operation = 'EQUAL'
+    n_cmp_is_and.location = (160, -60)
+    links.new(n_in.outputs['Cutout_Mode'], n_cmp_is_and.inputs['A'])
+    n_cmp_is_and.inputs['B'].default_value = 1
+
+    # mode == 2: COLOR_ONLY
+    n_cmp_is_col = nodes.new('FunctionNodeCompare')
+    n_cmp_is_col.data_type = 'INT'
+    n_cmp_is_col.operation = 'EQUAL'
+    n_cmp_is_col.location = (160, -200)
+    links.new(n_in.outputs['Cutout_Mode'], n_cmp_is_col.inputs['A'])
+    n_cmp_is_col.inputs['B'].default_value = 2
+
+    # mode == 3: HEIGHT_ONLY
+    n_cmp_is_h = nodes.new('FunctionNodeCompare')
+    n_cmp_is_h.data_type = 'INT'
+    n_cmp_is_h.operation = 'EQUAL'
+    n_cmp_is_h.location = (160, -320)
+    links.new(n_in.outputs['Cutout_Mode'], n_cmp_is_h.inputs['A'])
+    n_cmp_is_h.inputs['B'].default_value = 3
+
+    # Switch 連鎖でモード選択
+    # 1. OR vs AND
+    sw_mode1 = nodes.new('GeometryNodeSwitch')
+    sw_mode1.input_type = 'BOOLEAN'
+    sw_mode1.location = (300, -100)
+    links.new(n_cmp_is_and.outputs['Result'], sw_mode1.inputs['Switch'])
+    # False: OR, True: AND (BOOLEAN inputs: index 4, 5)
+    links.new(n_or_both.outputs['Boolean'], [i for i in sw_mode1.inputs if i.name == 'False' and i.type == 'BOOLEAN'][0])
+    links.new(n_and_both.outputs['Boolean'], [i for i in sw_mode1.inputs if i.name == 'True' and i.type == 'BOOLEAN'][0])
+
+    # 2. vs COLOR_ONLY
+    sw_mode2 = nodes.new('GeometryNodeSwitch')
+    sw_mode2.input_type = 'BOOLEAN'
+    sw_mode2.location = (360, -180)
+    links.new(n_cmp_is_col.outputs['Result'], sw_mode2.inputs['Switch'])
+    links.new([o for o in sw_mode1.outputs if o.type == 'BOOLEAN'][0], [i for i in sw_mode2.inputs if i.name == 'False' and i.type == 'BOOLEAN'][0])
+    links.new(n_or_col.outputs['Boolean'], [i for i in sw_mode2.inputs if i.name == 'True' and i.type == 'BOOLEAN'][0])
+
+    # 3. vs HEIGHT_ONLY
+    sw_mode3 = nodes.new('GeometryNodeSwitch')
+    sw_mode3.input_type = 'BOOLEAN'
+    sw_mode3.location = (420, -260)
+    links.new(n_cmp_is_h.outputs['Result'], sw_mode3.inputs['Switch'])
+    links.new([o for o in sw_mode2.outputs if o.type == 'BOOLEAN'][0], [i for i in sw_mode3.inputs if i.name == 'False' and i.type == 'BOOLEAN'][0])
+    links.new(n_cmp_h.outputs['Result'], [i for i in sw_mode3.inputs if i.name == 'True' and i.type == 'BOOLEAN'][0])
+
+    # 4. Enable_Color の切り替え (False なら常に HeightMask)
+    sw_final = nodes.new('GeometryNodeSwitch')
+    sw_final.input_type = 'BOOLEAN'
+    sw_final.location = (480, -100)
+    links.new(n_in.outputs['Enable_Color'], sw_final.inputs['Switch'])
+    links.new(n_cmp_h.outputs['Result'], [i for i in sw_final.inputs if i.name == 'False' and i.type == 'BOOLEAN'][0])
+    links.new([o for o in sw_mode3.outputs if o.type == 'BOOLEAN'][0], [i for i in sw_final.inputs if i.name == 'True' and i.type == 'BOOLEAN'][0])
+
+    # 5. 反転 XOR
     n_xor = nodes.new('FunctionNodeBooleanMath')
     n_xor.operation = 'XOR'
-    n_xor.location = (150, -180)
-    links.new(n_cmp.outputs['Result'], n_xor.inputs[0])
+    n_xor.location = (540, -180)
+    links.new([o for o in sw_final.outputs if o.type == 'BOOLEAN'][0], n_xor.inputs[0])
     links.new(n_in.outputs['Invert'], n_xor.inputs[1])
 
-    # Delete Geometry (Face)
+    # 6. Delete Geometry
     n_del = nodes.new('GeometryNodeDeleteGeometry')
     n_del.domain = 'FACE'
-    n_del.location = (300, 0)
+    n_del.location = (600, 0)
     links.new(n_in.outputs['Geometry'], n_del.inputs['Geometry'])
     links.new(n_xor.outputs['Boolean'], n_del.inputs['Selection'])
     links.new(n_del.outputs['Geometry'], n_out.inputs['Geometry'])
@@ -185,8 +311,33 @@ def get_or_create_cutout_node_group():
     return tree
 
 
-def setup_or_update_cutout_modifier(obj, enable=True, threshold=0.02, invert=False):
-    """オブジェクトの Cutout モディファイアをリアルタイム設定・更新"""
+def detect_image_corner_color(image_path):
+    """画像の左上隅ピクセルから背景色 (R, G, B) を自動サンプリング"""
+    img = get_or_load_image(image_path)
+    if not img:
+        return (1.0, 1.0, 1.0)
+    try:
+        # 左上ピクセル
+        pix = img.pixels
+        if len(pix) >= 4:
+            return (float(pix[0]), float(pix[1]), float(pix[2]))
+    except Exception as e:
+        print(f"[DetectColor] Error: {e}")
+    return (1.0, 1.0, 1.0)
+
+
+def setup_or_update_cutout_modifier(
+    obj,
+    enable=True,
+    threshold=0.02,
+    invert=False,
+    enable_color=False,
+    key_color=(1.0, 1.0, 1.0, 1.0),
+    color_tolerance=0.15,
+    cutout_mode=0,
+    img=None
+):
+    """オブジェクトの Cutout モディファイア（高さ型抜き＆色抜き）をリアルタイム設定・更新"""
     if not obj or obj.type != 'MESH':
         return
 
@@ -197,6 +348,9 @@ def setup_or_update_cutout_modifier(obj, enable=True, threshold=0.02, invert=Fal
         if mod:
             mod.show_viewport = False
             mod.show_render = False
+        mod_disp = obj.modifiers.get("Displace_Relief")
+        if mod_disp:
+            mod_disp.vertex_group = "Displace_Mask"
         return
 
     if not mod:
@@ -207,10 +361,14 @@ def setup_or_update_cutout_modifier(obj, enable=True, threshold=0.02, invert=Fal
     mod.show_viewport = True
     mod.show_render = True
 
-    # 型抜きモード時は外枠マスクを解除して全体を型抜き対象に
+    # 型抜きモード時は外枠マスクを解除
     mod_disp = obj.modifiers.get("Displace_Relief")
     if mod_disp:
-        mod_disp.vertex_group = "" if enable else "Displace_Mask"
+        mod_disp.vertex_group = ""
+
+    # 画像取得
+    if not img and mod_disp and mod_disp.texture and getattr(mod_disp.texture, 'image', None):
+        img = mod_disp.texture.image
 
     # パラメーター代入
     if hasattr(mod.node_group, "inputs"):
@@ -219,12 +377,16 @@ def setup_or_update_cutout_modifier(obj, enable=True, threshold=0.02, invert=Fal
                 mod[inp.identifier] = threshold
             elif inp.name == "Invert":
                 mod[inp.identifier] = invert
-    elif hasattr(mod.node_group, "interface"):
-        for item in mod.node_group.interface.items_tree:
-            if item.name == "Threshold":
-                mod[item.identifier] = threshold
-            elif item.name == "Invert":
-                mod[item.identifier] = invert
+            elif inp.name == "Enable_Color":
+                mod[inp.identifier] = enable_color
+            elif inp.name == "Key_Color":
+                mod[inp.identifier] = key_color if len(key_color) == 4 else (*key_color, 1.0)
+            elif inp.name == "Color_Tolerance":
+                mod[inp.identifier] = color_tolerance
+            elif inp.name == "Cutout_Mode":
+                mod[inp.identifier] = int(cutout_mode)
+            elif inp.name == "Image" and img:
+                mod[inp.identifier] = img
 
     obj.data.update()
 
@@ -465,6 +627,10 @@ def generate_image_displace_asset(
     enable_cutout=False,
     cutout_threshold=0.02,
     cutout_invert=False,
+    enable_color_cutout=False,
+    key_color=(1.0, 1.0, 1.0, 1.0),
+    color_tolerance=0.15,
+    cutout_mode=0,
     resolution=96,
     close_mesh=True,
     decimate_ratio=0.5,
@@ -533,9 +699,19 @@ def generate_image_displace_asset(
     if smooth_factor > 0.001:
         setup_or_update_smooth_modifier(obj, factor=smooth_factor, iterations=smooth_iter)
 
-    # 6. 同階層型抜き (Cutout) のセットアップ
-    if enable_cutout:
-        setup_or_update_cutout_modifier(obj, enable=True, threshold=cutout_threshold, invert=cutout_invert)
+    # 6. 同階層型抜き＆色抜き (Cutout) のセットアップ
+    if enable_cutout or enable_color_cutout:
+        setup_or_update_cutout_modifier(
+            obj,
+            enable=True,
+            threshold=cutout_threshold,
+            invert=cutout_invert,
+            enable_color=enable_color_cutout,
+            key_color=key_color,
+            color_tolerance=color_tolerance,
+            cutout_mode=cutout_mode,
+            img=img
+        )
 
     # 7. 面(立方体)化 (Solidify_Block / Remesh) のセットアップ
     if solidify_thickness > 0.001:

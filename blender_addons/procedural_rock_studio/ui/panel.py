@@ -66,12 +66,27 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 row_sm.prop(props, "img_disp_smooth_iter", text="反復 (Iter)")
 
                 box_cut = box_disp.box()
-                box_cut.label(text="✂️ 同階層の削除・型抜き (Live Cutout):", icon='SCULPTMODE_HLT')
-                box_cut.prop(props, "img_disp_enable_cutout", text="同階層をリアルタイム型抜き")
+                box_cut.label(text="✂️ 型抜き＆色抜き (Live Cutout):", icon='SCULPTMODE_HLT')
+                
+                # 1. 高さ型抜き
+                box_cut.prop(props, "img_disp_enable_cutout", text="同階層（高さ）を型抜き")
                 if props.img_disp_enable_cutout:
                     row_cut = box_cut.row(align=True)
-                    row_cut.prop(props, "img_disp_cutout_threshold", text="型抜き閾値", slider=True)
+                    row_cut.prop(props, "img_disp_cutout_threshold", text="高さ閾値", slider=True)
                     row_cut.prop(props, "img_disp_cutout_invert", text="反転")
+
+                # 2. 類似色型抜き
+                box_cut.prop(props, "img_disp_enable_color_cutout", text="🎨 指定色で型抜き (Color Cutout)")
+                if props.img_disp_enable_color_cutout:
+                    box_col = box_cut.box()
+                    row_col = box_col.row(align=True)
+                    row_col.prop(props, "img_disp_key_color", text="対象色")
+                    row_col.operator("mesh.auto_detect_background_color", text="🪄 自動取得", icon='COLOR')
+                    box_col.prop(props, "img_disp_color_tolerance", text="色の許容差", slider=True)
+
+                # 3. 両方ONの場合の併用モード
+                if props.img_disp_enable_cutout and props.img_disp_enable_color_cutout:
+                    box_cut.prop(props, "img_disp_cutout_mode", text="併用方式")
 
                 box_cube = box_disp.box()
                 box_cube.label(text="🧊 面・立体ブロック化 (Solidify / Cube):", icon='MESH_CUBE')
