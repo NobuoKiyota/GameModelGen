@@ -229,6 +229,113 @@ def setup_or_update_cutout_modifier(obj, enable=True, threshold=0.02, invert=Fal
     obj.data.update()
 
 
+def setup_or_update_subdiv_modifier(obj, level=1):
+    """細分化モディファイアのリアルタイム設定・更新"""
+    if not obj or obj.type != 'MESH':
+        return
+    mod_name = "Subdiv_Detail"
+    mod = obj.modifiers.get(mod_name)
+    if level <= 0:
+        if mod:
+            mod.show_viewport = False
+            mod.show_render = False
+        return
+
+    if not mod:
+        mod = obj.modifiers.new(name=mod_name, type='SUBSURF')
+        mod.subdivision_type = 'SIMPLE'
+        # スタックの先頭に移動
+        try:
+            bpy.context.view_layer.objects.active = obj
+            while obj.modifiers.find(mod.name) > 0:
+                bpy.ops.object.modifier_move_up(modifier=mod.name)
+        except Exception:
+            pass
+
+    mod.show_viewport = True
+    mod.show_render = True
+    mod.levels = max(0, min(4, level))
+    mod.render_levels = mod.levels
+    obj.data.update()
+
+
+def setup_or_update_smooth_modifier(obj, factor=0.3, iterations=2):
+    """スムースモディファイアのリアルタイム設定・更新（ジャギー・等高線段差の除去）"""
+    if not obj or obj.type != 'MESH':
+        return
+    mod_name = "Smooth_Clean"
+    mod = obj.modifiers.get(mod_name)
+    if factor <= 0.001 or iterations <= 0:
+        if mod:
+            mod.show_viewport = False
+            mod.show_render = False
+        return
+
+    if not mod:
+        mod = obj.modifiers.new(name=mod_name, type='SMOOTH')
+        # Displaceの直後に配置
+        try:
+            disp_idx = obj.modifiers.find("Displace_Relief")
+            if disp_idx >= 0:
+                bpy.context.view_layer.objects.active = obj
+                cur_idx = obj.modifiers.find(mod.name)
+                while cur_idx > disp_idx + 1:
+                    bpy.ops.object.modifier_move_up(modifier=mod.name)
+                    cur_idx -= 1
+        except Exception:
+            pass
+
+    mod.show_viewport = True
+    mod.show_render = True
+    mod.factor = max(0.0, min(1.0, factor))
+    mod.iterations = max(1, min(20, iterations))
+    obj.data.update()
+
+
+def setup_or_update_solidify_modifier(obj, thickness=0.15, style='SOLID_SLAB'):
+    """面（立方体）化モディファイアのリアルタイム設定・更新"""
+    if not obj or obj.type != 'MESH':
+        return
+    mod_name = "Solidify_Block"
+    mod = obj.modifiers.get(mod_name)
+    rem_name = "Remesh_Block"
+    mod_rem = obj.modifiers.get(rem_name)
+
+    if thickness <= 0.001:
+        if mod:
+            mod.show_viewport = False
+            mod.show_render = False
+        if mod_rem:
+            mod_rem.show_viewport = False
+            mod_rem.show_render = False
+        return
+
+    if not mod:
+        mod = obj.modifiers.new(name=mod_name, type='SOLIDIFY')
+        mod.offset = -1.0
+        mod.use_rim = True
+        mod.use_rim_only = False
+
+    mod.show_viewport = True
+    mod.show_render = True
+    mod.thickness = thickness
+
+    if style == 'VOXEL_BLOCKS':
+        if not mod_rem:
+            mod_rem = obj.modifiers.new(name=rem_name, type='REMESH')
+            mod_rem.mode = 'BLOCKS'
+            mod_rem.octree_depth = 6
+            mod_rem.scale = 0.9
+        mod_rem.show_viewport = True
+        mod_rem.show_render = True
+    else:
+        if mod_rem:
+            mod_rem.show_viewport = False
+            mod_rem.show_render = False
+
+    obj.data.update()
+
+
 def solidify_and_close_mesh(obj, depth=0.15):
     """表面の境界エッジを下方に押し出し、底面を張って完全密閉（クローズド）立体化（複数アイランド対応）"""
     if bpy.context.mode != 'OBJECT':
@@ -350,6 +457,11 @@ def generate_image_displace_asset(
     height=0.08,
     strength=0.20,
     midlevel=0.50,
+    subdiv_level=1,
+    smooth_factor=0.30,
+    smooth_iter=2,
+    solidify_thickness=0.15,
+    block_style='SOLID_SLAB',
     enable_cutout=False,
     cutout_threshold=0.02,
     cutout_invert=False,
@@ -397,7 +509,11 @@ def generate_image_displace_asset(
         weight = 0.0 if v.index in boundary_v_indices else 1.0
         vg.add([v.index], weight, 'REPLACE')
 
-    # 3. Displace Modifier のセットアップ (Strength & Midlevel)
+    # 3. 細分化 (Subdiv_Detail) のセットアップ
+    if subdiv_level > 0:
+        setup_or_update_subdiv_modifier(obj, level=subdiv_level)
+
+    # 4. Displace Modifier のセットアップ (Strength & Midlevel)
     if img:
         tex = bpy.data.textures.new(f"{name}_DispTex", type='IMAGE')
         tex.image = img
@@ -413,17 +529,25 @@ def generate_image_displace_asset(
         mod_disp.strength = strength if abs(strength) > 0.0001 else height
         mod_disp.mid_level = midlevel
 
-    # 4. 同階層型抜き (Cutout) のセットアップ
+    # 5. スムース (Smooth_Clean) のセットアップ
+    if smooth_factor > 0.001:
+        setup_or_update_smooth_modifier(obj, factor=smooth_factor, iterations=smooth_iter)
+
+    # 6. 同階層型抜き (Cutout) のセットアップ
     if enable_cutout:
         setup_or_update_cutout_modifier(obj, enable=True, threshold=cutout_threshold, invert=cutout_invert)
 
-    # 5. マテリアルの適用
+    # 7. 面(立方体)化 (Solidify_Block / Remesh) のセットアップ
+    if solidify_thickness > 0.001:
+        setup_or_update_solidify_modifier(obj, thickness=solidify_thickness, style=block_style)
+
+    # 8. マテリアルの適用
     mat = create_image_displace_material(f"{name}_Mat", img=img, style=material_style)
     obj.data.materials.append(mat)
 
-    # 6. 確定（Bake / Apply & Solidify）
+    # 9. 確定（Bake / Apply & Solidify）
     if auto_apply:
-        finalize_game_ready_displace(obj, depth=depth, decimate_ratio=decimate_ratio, close_mesh=close_mesh)
+        finalize_game_ready_displace(obj, depth=solidify_thickness, decimate_ratio=decimate_ratio, close_mesh=close_mesh)
 
     return obj
 

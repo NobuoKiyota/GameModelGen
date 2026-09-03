@@ -199,6 +199,33 @@ def update_cutout_realtime(self, context):
     )
 
 
+def update_subdiv_realtime(self, context):
+    """細分化 (Subdivision) レベルをリアルタイム反映"""
+    obj = context.active_object
+    if not obj or obj.type != 'MESH':
+        return
+    from .generators.image_displace_gen import setup_or_update_subdiv_modifier
+    setup_or_update_subdiv_modifier(obj, level=self.img_disp_subdiv_level)
+
+
+def update_smooth_realtime(self, context):
+    """スムース (Smooth) をリアルタイム反映"""
+    obj = context.active_object
+    if not obj or obj.type != 'MESH':
+        return
+    from .generators.image_displace_gen import setup_or_update_smooth_modifier
+    setup_or_update_smooth_modifier(obj, factor=self.img_disp_smooth_factor, iterations=self.img_disp_smooth_iter)
+
+
+def update_solidify_realtime(self, context):
+    """面（立方体）化 (Solidify / Voxel) をリアルタイム反映"""
+    obj = context.active_object
+    if not obj or obj.type != 'MESH':
+        return
+    from .generators.image_displace_gen import setup_or_update_solidify_modifier
+    setup_or_update_solidify_modifier(obj, thickness=self.img_disp_solidify_thickness, style=self.img_disp_block_style)
+
+
 class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
@@ -725,9 +752,10 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         ],
         default='SLAB_RELIEF'
     )
-    img_disp_depth: bpy.props.FloatProperty(
-        name="厚み (Depth)", default=0.15, min=0.01, max=2.0,
-        description="ブロック底面押し出しの厚み (m)"
+    img_disp_subdiv_level: bpy.props.IntProperty(
+        name="細分化レベル (Subdiv)", default=1, min=0, max=4,
+        update=update_subdiv_realtime,
+        description="メッシュの細分化解像度レベル（リアルタイム連動）"
     )
     img_disp_strength: bpy.props.FloatProperty(
         name="隆起の強さ (Strength)", default=0.20, min=-3.0, max=3.0,
@@ -738,6 +766,30 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="基準面 (Midlevel)", default=0.50, min=0.0, max=1.0,
         update=update_displace_realtime,
         description="基準面の高さレベル（リアルタイム連動）"
+    )
+    img_disp_smooth_factor: bpy.props.FloatProperty(
+        name="スムース強度 (Factor)", default=0.30, min=0.0, max=1.0,
+        update=update_smooth_realtime,
+        description="ジャギー・等高線段差を滑らかに溶かす強度（リアルタイム連動）"
+    )
+    img_disp_smooth_iter: bpy.props.IntProperty(
+        name="スムース反復回数 (Iterations)", default=2, min=1, max=10,
+        update=update_smooth_realtime,
+        description="スムースの反復適用回数（リアルタイム連動）"
+    )
+    img_disp_solidify_thickness: bpy.props.FloatProperty(
+        name="面(立方体)の厚み (Thickness)", default=0.15, min=0.01, max=2.0,
+        update=update_solidify_realtime,
+        description="直方体ブロック・コインの厚み（リアルタイム連動）"
+    )
+    img_disp_block_style: bpy.props.EnumProperty(
+        name="立体ブロック様式",
+        items=[
+            ('SOLID_SLAB', "🧱 直方体ブロック (Solid Slab)", "均一な厚みを持つソリッド直方体ブロック"),
+            ('VOXEL_BLOCKS', "🧊 キューブボクセル (Voxel Blocks)", "マインクラフト・ドット絵調の立方体キューブ集合体")
+        ],
+        default='SOLID_SLAB',
+        update=update_solidify_realtime
     )
     img_disp_enable_cutout: bpy.props.BoolProperty(
         name="✂️ 同階層を型抜き (Cutout)", default=False,

@@ -395,9 +395,14 @@ class MESH_OT_generate_image_displace(bpy.types.Operator):
             image_path=img_path,
             name=name,
             shape_type=props.img_disp_shape,
-            depth=props.img_disp_depth,
+            depth=props.img_disp_solidify_thickness,
             strength=props.img_disp_strength,
             midlevel=props.img_disp_midlevel,
+            subdiv_level=props.img_disp_subdiv_level,
+            smooth_factor=props.img_disp_smooth_factor,
+            smooth_iter=props.img_disp_smooth_iter,
+            solidify_thickness=props.img_disp_solidify_thickness,
+            block_style=props.img_disp_block_style,
             enable_cutout=props.img_disp_enable_cutout,
             cutout_threshold=props.img_disp_cutout_threshold,
             cutout_invert=props.img_disp_cutout_invert,
@@ -429,7 +434,7 @@ class MESH_OT_bake_game_ready_displace(bpy.types.Operator):
         from ..generators.image_displace_gen import finalize_game_ready_displace
         finalize_game_ready_displace(
             obj,
-            depth=props.img_disp_depth,
+            depth=props.img_disp_solidify_thickness,
             decimate_ratio=props.img_disp_decimate_ratio,
             close_mesh=props.img_disp_close_mesh
         )

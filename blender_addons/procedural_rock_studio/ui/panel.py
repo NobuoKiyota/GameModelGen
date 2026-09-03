@@ -49,10 +49,17 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_disp.prop(props, "img_disp_mat_style", text="マテリアル質感")
 
                 box_param = box_disp.box()
-                box_param.label(text="🎛️ リアルタイム変位設定 (Live Displace):", icon='MOD_DISPLACE')
+                box_param.label(text="🎛️ リアルタイム変位＆細分化 (Live Displace):", icon='MOD_DISPLACE')
+                box_param.prop(props, "img_disp_subdiv_level", text="細分化レベル (Subdiv)")
                 row_live = box_param.row(align=True)
                 row_live.prop(props, "img_disp_strength", text="Strength (強さ)", slider=True)
                 row_live.prop(props, "img_disp_midlevel", text="Midlevel (基準面)", slider=True)
+
+                box_sm = box_disp.box()
+                box_sm.label(text="🌊 スムース段差補正 (Smooth):", icon='MOD_SMOOTH')
+                row_sm = box_sm.row(align=True)
+                row_sm.prop(props, "img_disp_smooth_factor", text="強度 (Factor)", slider=True)
+                row_sm.prop(props, "img_disp_smooth_iter", text="反復 (Iter)")
 
                 box_cut = box_disp.box()
                 box_cut.label(text="✂️ 同階層の削除・型抜き (Live Cutout):", icon='SCULPTMODE_HLT')
@@ -62,10 +69,13 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                     row_cut.prop(props, "img_disp_cutout_threshold", text="型抜き閾値", slider=True)
                     row_cut.prop(props, "img_disp_cutout_invert", text="反転")
 
+                box_cube = box_disp.box()
+                box_cube.label(text="🧊 面・立体ブロック化 (Solidify / Cube):", icon='MESH_CUBE')
+                box_cube.prop(props, "img_disp_solidify_thickness", text="厚み (Thickness)", slider=True)
+                box_cube.prop(props, "img_disp_block_style", text="立体様式")
+
                 box_opt = box_disp.box()
-                box_opt.label(text="細分化 & ゲーム最適化設定:", icon='MOD_DECIM')
-                box_opt.prop(props, "img_disp_depth", text="厚み (Depth)")
-                box_opt.prop(props, "img_disp_resolution", text="解像度グリッド数")
+                box_opt.label(text="ゲーム最適化 & 軽量化設定:", icon='MOD_DECIM')
                 box_opt.prop(props, "img_disp_close_mesh", text="裏面・底面を完全密閉 (Closed Solid)")
                 box_opt.prop(props, "img_disp_decimate_ratio", text="軽量化比率 (Decimate)", slider=True)
 
