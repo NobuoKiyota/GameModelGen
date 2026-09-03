@@ -40,8 +40,31 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
         # 🌟 4. Tab 1: Shape & Dimensions & Specific Controls
         if props.studio_tab == 'SHAPE':
+            # Image Displace Studio Specific
+            if props.prop_category == 'IMAGE_DISPLACE':
+                box_disp = layout.box()
+                box_disp.label(text="Image Displace Studio (2D画像立体化):", icon='IMAGE_DATA')
+                box_disp.prop(props, "img_disp_path", text="画像ファイル")
+                box_disp.prop(props, "img_disp_shape", text="立体形状")
+                box_disp.prop(props, "img_disp_mat_style", text="マテリアル質感")
+
+                row_dp = box_disp.row(align=True)
+                row_dp.prop(props, "img_disp_height", text="凹凸の高さ")
+                row_dp.prop(props, "img_disp_depth", text="厚み (Depth)")
+
+                box_opt = box_disp.box()
+                box_opt.label(text="細分化 & ゲーム最適化設定:", icon='MOD_DECIM')
+                box_opt.prop(props, "img_disp_resolution", text="解像度グリッド数")
+                box_opt.prop(props, "img_disp_close_mesh", text="裏面・底面を完全密閉 (Closed Solid)")
+                box_opt.prop(props, "img_disp_decimate_ratio", text="軽量化比率 (Decimate)", slider=True)
+
+                col_btn = box_disp.column(align=True)
+                col_btn.scale_y = 1.3
+                col_btn.operator("mesh.generate_image_displace", text="🖼️ 2D画像から立体プレビュー生成", icon='MOD_DISPLACE')
+                col_btn.operator("mesh.bake_game_ready_displace", text="🎮 ゲーム用確定 (裏面密閉 & 軽量化)", icon='CHECKMARK')
+
             # Water Specific
-            if props.prop_category == 'WATER':
+            elif props.prop_category == 'WATER':
                 box_water = layout.box()
                 box_water.label(text="Water Settings (水面・池・湖設定):", icon='MOD_OCEAN')
                 box_water.prop(props, "water_shape", text="形状プリセット")

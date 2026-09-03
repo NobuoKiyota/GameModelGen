@@ -32,11 +32,17 @@ def update_category_preset(self, context):
         'CHEST': "Antique_Chest",
         'BED': "Antique_Bed",
         'FENCE': "Wooden_Fence",
-        'BUSH': "Bush_Shrub"
+        'BUSH': "Bush_Shrub",
+        'IMAGE_DISPLACE': "Image_Displace_Asset"
     }
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
-    if cat == "BUSH":
+    if cat == "IMAGE_DISPLACE":
+        props.size_x = 2.0
+        props.size_y = 2.0
+        props.size_z = 0.2
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "BUSH":
         props.size_x = 1.2
         props.size_y = 1.2
         props.size_z = 0.9
@@ -167,6 +173,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
+            ('IMAGE_DISPLACE', "🖼️ 2D画像立体化 (Image Displace Studio)", "2D画像から3Dレリーフ・コイン・地形を半自動立体化（アスペクト比自動同期＆クローズド密閉）"),
             ('BUSH', "🌿 低木・茂み・シダ (Bush / Shrub / Fern)", "textures/Grass/ と自動連動（丸型低木/野生の藪/シダ株/生垣・球状法線転送）"),
             ('TELESCOPE', "🔭 天体望遠鏡 (Astronomical Telescope)", "Celestron StarSense風（三脚・経緯台・鏡筒・接眼部・スマホドック・可動ピボット）"),
             ('FENCE', "🪵 木製の柵・フェンス・砦 (Wooden Fence / Palisade)", "textures/Wood/ と自動連動（牧場横木/先端尖りピケット/X筋交い/丸太防壁）"),
@@ -673,6 +680,50 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     telescope_tube_length: bpy.props.FloatProperty(
         name="鏡筒の長さ (Tube Length)", default=0.75, min=0.3, max=1.5,
         description="望遠鏡の鏡筒の長さ (m)"
+    )
+
+    # ── IMAGE DISPLACE STUDIO Properties ──
+    img_disp_path: bpy.props.StringProperty(
+        name="画像ファイル", subtype='FILE_PATH', default="",
+        description="立体化する2D画像 (PNG/JPG/EXR)"
+    )
+    img_disp_shape: bpy.props.EnumProperty(
+        name="立体形状",
+        items=[
+            ('SLAB_RELIEF', "🔲 レリーフ石板 (Slab Relief)", "アスペクト比同期の四角形レリーフ・額縁"),
+            ('COIN_MEDAL', "🔘 コイン/メダル (Coin Medal)", "円形コイン・メダル・紋章ディスク")
+        ],
+        default='SLAB_RELIEF'
+    )
+    img_disp_depth: bpy.props.FloatProperty(
+        name="厚み (Depth)", default=0.15, min=0.01, max=2.0,
+        description="ブロック底面押し出しの厚み (m)"
+    )
+    img_disp_height: bpy.props.FloatProperty(
+        name="凹凸の深さ (Height)", default=0.08, min=0.001, max=1.0,
+        description="Displace隆起の高さ (m)"
+    )
+    img_disp_resolution: bpy.props.IntProperty(
+        name="細分化解像度 (Resolution)", default=96, min=16, max=256,
+        description="ベースグリッドの分割解像度"
+    )
+    img_disp_close_mesh: bpy.props.BoolProperty(
+        name="裏面底面を密閉 (Closed Solid)", default=True,
+        description="裏面・側面を閉じてUnity/UE用の完全ソリッドにする"
+    )
+    img_disp_decimate_ratio: bpy.props.FloatProperty(
+        name="軽量化比率 (Decimate)", default=0.5, min=0.05, max=1.0,
+        description="ゲーム向けポリゴン削減率 (1.0で削減なし)"
+    )
+    img_disp_mat_style: bpy.props.EnumProperty(
+        name="マテリアル質感",
+        items=[
+            ('ORIGINAL_COLOR', "🎨 元画像カラー (Original Color)", "画像のカラーテクスチャをそのまま表面にマッピング"),
+            ('MARBLE', "🏛️ 白大理石 (Marble)", "高級感のある筋模様と光沢"),
+            ('ANCIENT_STONE', "🪨 古代砂岩 (Ancient Sandstone)", "風化した砂粒感と土汚れ"),
+            ('MOSSY_RUINS', "🌿 苔むした遺跡 (Mossy Ruins)", "足元から這い上がる緑苔")
+        ],
+        default='ORIGINAL_COLOR'
     )
 
 

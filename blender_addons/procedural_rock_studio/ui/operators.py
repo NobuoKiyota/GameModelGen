@@ -373,3 +373,61 @@ class MESH_OT_setup_water_sky_lighting(bpy.types.Operator):
         except Exception as e:
             self.report({'ERROR'}, f"Sky setup error: {str(e)}")
             return {'CANCELLED'}
+
+
+class MESH_OT_generate_image_displace(bpy.types.Operator):
+    """Generate 3D Displaced Mesh from 2D Image (Real-time Preview)"""
+    bl_idname = "mesh.generate_image_displace"
+    bl_label = "2D画像から立体プレビュー生成"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        img_path = bpy.path.abspath(props.img_disp_path).strip()
+        if not img_path or not os.path.isfile(img_path):
+            self.report({'WARNING'}, "有効な画像ファイルを指定してください (PNG/JPG/EXR)")
+            return {'CANCELLED'}
+
+        from ..generators.image_displace_gen import generate_image_displace_asset
+        name = props.asset_name.strip() or "Image_Displace_Asset"
+        obj = generate_image_displace_asset(
+            context=context,
+            image_path=img_path,
+            name=name,
+            shape_type=props.img_disp_shape,
+            depth=props.img_disp_depth,
+            height=props.img_disp_height,
+            resolution=props.img_disp_resolution,
+            close_mesh=props.img_disp_close_mesh,
+            decimate_ratio=props.img_disp_decimate_ratio,
+            material_style=props.img_disp_mat_style,
+            auto_apply=False
+        )
+        context.view_layer.objects.active = obj
+        obj.select_set(True)
+        self.report({'INFO'}, f"画像立体化プレビュー生成完了: {obj.name}")
+        return {'FINISHED'}
+
+
+class MESH_OT_bake_game_ready_displace(bpy.types.Operator):
+    """Bake and Solidify into Game-Ready Closed Solid Mesh with Decimation"""
+    bl_idname = "mesh.bake_game_ready_displace"
+    bl_label = "🎮 ゲーム用確定 (裏面密閉 & 軽量化)"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        obj = context.active_object
+        if not obj or obj.type != 'MESH':
+            self.report({'WARNING'}, "立体化されたメッシュを選択してください")
+            return {'CANCELLED'}
+
+        from ..generators.image_displace_gen import finalize_game_ready_displace
+        finalize_game_ready_displace(
+            obj,
+            depth=props.img_disp_depth,
+            decimate_ratio=props.img_disp_decimate_ratio,
+            close_mesh=props.img_disp_close_mesh
+        )
+        self.report({'INFO'}, f"ゲーム用確定完了（クローズド密閉＆軽量化済み）: {obj.name}")
+        return {'FINISHED'}
