@@ -118,9 +118,120 @@ def create_base_displace_grid(bm, shape_type="SLAB_RELIEF", aspect=1.0, size=2.0
     bm.normal_update()
 
 
+def get_or_create_cutout_node_group():
+    """同階層型抜き（Cutout）用の Geometry Nodes グループを取得または新規作成"""
+    group_name = "PRS_RealtimeCutoutTree"
+    if group_name in bpy.data.node_groups:
+        return bpy.data.node_groups[group_name]
+
+    tree = bpy.data.node_groups.new(name=group_name, type='GeometryNodeTree')
+
+    # Blender 3.6 / 4.x の互換性吸収
+    if hasattr(tree, "interface"):
+        tree.interface.new_socket("Geometry", in_out='INPUT', socket_type='NodeSocketGeometry')
+        sock_th = tree.interface.new_socket("Threshold", in_out='INPUT', socket_type='NodeSocketFloat')
+        sock_th.default_value = 0.02
+        sock_inv = tree.interface.new_socket("Invert", in_out='INPUT', socket_type='NodeSocketBool')
+        sock_inv.default_value = False
+        tree.interface.new_socket("Geometry", in_out='OUTPUT', socket_type='NodeSocketGeometry')
+    else:
+        tree.inputs.new('NodeSocketGeometry', "Geometry")
+        sock_th = tree.inputs.new('NodeSocketFloat', "Threshold")
+        sock_th.default_value = 0.02
+        sock_inv = tree.inputs.new('NodeSocketBool', "Invert")
+        sock_inv.default_value = False
+        tree.outputs.new('NodeSocketGeometry', "Geometry")
+
+    nodes = tree.nodes
+    links = tree.links
+    nodes.clear()
+
+    n_in = nodes.new('NodeGroupInput')
+    n_in.location = (-450, 0)
+    n_out = nodes.new('NodeGroupOutput')
+    n_out.location = (450, 0)
+
+    # Position ➔ Separate XYZ (Z)
+    n_pos = nodes.new('GeometryNodeInputPosition')
+    n_pos.location = (-450, -180)
+
+    n_sep = nodes.new('ShaderNodeSeparateXYZ')
+    n_sep.location = (-250, -180)
+    links.new(n_pos.outputs['Position'], n_sep.inputs['Vector'])
+
+    # Compare (Z < Threshold)
+    n_cmp = nodes.new('FunctionNodeCompare')
+    n_cmp.data_type = 'FLOAT'
+    n_cmp.operation = 'LESS_THAN'
+    n_cmp.location = (-50, -180)
+    links.new(n_sep.outputs['Z'], n_cmp.inputs['A'])
+    links.new(n_in.outputs['Threshold'], n_cmp.inputs['B'])
+
+    # Invert は Boolean Math (XOR) で一元制御
+    n_xor = nodes.new('FunctionNodeBooleanMath')
+    n_xor.operation = 'XOR'
+    n_xor.location = (150, -180)
+    links.new(n_cmp.outputs['Result'], n_xor.inputs[0])
+    links.new(n_in.outputs['Invert'], n_xor.inputs[1])
+
+    # Delete Geometry (Face)
+    n_del = nodes.new('GeometryNodeDeleteGeometry')
+    n_del.domain = 'FACE'
+    n_del.location = (300, 0)
+    links.new(n_in.outputs['Geometry'], n_del.inputs['Geometry'])
+    links.new(n_xor.outputs['Boolean'], n_del.inputs['Selection'])
+    links.new(n_del.outputs['Geometry'], n_out.inputs['Geometry'])
+
+    return tree
+
+
+def setup_or_update_cutout_modifier(obj, enable=True, threshold=0.02, invert=False):
+    """オブジェクトの Cutout モディファイアをリアルタイム設定・更新"""
+    if not obj or obj.type != 'MESH':
+        return
+
+    mod_name = "Cutout_Realtime"
+    mod = obj.modifiers.get(mod_name)
+
+    if not enable:
+        if mod:
+            mod.show_viewport = False
+            mod.show_render = False
+        return
+
+    if not mod:
+        mod = obj.modifiers.new(name=mod_name, type='NODES')
+        tree = get_or_create_cutout_node_group()
+        mod.node_group = tree
+
+    mod.show_viewport = True
+    mod.show_render = True
+
+    # 型抜きモード時は外枠マスクを解除して全体を型抜き対象に
+    mod_disp = obj.modifiers.get("Displace_Relief")
+    if mod_disp:
+        mod_disp.vertex_group = "" if enable else "Displace_Mask"
+
+    # パラメーター代入
+    if hasattr(mod.node_group, "inputs"):
+        for inp in mod.node_group.inputs:
+            if inp.name == "Threshold":
+                mod[inp.identifier] = threshold
+            elif inp.name == "Invert":
+                mod[inp.identifier] = invert
+    elif hasattr(mod.node_group, "interface"):
+        for item in mod.node_group.interface.items_tree:
+            if item.name == "Threshold":
+                mod[item.identifier] = threshold
+            elif item.name == "Invert":
+                mod[item.identifier] = invert
+
+    obj.data.update()
+
+
 def solidify_and_close_mesh(obj, depth=0.15):
-    """表面の境界エッジを下方に押し出し、底面を張って完全密閉（クローズド）立体化"""
-    if context_mode := bpy.context.mode != 'OBJECT':
+    """表面の境界エッジを下方に押し出し、底面を張って完全密閉（クローズド）立体化（複数アイランド対応）"""
+    if bpy.context.mode != 'OBJECT':
         try:
             bpy.ops.object.mode_set(mode='OBJECT')
         except Exception:
@@ -147,18 +258,42 @@ def solidify_and_close_mesh(obj, depth=0.15):
     for v in new_verts:
         v.co.z -= depth
 
-    # 3. 底面エッジループを収集して蓋（キャップ）を張る
+    # 3. 底面エッジループを収集して連結アイランドごとに蓋を張る
     bottom_edges = [e for e in new_geom if isinstance(e, bmesh.types.BMEdge) and all(v in new_verts for v in e.verts)]
     if bottom_edges:
-        try:
-            # 底面ポリゴン生成
-            bmesh.ops.edgeloop_fill(bm, edges=bottom_edges)
-        except Exception:
-            # 代替: 中心頂点による扇状三角面化
-            c_pos = sum((v.co for v in new_verts), Vector((0, 0, 0))) / max(1, len(new_verts))
-            c_v = bm.verts.new(c_pos)
-            for be in bottom_edges:
-                bm.faces.new((be.verts[0], be.verts[1], c_v))
+        adj = {}
+        for e in bottom_edges:
+            adj.setdefault(e.verts[0], []).append(e)
+            adj.setdefault(e.verts[1], []).append(e)
+
+        visited_edges = set()
+        for start_edge in bottom_edges:
+            if start_edge in visited_edges:
+                continue
+            loop_edges = []
+            queue = [start_edge]
+            visited_edges.add(start_edge)
+            while queue:
+                curr_e = queue.pop()
+                loop_edges.append(curr_e)
+                for v in curr_e.verts:
+                    for neighbor_e in adj.get(v, []):
+                        if neighbor_e not in visited_edges:
+                            visited_edges.add(neighbor_e)
+                            queue.append(neighbor_e)
+
+            try:
+                bmesh.ops.edgeloop_fill(bm, edges=loop_edges)
+            except Exception:
+                loop_verts = list({v for e in loop_edges for v in e.verts})
+                if loop_verts:
+                    c_pos = sum((v.co for v in loop_verts), Vector((0, 0, 0))) / len(loop_verts)
+                    c_v = bm.verts.new(c_pos)
+                    for le in loop_edges:
+                        try:
+                            bm.faces.new((le.verts[0], le.verts[1], c_v))
+                        except Exception:
+                            pass
 
     # 法線の再計算と重複除去
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0005)
@@ -213,6 +348,11 @@ def generate_image_displace_asset(
     shape_type="SLAB_RELIEF",
     depth=0.15,
     height=0.08,
+    strength=0.20,
+    midlevel=0.50,
+    enable_cutout=False,
+    cutout_threshold=0.02,
+    cutout_invert=False,
     resolution=96,
     close_mesh=True,
     decimate_ratio=0.5,
@@ -257,7 +397,7 @@ def generate_image_displace_asset(
         weight = 0.0 if v.index in boundary_v_indices else 1.0
         vg.add([v.index], weight, 'REPLACE')
 
-    # 3. Displace Modifier のセットアップ
+    # 3. Displace Modifier のセットアップ (Strength & Midlevel)
     if img:
         tex = bpy.data.textures.new(f"{name}_DispTex", type='IMAGE')
         tex.image = img
@@ -269,15 +409,19 @@ def generate_image_displace_asset(
         mod_disp = obj.modifiers.new(name="Displace_Relief", type='DISPLACE')
         mod_disp.texture = tex
         mod_disp.texture_coords = 'UV'
-        mod_disp.vertex_group = "Displace_Mask"
-        mod_disp.strength = height
-        mod_disp.mid_level = 0.0
+        mod_disp.vertex_group = "" if enable_cutout else "Displace_Mask"
+        mod_disp.strength = strength if abs(strength) > 0.0001 else height
+        mod_disp.mid_level = midlevel
 
-    # 3. マテリアルの適用
+    # 4. 同階層型抜き (Cutout) のセットアップ
+    if enable_cutout:
+        setup_or_update_cutout_modifier(obj, enable=True, threshold=cutout_threshold, invert=cutout_invert)
+
+    # 5. マテリアルの適用
     mat = create_image_displace_material(f"{name}_Mat", img=img, style=material_style)
     obj.data.materials.append(mat)
 
-    # 4. 確定（Bake / Apply & Solidify）
+    # 6. 確定（Bake / Apply & Solidify）
     if auto_apply:
         finalize_game_ready_displace(obj, depth=depth, decimate_ratio=decimate_ratio, close_mesh=close_mesh)
 

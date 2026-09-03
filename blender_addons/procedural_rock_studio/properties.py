@@ -169,6 +169,36 @@ def update_category_preset(self, context):
     props.texture_folder = target_folder
 
 
+def update_displace_realtime(self, context):
+    """Strength と Midlevel を選択中オブジェクトの Displace モディファイアにリアルタイム反映"""
+    obj = context.active_object
+    if not obj or obj.type != 'MESH':
+        return
+    mod = obj.modifiers.get("Displace_Relief")
+    if not mod:
+        for m in obj.modifiers:
+            if m.type == 'DISPLACE':
+                mod = m
+                break
+    if mod:
+        mod.strength = self.img_disp_strength
+        mod.mid_level = self.img_disp_midlevel
+
+
+def update_cutout_realtime(self, context):
+    """型抜き（Cutout）を Geometry Nodes でリアルタイム反映"""
+    obj = context.active_object
+    if not obj or obj.type != 'MESH':
+        return
+    from .generators.image_displace_gen import setup_or_update_cutout_modifier
+    setup_or_update_cutout_modifier(
+        obj,
+        enable=self.img_disp_enable_cutout,
+        threshold=self.img_disp_cutout_threshold,
+        invert=self.img_disp_cutout_invert
+    )
+
+
 class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
@@ -699,9 +729,30 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="厚み (Depth)", default=0.15, min=0.01, max=2.0,
         description="ブロック底面押し出しの厚み (m)"
     )
-    img_disp_height: bpy.props.FloatProperty(
-        name="凹凸の深さ (Height)", default=0.08, min=0.001, max=1.0,
-        description="Displace隆起の高さ (m)"
+    img_disp_strength: bpy.props.FloatProperty(
+        name="隆起の強さ (Strength)", default=0.20, min=-3.0, max=3.0,
+        update=update_displace_realtime,
+        description="Displace の凸凹の深さ・強さ（リアルタイム連動）"
+    )
+    img_disp_midlevel: bpy.props.FloatProperty(
+        name="基準面 (Midlevel)", default=0.50, min=0.0, max=1.0,
+        update=update_displace_realtime,
+        description="基準面の高さレベル（リアルタイム連動）"
+    )
+    img_disp_enable_cutout: bpy.props.BoolProperty(
+        name="✂️ 同階層を型抜き (Cutout)", default=False,
+        update=update_cutout_realtime,
+        description="平坦な背景面をリアルタイム削除してレリーフ図柄だけを型抜きする"
+    )
+    img_disp_cutout_threshold: bpy.props.FloatProperty(
+        name="型抜き閾値 (Threshold)", default=0.02, min=-1.0, max=1.0,
+        update=update_cutout_realtime,
+        description="この高さ以下の背景ポリゴンをリアルタイム削除（リアルタイム連動）"
+    )
+    img_disp_cutout_invert: bpy.props.BoolProperty(
+        name="型抜き反転 (Invert)", default=False,
+        update=update_cutout_realtime,
+        description="型抜きの対象を反転（浮き彫り/彫り込み）"
     )
     img_disp_resolution: bpy.props.IntProperty(
         name="細分化解像度 (Resolution)", default=96, min=16, max=256,
