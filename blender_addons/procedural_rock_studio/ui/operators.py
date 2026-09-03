@@ -440,3 +440,49 @@ class MESH_OT_bake_game_ready_displace(bpy.types.Operator):
         )
         self.report({'INFO'}, f"ゲーム用確定完了（クローズド密閉＆軽量化済み）: {obj.name}")
         return {'FINISHED'}
+
+
+class MESH_OT_import_clipboard_image(bpy.types.Operator):
+    """Import image directly from Windows Clipboard (Ctrl+C / Screenshots) and generate 3D mesh"""
+    bl_idname = "mesh.import_clipboard_image"
+    bl_label = "📋 クリップボードから貼り付け (Ctrl+V)"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..utils.clipboard_utils import save_clipboard_image
+        img_path = save_clipboard_image()
+
+        if not img_path or not os.path.isfile(img_path):
+            self.report({'WARNING'}, "クリップボードに有効な画像データが見つかりませんでした (Ctrl+Cで画像をコピーしてください)")
+            return {'CANCELLED'}
+
+        props.img_disp_path = img_path
+        self.report({'INFO'}, f"クリップボード画像を取り込みました: {os.path.basename(img_path)}")
+
+        # 即座に立体プレビューを生成
+        bpy.ops.mesh.generate_image_displace()
+        return {'FINISHED'}
+
+
+class MESH_OT_import_dropped_image(bpy.types.Operator):
+    """Detect and import dragged/dropped Empty Image or active Image in Blender"""
+    bl_idname = "mesh.import_dropped_image"
+    bl_label = "🎯 ドロップ画像から取得"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..utils.clipboard_utils import get_active_or_latest_dropped_image
+        img_path = get_active_or_latest_dropped_image(context)
+
+        if not img_path or not os.path.isfile(img_path):
+            self.report({'WARNING'}, "ドロップされた下絵画像が見つかりませんでした。画像をBlenderにドラッグしてください")
+            return {'CANCELLED'}
+
+        props.img_disp_path = img_path
+        self.report({'INFO'}, f"ドロップ画像を検出しました: {os.path.basename(img_path)}")
+
+        # 即座に立体プレビューを生成
+        bpy.ops.mesh.generate_image_displace()
+        return {'FINISHED'}

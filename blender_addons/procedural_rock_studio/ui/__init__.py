@@ -10,7 +10,9 @@ from .operators import (
     MESH_OT_export_animated_water_fbx,
     MESH_OT_setup_water_sky_lighting,
     MESH_OT_generate_image_displace,
-    MESH_OT_bake_game_ready_displace
+    MESH_OT_bake_game_ready_displace,
+    MESH_OT_import_clipboard_image,
+    MESH_OT_import_dropped_image
 )
 from .panel import VIEW3D_PT_prop_studio_panel
 
@@ -27,6 +29,8 @@ classes = (
     MESH_OT_setup_water_sky_lighting,
     MESH_OT_generate_image_displace,
     MESH_OT_bake_game_ready_displace,
+    MESH_OT_import_clipboard_image,
+    MESH_OT_import_dropped_image,
     VIEW3D_PT_prop_studio_panel,
 )
 

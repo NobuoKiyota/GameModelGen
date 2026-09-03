@@ -45,6 +45,10 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_disp = layout.box()
                 box_disp.label(text="Image Displace Studio (2D画像立体化):", icon='IMAGE_DATA')
                 box_disp.prop(props, "img_disp_path", text="画像ファイル")
+                row_quick = box_disp.row(align=True)
+                row_quick.scale_y = 1.2
+                row_quick.operator("mesh.import_clipboard_image", text="📋 クリップボードから貼り付け", icon='PASTEDOWN')
+                row_quick.operator("mesh.import_dropped_image", text="🎯 ドロップ画像から取得", icon='IMPORT')
                 box_disp.prop(props, "img_disp_shape", text="立体形状")
                 box_disp.prop(props, "img_disp_mat_style", text="マテリアル質感")
 
