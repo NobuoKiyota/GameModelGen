@@ -1,4 +1,5 @@
 import bpy
+import random
 from .helpers import get_mix_input, get_mix_output
 
 def create_procedural_bark_material(mat_name, seed=0, species="OAK"):
@@ -770,3 +771,116 @@ def create_procedural_telescope_shader(mat_name, part_type="SILVER", seed=0):
 
 
 
+
+
+def create_procedural_cobblestone_shader(mat_name, seed=0, tile_scale=6.0):
+    """Ryan King Art氏の動画（9Tq-6HReNEk）技法に基づくプロシージャル石畳・石壁PBRシェーダー
+    - Voronoi Distance to Edge: 目地の溝マスク & 法線Bump
+    - Voronoi Color: 個々の石ごとのランダム色相（自然な不均一カラー）
+    - High-frequency Noise: 石表面のざらつき・風化岩肌バンプ
+    - 目地と石の分離 Roughness / Base Color
+    """
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    rng = random.Random(seed)
+    
+    # ── ノード配置 ────────────────────────────────────────
+    node_out  = nodes.new('ShaderNodeOutputMaterial'); node_out.location  = (1000, 0)
+    node_bsdf = nodes.new('ShaderNodeBsdfPrincipled'); node_bsdf.location = (700, 0)
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    node_coord = nodes.new('ShaderNodeTexCoord'); node_coord.location = (-1200, 0)
+    
+    # ── Voronoi 1: 目地マスク (Distance to Edge) ──────────
+    vorn_edge = nodes.new('ShaderNodeTexVoronoi'); vorn_edge.location = (-900, 200)
+    vorn_edge.inputs['Scale'].default_value = tile_scale
+    vorn_edge.voronoi_dimensions = '3D'
+    if hasattr(vorn_edge, 'feature'):
+        vorn_edge.feature = 'DISTANCE_TO_EDGE'
+    links.new(node_coord.outputs['Object'], vorn_edge.inputs['Vector'])
+
+    # ── Voronoi 2: 石ごとのランダムカラー (F1 / Color) ────
+    vorn_col = nodes.new('ShaderNodeTexVoronoi'); vorn_col.location = (-900, -100)
+    vorn_col.inputs['Scale'].default_value = tile_scale
+    vorn_col.voronoi_dimensions = '3D'
+    links.new(node_coord.outputs['Object'], vorn_col.inputs['Vector'])
+
+    # ── Noise: 石表面の風化ザラつき ───────────────────────
+    node_noise = nodes.new('ShaderNodeTexNoise'); node_noise.location = (-900, -400)
+    node_noise.inputs['Scale'].default_value  = 28.0
+    node_noise.inputs['Detail'].default_value = 5.0
+    node_noise.inputs['Roughness'].default_value = 0.65
+    links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
+
+    # ── ColorRamp: 目地マスクのシャープ化 ────────────────
+    ramp_edge = nodes.new('ShaderNodeValToRGB'); ramp_edge.location = (-600, 200)
+    ramp_edge.color_ramp.elements[0].position = 0.03
+    ramp_edge.color_ramp.elements[0].color    = (0.0, 0.0, 0.0, 1.0) # 目地
+    ramp_edge.color_ramp.elements[1].position = 0.12
+    ramp_edge.color_ramp.elements[1].color    = (1.0, 1.0, 1.0, 1.0) # 石面
+    links.new(vorn_edge.outputs['Distance'], ramp_edge.inputs['Fac'])
+
+    # ── ColorRamp: 石ごとのランダムカラーパレット ────────
+    ramp_stone = nodes.new('ShaderNodeValToRGB'); ramp_stone.location = (-600, -100)
+    # 温かみのあるヨーロッパ風砂岩・石畳アースカラー
+    c_dark = (rng.uniform(0.32, 0.38), rng.uniform(0.31, 0.36), rng.uniform(0.29, 0.34), 1.0)
+    c_mid  = (rng.uniform(0.48, 0.55), rng.uniform(0.45, 0.52), rng.uniform(0.41, 0.47), 1.0)
+    c_warm = (rng.uniform(0.58, 0.66), rng.uniform(0.54, 0.61), rng.uniform(0.48, 0.55), 1.0)
+    
+    ramp_stone.color_ramp.elements[0].position = 0.10
+    ramp_stone.color_ramp.elements[0].color    = c_dark
+    ramp_stone.color_ramp.elements[1].position = 0.90
+    ramp_stone.color_ramp.elements[1].color    = c_warm
+    
+    el_mid = ramp_stone.color_ramp.elements.new(0.50)
+    el_mid.color = c_mid
+    
+    col_out = vorn_col.outputs.get('Color') or vorn_col.outputs.get('Distance')
+    links.new(col_out, ramp_stone.inputs['Fac'])
+
+    # ── MixRGB 1: 石カラーにノイズザラつきを重ねる ───────
+    mix_stone_noise = nodes.new('ShaderNodeMixRGB'); mix_stone_noise.location = (-300, -80)
+    mix_stone_noise.blend_type = 'MULTIPLY'
+    if 'Fac' in mix_stone_noise.inputs:
+        mix_stone_noise.inputs['Fac'].default_value = 0.15
+    links.new(ramp_stone.outputs['Color'], mix_stone_noise.inputs[1])
+    links.new(node_noise.outputs['Color'], mix_stone_noise.inputs[2])
+
+    # ── MixRGB 2: 目地（モルタル/土色）と石面の合成 ───────
+    mix_mortar = nodes.new('ShaderNodeMixRGB'); mix_mortar.location = (-50, 80)
+    mix_mortar.blend_type = 'MIX'
+    mortar_col = (0.22, 0.20, 0.18, 1.0)
+    mix_mortar.inputs[1].default_value = mortar_col
+    links.new(ramp_edge.outputs['Color'], mix_mortar.inputs[0])
+    links.new(mix_stone_noise.outputs['Color'], mix_mortar.inputs[2])
+    links.new(mix_mortar.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+    # ── Roughness: 目地(0.92) と 石(0.72) の変化 ─────────
+    ramp_rough = nodes.new('ShaderNodeValToRGB'); ramp_rough.location = (-200, -320)
+    ramp_rough.color_ramp.elements[0].position = 0.05
+    ramp_rough.color_ramp.elements[0].color    = (0.92, 0.92, 0.92, 1.0)
+    ramp_rough.color_ramp.elements[1].position = 0.20
+    ramp_rough.color_ramp.elements[1].color    = (0.72, 0.72, 0.72, 1.0)
+    links.new(vorn_edge.outputs['Distance'], ramp_rough.inputs['Fac'])
+    links.new(ramp_rough.outputs['Color'], node_bsdf.inputs['Roughness'])
+
+    # ── Normal: 目地溝Bump ＋ 石表面ノイズBump の連鎖 ─────
+    bump_grout = nodes.new('ShaderNodeBump'); bump_grout.location = (250, -150)
+    bump_grout.inputs['Strength'].default_value = 0.28
+    bump_grout.inputs['Distance'].default_value = 0.04
+    links.new(vorn_edge.outputs['Distance'], bump_grout.inputs['Height'])
+
+    bump_micro = nodes.new('ShaderNodeBump'); bump_micro.location = (450, -150)
+    bump_micro.inputs['Strength'].default_value = 0.40
+    bump_micro.inputs['Distance'].default_value = 0.02
+    links.new(node_noise.outputs['Fac'], bump_micro.inputs['Height'])
+    links.new(bump_grout.outputs['Normal'], bump_micro.inputs['Normal'])
+    links.new(bump_micro.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    return mat

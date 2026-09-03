@@ -183,12 +183,19 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_fshape = layout.box()
                 box_fshape.label(text="Floor Shape (床の形状):", icon='MESH_PLANE')
                 box_fshape.prop(props, "floor_shape", text="")
+                if props.floor_shape == 'COBBLESTONE':
+                    box_fshape.prop(props, "cobble_stone_size", text="石の大きさ (Stone Size)")
+                    box_fshape.prop(props, "cobble_grout_depth", text="目地の深さ (Grout Depth)")
+                    box_fshape.prop(props, "cobble_jitter", text="歪み・凹凸 (Jitter)", slider=True)
 
             # Wall Specific
             elif props.prop_category == 'WALL':
                 box_wshape = layout.box()
                 box_wshape.label(text="Wall Shape (壁の形状):", icon='MESH_CUBE')
                 box_wshape.prop(props, "wall_shape", text="")
+                if props.wall_shape == 'COBBLE_WALL':
+                    box_wshape.prop(props, "cobble_stone_size", text="石の大きさ (Stone Size)")
+                    box_wshape.prop(props, "cobble_jitter", text="突出・歪み (Jitter)", slider=True)
 
             # Dimensions Box
             box_dim = layout.box()

@@ -10,7 +10,8 @@ from ..materials.nature_shaders import (
     create_procedural_ground_terrain_shader,
     create_procedural_water_shader,
     create_procedural_water_bed_shader,
-    create_procedural_pillar_shader
+    create_procedural_pillar_shader,
+    create_procedural_cobblestone_shader
 )
 from ..materials.furniture_shaders import create_procedural_pbr_material
 from ..materials.image_shaders import apply_image_texture_material
@@ -152,6 +153,9 @@ def resolve_prop_parameters(props):
         "style": final_type,
         "floor_shape": props.floor_shape,
         "wall_shape": props.wall_shape,
+        "cobble_stone_size": props.cobble_stone_size,
+        "cobble_grout_depth": props.cobble_grout_depth,
+        "cobble_jitter": props.cobble_jitter,
         "grass_mode": props.grass_mode,
         "terrain_type": props.terrain_type,
         "water_shape": props.water_shape,
@@ -231,6 +235,9 @@ def generate_procedural_prop_mesh(
     style="FRACTURED",
     floor_shape="SQUARE",
     wall_shape="STRAIGHT",
+    cobble_stone_size=0.35,
+    cobble_grout_depth=0.035,
+    cobble_jitter=0.45,
     grass_mode="MOUND",
     terrain_type="MEADOW",
     table_shape="RECTANGLE",
@@ -434,9 +441,11 @@ def generate_procedural_prop_mesh(
         else:
             build_dense_meadow_field_mesh(bm, size_x, size_y, size_z, seed=seed, density_level=detail_level, terrain_type=terrain_type)
     elif category == "FLOOR":
-        build_floor_base(bm, size_x, size_y, size_z, shape=floor_shape, seed=seed)
+        build_floor_base(bm, size_x, size_y, size_z, shape=floor_shape, seed=seed,
+                         stone_size=cobble_stone_size, grout_depth=cobble_grout_depth, jitter=cobble_jitter)
     elif category == "WALL":
-        build_wall_base(bm, size_x, size_y, size_z, shape=wall_shape, seed=seed)
+        build_wall_base(bm, size_x, size_y, size_z, shape=wall_shape, seed=seed,
+                        stone_size=cobble_stone_size, grout_depth=cobble_grout_depth, jitter=cobble_jitter)
     elif category == "PILLAR":
         build_pillar_base(bm, size_x, size_y, size_z)
     elif category == "BEAM":
@@ -703,7 +712,11 @@ def generate_procedural_prop_mesh(
                 is_transparent=False
             )
         else:
-            mat = create_procedural_pbr_material(name + "_Mat", seed, is_grass=False)
+            if (category == "FLOOR" and floor_shape == "COBBLESTONE") or (category == "WALL" and wall_shape == "COBBLE_WALL"):
+                tile_sc = max(1.2, (1.0 / max(0.1, cobble_stone_size)) * 0.8)
+                mat = create_procedural_cobblestone_shader(name + "_Cobble_Mat", seed=seed, tile_scale=tile_sc)
+            else:
+                mat = create_procedural_pbr_material(name + "_Mat", seed, is_grass=False)
             obj.data.materials.append(mat)
 
         if enable_disp and disp_strength > 0.001 and category in ("WALL", "FLOOR", "PILLAR", "BEAM", "BEAM_ARCH", "TABLE", "PC_DESK", "CHEST", "GRASS"):

@@ -6,7 +6,8 @@ from .nature_shaders import (
     create_procedural_water_shader,
     create_procedural_water_bed_shader,
     create_procedural_grass_blade_shader,
-    create_procedural_ground_terrain_shader
+    create_procedural_ground_terrain_shader,
+    create_procedural_cobblestone_shader
 )
 from .furniture_shaders import create_procedural_pbr_material
 from .image_shaders import apply_image_texture_material
@@ -21,6 +22,7 @@ __all__ = [
     'create_procedural_water_bed_shader',
     'create_procedural_grass_blade_shader',
     'create_procedural_ground_terrain_shader',
+    'create_procedural_cobblestone_shader',
     'create_procedural_pbr_material',
     'apply_image_texture_material'
 ]

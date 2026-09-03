@@ -401,22 +401,41 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     floor_shape: bpy.props.EnumProperty(
         name="Floor Shape",
         items=[
-            ('SQUARE', "🔲 正方形 (Square)", "Clean flat square slab"),
+            ('COBBLESTONE', "🪨 ヨーロッパ風石畳 (Cobblestone)", "サコッシュ伊藤氏技法による1石ずつ立体化した本格石畳"),
+            ('SQUARE', "🔲 正方形スラブ (Square)", "Clean flat square slab"),
             ('CIRCLE', "⚪ 円形・丸 (Circle / Round)", "Clean round circular slab / pedestal"),
-            ('HEXAGON', "⬡ 六角形 (Hexagon)", "Hexagonal pavement tile")
+            ('HEXAGON', "⬡ 六角形 (Hexagon)", "Hexagonal pavement tile"),
+            ('HEX_PAVER', "⬡ 六角敷石 (Hex Paver)", "整然とした六角タイル舗装")
         ],
-        default='SQUARE'
+        default='COBBLESTONE'
     )
 
     wall_shape: bpy.props.EnumProperty(
         name="Wall Shape",
         items=[
+            ('COBBLE_WALL', "🧱 古城の立体石積み壁 (Cobble Wall)", "不規則な石ブロックが立体的に飛び出す古城風石積み壁"),
             ('STRAIGHT', "🧱 直線壁 (Straight Wall)", "Clean straight stone wall"),
             ('TRIANGLE', "🔺 三角壁・切妻壁 (Triangle / Gable)", "Triangular gable wall for roofs & slopes"),
             ('L_SHAPE', "🧱 L字コーナー壁 (L-Corner Wall)", "L-shaped corner wall block"),
             ('CURVED', "🧱 円弧・カーブ壁 (Curved Wall)", "Curved arched wall segment")
         ],
-        default='STRAIGHT'
+        default='COBBLE_WALL'
+    )
+
+    cobble_stone_size: bpy.props.FloatProperty(
+        name="石の大きさ (Stone Size)",
+        default=0.35, min=0.1, max=1.2,
+        description="敷石・石積みブロックの1石あたりの平均サイズ"
+    )
+    cobble_grout_depth: bpy.props.FloatProperty(
+        name="目地の深さ (Grout Depth)",
+        default=0.035, min=0.005, max=0.15,
+        description="石と石の間の目地（溝）の深さ"
+    )
+    cobble_jitter: bpy.props.FloatProperty(
+        name="不揃い・歪み度 (Stone Jitter)",
+        default=0.45, min=0.0, max=1.0,
+        description="石の傾き・高さのばらつき・不規則多角形化の強さ"
     )
 
     asset_name: bpy.props.StringProperty(name="Name", default="Rock_Asset")
