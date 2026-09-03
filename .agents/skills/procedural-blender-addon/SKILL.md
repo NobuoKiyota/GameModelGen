@@ -70,6 +70,12 @@ Blender 3.6+ における **プロシージャル3Dモデリング、シェー�
 12. ⚠️ [**Blender Python API 虎の巻**](references/blender_api_mastery.md)
     - UV投影後の `OBJECT` モード復帰、ヘッドレス `temp_override`、Bmesh 解放
 
+13. 🧠 [**Blender ノード基礎完全解説 レシピ**](references/node_fundamentals_recipes.md)
+    - 0.0〜1.0 白黒マスク理論（ノードの本質は数値データ）
+    - ソケット色とデータ型（Float, Color, Vector, Shader）と自動変換規則
+    - Mixノード（Facによる塗り分け制御）と座標系（Object vs Generated vs UV）
+    - Separate / Combine XYZ による高度な空間軸制御と多重ノイズ合成
+
 ---
 
 ## 🔗 クロス・プリセット連携マップ (Cross-Preset Integration)
