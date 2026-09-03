@@ -70,6 +70,9 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_pillar.prop(props, "pillar_mat_type", text="石材マテリアル")
                 if props.pillar_type == 'GOTHIC_CLUSTERED':
                     box_pillar.prop(props, "pillar_colonnettes", text="小柱の数 (Colonnettes)")
+                elif props.pillar_type == 'CLASSIC_FLUTED':
+                    box_pillar.prop(props, "pillar_flutes", text="縦溝の数 (Flutes)")
+                    box_pillar.prop(props, "pillar_entasis", text="エンタシス (Entasis)", slider=True)
             # Telescope Specific
             elif props.prop_category == 'TELESCOPE':
                 box_tel = layout.box()

@@ -390,19 +390,236 @@ def build_wall_base(bm, size_x, size_y, size_z, shape="STRAIGHT", seed=0,
     return bm.verts[:]
 
 
-def build_pillar_base(bm, size_x, size_y, size_z):
+def build_fluted_shaft(bm, height, radius_base, flutes=16, entasis=0.08, cuts_z=12):
+    """エンタシス（胴張り）と立体フルーティング（縦溝彫り込み）を持つ神殿柱身"""
+    all_verts = []
+    num_pts = max(8, flutes * 2)
+    step_ang = (math.pi * 2.0) / num_pts
+    flute_depth = (2.0 * math.pi * radius_base / num_pts) * 0.40
+    
+    rings = []
+    for zi in range(cuts_z + 1):
+        zf = zi / cuts_z
+        z_pos = (zf - 0.5) * height
+        # エンタシス: 中央部が膨らみ、上部が細くなる視覚補正
+        ent_factor = 1.0 + math.sin(zf * math.pi) * entasis - (zf * 0.10)
+        cur_r = radius_base * ent_factor
+        
+        ring_v = []
+        for pi in range(num_pts):
+            ang = pi * step_ang
+            # 奇数は溝（凹み）、偶数は山
+            r = max(0.01, cur_r - flute_depth) if (pi % 2 == 1) else cur_r
+            v = bm.verts.new((math.cos(ang) * r, math.sin(ang) * r, z_pos))
+            ring_v.append(v)
+            all_verts.append(v)
+        rings.append(ring_v)
+        
+    for zi in range(cuts_z):
+        r0 = rings[zi]
+        r1 = rings[zi + 1]
+        for pi in range(num_pts):
+            p_next = (pi + 1) % num_pts
+            bm.faces.new((r0[pi], r0[p_next], r1[p_next], r1[pi]))
+            
+    # 上下キャップ
+    top_cap = bm.faces.new(reversed(rings[-1]))
+    bot_cap = bm.faces.new(rings[0])
+    return all_verts
+
+
+def build_classical_capital_and_base(bm, height, radius):
+    """クラシック多段柱頭（エキノス・アバクス）と基壇（トロス・プリンス）"""
+    all_verts = []
+    cap_h = height * 0.08
+    base_h = height * 0.09
+    
+    # ── 基壇 (Base) ──────────────────────────────────────
+    # 方形台座 (Plinth)
+    res_plinth = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(radius * 2.6, radius * 2.6, base_h * 0.5), verts=res_plinth['verts'])
+    bmesh.ops.translate(bm, vec=(0, 0, -height * 0.5 - base_h * 0.75), verts=res_plinth['verts'])
+    all_verts.extend(res_plinth['verts'])
+    
+    # 円形トロスリング (Torus)
+    res_torus = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=24,
+        radius1=radius * 1.35, radius2=radius * 1.15, depth=base_h * 0.5
+    )
+    bmesh.ops.translate(bm, vec=(0, 0, -height * 0.5 - base_h * 0.25), verts=res_torus['verts'])
+    all_verts.extend(res_torus['verts'])
+    
+    # ── 柱頭 (Capital) ───────────────────────────────────
+    # 湾曲受皿 (Echinus)
+    res_echinus = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=24,
+        radius1=radius * 0.95, radius2=radius * 1.32, depth=cap_h * 0.5
+    )
+    bmesh.ops.translate(bm, vec=(0, 0, height * 0.5 + cap_h * 0.25), verts=res_echinus['verts'])
+    all_verts.extend(res_echinus['verts'])
+    
+    # 方形上板 (Abacus)
+    res_abacus = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(radius * 2.5, radius * 2.5, cap_h * 0.5), verts=res_abacus['verts'])
+    bmesh.ops.translate(bm, vec=(0, 0, height * 0.5 + cap_h * 0.75), verts=res_abacus['verts'])
+    all_verts.extend(res_abacus['verts'])
+    
+    return all_verts
+
+
+def build_stone_drum_pillar(bm, height, radius, drums=7, seed=0):
+    """古代遺跡のドラム石積み柱（円盤状の石ブロック積み重ね＆目地溝）"""
+    rng = random.Random(seed)
+    all_verts = []
+    drum_h = height / drums
+    grout_gap = drum_h * 0.08
+    actual_drum_h = drum_h - grout_gap
+    
+    for di in range(drums):
+        z_center = -height * 0.5 + (di + 0.5) * drum_h
+        
+        # 各ドラムのわずかなランダムサイズ・中心ズレ（遺跡の風化感）
+        d_rad = radius * rng.uniform(0.96, 1.04)
+        ox = rng.uniform(-0.015, 0.015) * radius
+        oy = rng.uniform(-0.015, 0.015) * radius
+        
+        res = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=20,
+            radius1=d_rad, radius2=d_rad * rng.uniform(0.98, 1.02),
+            depth=actual_drum_h
+        )
+        bmesh.ops.translate(bm, vec=(ox, oy, z_center), verts=res['verts'])
+        
+        # 表面の微小ジッターノイズ
+        for v in res['verts']:
+            v.co.x += rng.uniform(-0.008, 0.008) * radius
+            v.co.y += rng.uniform(-0.008, 0.008) * radius
+            v.co.z += rng.uniform(-0.005, 0.005) * drum_h
+        all_verts.extend(res['verts'])
+        
+    # 上下に石積みの素朴な四角い台座と笠石
+    cap_v = bmesh.ops.create_cube(bm, size=1.0)['verts']
+    bmesh.ops.scale(bm, vec=(radius * 2.3, radius * 2.3, height * 0.06), verts=cap_v)
+    bmesh.ops.translate(bm, vec=(0, 0, height * 0.5 + height * 0.03), verts=cap_v)
+    all_verts.extend(cap_v)
+    
+    base_v = bmesh.ops.create_cube(bm, size=1.0)['verts']
+    bmesh.ops.scale(bm, vec=(radius * 2.4, radius * 2.4, height * 0.08), verts=base_v)
+    bmesh.ops.translate(bm, vec=(0, 0, -height * 0.5 - height * 0.04), verts=base_v)
+    all_verts.extend(base_v)
+    
+    return all_verts
+
+
+def build_gothic_clustered_pillar(bm, height, radius, colonnettes=6):
+    """ゴシック大聖堂の束ね柱（主柱＋周囲の小柱クラスタ＋結束リング）"""
+    all_verts = []
+    shaft_h = height * 0.84
+    
+    # ── 1. 中央大主柱 ────────────────────────────────────
+    main_r = radius * 0.65
+    res_m = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=16,
+        radius1=main_r, radius2=main_r, depth=shaft_h
+    )
+    all_verts.extend(res_m['verts'])
+    
+    # ── 2. 周囲の束ね小柱 (Colonnettes) ──────────────────
+    sub_r = radius * 0.22
+    orbit_r = radius * 0.78
+    step_ang = (math.pi * 2.0) / colonnettes
+    
+    for ci in range(colonnettes):
+        ang = ci * step_ang
+        cx = math.cos(ang) * orbit_r
+        cy = math.sin(ang) * orbit_r
+        res_sub = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=12,
+            radius1=sub_r, radius2=sub_r, depth=shaft_h
+        )
+        bmesh.ops.translate(bm, vec=(cx, cy, 0), verts=res_sub['verts'])
+        all_verts.extend(res_sub['verts'])
+        
+    # ── 3. 結束リングカラー (Ring Collars: 1/3 と 2/3 高さ) ──
+    for zf in [-0.18, 0.18]:
+        res_ring = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=24,
+            radius1=radius * 1.08, radius2=radius * 1.08, depth=height * 0.04
+        )
+        bmesh.ops.translate(bm, vec=(0, 0, shaft_h * zf), verts=res_ring['verts'])
+        all_verts.extend(res_ring['verts'])
+        
+    # ── 4. ゴシック多段基壇＆柱頭 ────────────────────────
+    cap_h = height * 0.08
+    base_h = height * 0.08
+    
+    res_base = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=colonnettes * 2,
+        radius1=radius * 1.35, radius2=radius * 1.15, depth=base_h
+    )
+    bmesh.ops.translate(bm, vec=(0, 0, -shaft_h * 0.5 - base_h * 0.5), verts=res_base['verts'])
+    all_verts.extend(res_base['verts'])
+    
+    res_cap = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=colonnettes * 2,
+        radius1=radius * 1.12, radius2=radius * 1.35, depth=cap_h
+    )
+    bmesh.ops.translate(bm, vec=(0, 0, shaft_h * 0.5 + cap_h * 0.5), verts=res_cap['verts'])
+    all_verts.extend(res_cap['verts'])
+    
+    return all_verts
+
+
+def build_solomonic_twisted_pillar(bm, height, radius):
+    """バロック・ソロモン螺旋柱（優美なツイストヘリックス）"""
+    all_verts = []
+    shaft_h = height * 0.82
+    cuts = 20
+    
     res = bmesh.ops.create_cone(
         bm, cap_ends=True, cap_tris=False, segments=16,
-        radius1=size_x * 0.45, radius2=size_x * 0.45, depth=size_z * 2.0
+        radius1=radius * 0.85, radius2=radius * 0.85, depth=shaft_h
     )
-    verts = res['verts']
-    cap_verts = bmesh.ops.create_cube(bm, size=1.0)['verts']
-    bmesh.ops.scale(bm, vec=(size_x * 1.1, size_y * 1.1, size_z * 0.2), verts=cap_verts)
-    bmesh.ops.translate(bm, vec=(0, 0, size_z * 1.0), verts=cap_verts)
-    base_verts = bmesh.ops.create_cube(bm, size=1.0)['verts']
-    bmesh.ops.scale(bm, vec=(size_x * 1.15, size_y * 1.15, size_z * 0.2), verts=base_verts)
-    bmesh.ops.translate(bm, vec=(0, 0, -size_z * 1.0), verts=base_verts)
-    return verts + cap_verts + base_verts
+    bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=cuts, use_grid_fill=True)
+    
+    # Z座標に応じた回転（螺旋ねじれ）
+    twist_rot = math.pi * 3.0 # 540度
+    for v in bm.verts:
+        zf = (v.co.z / shaft_h) # -0.5 〜 0.5
+        ang = zf * twist_rot
+        cos_a = math.cos(ang)
+        sin_a = math.sin(ang)
+        # 螺旋の波状うねり
+        wave = math.sin(zf * math.pi * 4.0) * (radius * 0.18)
+        nx = v.co.x * cos_a - v.co.y * sin_a + math.cos(ang) * wave
+        ny = v.co.x * sin_a + v.co.y * cos_a + math.sin(ang) * wave
+        v.co.x = nx
+        v.co.y = ny
+    all_verts.extend(bm.verts[:])
+    
+    # クラシック柱頭と基壇
+    cap_v = build_classical_capital_and_base(bm, shaft_h, radius)
+    all_verts.extend(cap_v)
+    return all_verts
+
+
+def build_pillar_base(bm, size_x, size_y, size_z, style="CLASSIC_FLUTED",
+                      flutes=16, colonnettes=6, entasis=0.08, seed=0):
+    """建築柱の総合生成エンジン（ギリシャ神殿、ゴシック束ね柱、ドラム石積み、ソロモン螺旋）"""
+    radius = (size_x + size_y) * 0.25 # 平均半径
+    height = size_z
+    
+    if style == "GOTHIC_CLUSTERED":
+        return build_gothic_clustered_pillar(bm, height, radius, colonnettes=colonnettes)
+    elif style == "STONE_DRUM":
+        return build_stone_drum_pillar(bm, height, radius, drums=7, seed=seed)
+    elif style == "TWISTED_SOLOMONIC":
+        return build_solomonic_twisted_pillar(bm, height, radius)
+    else: # CLASSIC_FLUTED (デフォルト)
+        shaft_h = height * 0.83
+        verts = build_fluted_shaft(bm, shaft_h, radius, flutes=flutes, entasis=entasis)
+        cap_verts = build_classical_capital_and_base(bm, shaft_h, radius)
+        return verts + cap_verts
 
 
 def build_beam_base(bm, size_x, size_y, size_z):

@@ -608,19 +608,20 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     pillar_type: bpy.props.EnumProperty(
         name="Pillar Type",
         items=[
-            ('GOTHIC_CLUSTERED', "ゴシック束ね柱 (Gothic Clustered)", "【yR3hx1l7nn8準拠】中央主柱＋6~8本の小柱Colonnettes束ね構造"),
-            ('ROMAN_FLUTED', "ギリシャ・ローマ溝彫り円柱 (Roman Fluted)", "【o6qQAKKbPRo準拠】16~24本フルーティング溝＋ドーリア式柱頭"),
-            ('RUINED_ANCIENT', "古代遺跡の崩壊石柱 (Ruined Ancient)", "上部斜め欠損・崩壊ドラム石積み＋ひび割れ侵食"),
-            ('SQUARE_MONUMENT', "西洋角柱・モニュメント (Square Monument)", "【b8g8j-7KWYM準拠】面取り多段角柱＋コーニス天頂装飾")
+            ('CLASSIC_FLUTED', "🏛️ 神殿円柱 (Classic Fluted)", "16~24本フルーティング縦溝彫り＋エンタシス胴張り＋クラシック柱頭＆基壇"),
+            ('GOTHIC_CLUSTERED', "⛪ ゴシック束ね柱 (Gothic Clustered)", "中央主柱＋小柱Colonnettes束ね構造＋結束リング"),
+            ('STONE_DRUM', "🪨 ドラム石積み柱 (Stone Drum)", "円盤状の石ブロック積み重ね＋深い目地溝＋風化ジッター"),
+            ('TWISTED_SOLOMONIC', "🌀 ソロモン螺旋柱 (Twisted Solomonic)", "バロック様式の優美な螺旋ねじれ装飾柱"),
+            ('SQUARE_MONUMENT', "🏛️ 西洋角柱・モニュメント (Square Monument)", "面取り多段角柱＋コーニス天頂装飾")
         ],
-        default='GOTHIC_CLUSTERED'
+        default='CLASSIC_FLUTED'
     )
     pillar_mat_type: bpy.props.EnumProperty(
         name="Pillar Material",
         items=[
-            ('MARBLE', "白大理石 (Polished Marble)", "高級感のある筋模様と光沢"),
-            ('ANCIENT_STONE', "古代砂岩 (Ancient Sandstone)", "風化した砂利感と微細バンプ"),
-            ('MOSSY_RUINS', "苔むした遺跡 (Mossy Ruins)", "石肌に生える緑の苔")
+            ('MARBLE', "白大理石 (Polished Marble)", "高級感のある筋模様と光沢＋足元の微小汚れ"),
+            ('ANCIENT_STONE', "古代砂岩 (Ancient Sandstone)", "風化した砂利感と微細バンプ＋足元の土汚れ"),
+            ('MOSSY_RUINS', "苔むした遺跡 (Mossy Ruins)", "足元から這い上がる緑の苔と風化石")
         ],
         default='MARBLE'
     )
@@ -637,8 +638,12 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         description="ゴシック束ね柱の周囲小柱数"
     )
     pillar_flutes: bpy.props.IntProperty(
-        name="縦溝の数 (Flutes)", default=18, min=8, max=32,
-        description="ローマ円柱の縦溝（フルーティング）数"
+        name="縦溝の数 (Flutes)", default=16, min=8, max=32,
+        description="神殿円柱の縦溝（フルーティング）数"
+    )
+    pillar_entasis: bpy.props.FloatProperty(
+        name="エンタシス (Entasis)", default=0.08, min=0.0, max=0.25,
+        description="柱中央の滑らかな膨らみ度"
     )
 
     # ── TELESCOPE Properties ──

@@ -1,4 +1,4 @@
-﻿import bpy
+import bpy
 import bmesh
 import math
 import random
@@ -186,8 +186,17 @@ def build_square_monument_pillar(bm, height=4.0, radius=0.4, seed=202):
     )
 
 
-def create_procedural_pillar(context, name="Procedural_Pillar", pillar_type="GOTHIC_CLUSTERED",
-                             height=4.0, radius=0.4, colonnettes=6, flutes=18,
+from .architecture_gen import (
+    build_fluted_shaft,
+    build_classical_capital_and_base,
+    build_gothic_clustered_pillar as build_gothic_pillar_arch,
+    build_stone_drum_pillar,
+    build_solomonic_twisted_pillar
+)
+
+
+def create_procedural_pillar(context, name="Procedural_Pillar", pillar_type="CLASSIC_FLUTED",
+                             height=4.0, radius=0.4, colonnettes=6, flutes=16, entasis=0.08,
                              mat_type="MARBLE", seed=0):
     """プロシージャル柱（Pillar）を生成し、メッシュ・マテリアル・モディファイアを構築"""
     mesh = bpy.data.meshes.new(name=f"{name}_Mesh")
@@ -196,16 +205,22 @@ def create_procedural_pillar(context, name="Procedural_Pillar", pillar_type="GOT
 
     bm = bmesh.new()
 
-    if pillar_type == "GOTHIC_CLUSTERED":
-        build_gothic_clustered_pillar(bm, height=height, radius=radius, colonnette_count=colonnettes, seed=seed)
-    elif pillar_type == "ROMAN_FLUTED":
-        build_roman_fluted_pillar(bm, height=height, radius=radius, flute_count=flutes, seed=seed)
-    elif pillar_type == "RUINED_ANCIENT":
-        build_ruined_ancient_pillar(bm, height=height, radius=radius, seed=seed)
+    if pillar_type in ("CLASSIC_FLUTED", "ROMAN_FLUTED"):
+        shaft_h = height * 0.83
+        build_fluted_shaft(bm, shaft_h, radius, flutes=flutes, entasis=entasis)
+        build_classical_capital_and_base(bm, shaft_h, radius)
+    elif pillar_type == "GOTHIC_CLUSTERED":
+        build_gothic_pillar_arch(bm, height=height, radius=radius, colonnettes=colonnettes)
+    elif pillar_type in ("STONE_DRUM", "RUINED_ANCIENT"):
+        build_stone_drum_pillar(bm, height=height, radius=radius, drums=7, seed=seed)
+    elif pillar_type == "TWISTED_SOLOMONIC":
+        build_solomonic_twisted_pillar(bm, height=height, radius=radius)
     elif pillar_type == "SQUARE_MONUMENT":
         build_square_monument_pillar(bm, height=height, radius=radius, seed=seed)
     else:
-        build_gothic_clustered_pillar(bm, height=height, radius=radius, colonnette_count=colonnettes, seed=seed)
+        shaft_h = height * 0.83
+        build_fluted_shaft(bm, shaft_h, radius, flutes=flutes, entasis=entasis)
+        build_classical_capital_and_base(bm, shaft_h, radius)
 
     # 頂点・面のクリーンアップとスムースシェード
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.001)

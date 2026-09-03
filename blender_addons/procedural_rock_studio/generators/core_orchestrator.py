@@ -219,6 +219,7 @@ def resolve_prop_parameters(props):
         "pillar_radius": props.pillar_radius,
         "pillar_colonnettes": props.pillar_colonnettes,
         "pillar_flutes": props.pillar_flutes,
+        "pillar_entasis": props.pillar_entasis,
         "telescope_style": props.telescope_style,
         "telescope_elevation": props.telescope_elevation_angle,
         "telescope_azimuth": props.telescope_azimuth_angle,
@@ -251,12 +252,13 @@ def generate_procedural_prop_mesh(
     bed_size="SINGLE",
     shelf_tiers=3,
     column_style="ORNAMENTAL",
-    pillar_type="GOTHIC_CLUSTERED",
+    pillar_type="CLASSIC_FLUTED",
     pillar_mat_type="MARBLE",
     pillar_height=4.0,
     pillar_radius=0.4,
     pillar_colonnettes=6,
-    pillar_flutes=18,
+    pillar_flutes=16,
+    pillar_entasis=0.08,
     telescope_style="MODERN_REFRACTOR",
     telescope_elevation=25.0,
     telescope_azimuth=45.0,
@@ -348,6 +350,7 @@ def generate_procedural_prop_mesh(
             radius=min(size_x, size_y) * 0.35 if min(size_x, size_y) > 0.3 else pillar_radius,
             colonnettes=pillar_colonnettes,
             flutes=pillar_flutes,
+            entasis=pillar_entasis,
             mat_type=pillar_mat_type,
             seed=seed
         )
@@ -447,7 +450,11 @@ def generate_procedural_prop_mesh(
         build_wall_base(bm, size_x, size_y, size_z, shape=wall_shape, seed=seed,
                         stone_size=cobble_stone_size, grout_depth=cobble_grout_depth, jitter=cobble_jitter)
     elif category == "PILLAR":
-        build_pillar_base(bm, size_x, size_y, size_z)
+        build_pillar_base(
+            bm, size_x, size_y, size_z,
+            style=pillar_type, flutes=pillar_flutes,
+            colonnettes=pillar_colonnettes, entasis=pillar_entasis, seed=seed
+        )
     elif category == "BEAM":
         build_beam_base(bm, size_x, size_y, size_z)
     elif category == "BEAM_ARCH":
@@ -715,6 +722,8 @@ def generate_procedural_prop_mesh(
             if (category == "FLOOR" and floor_shape == "COBBLESTONE") or (category == "WALL" and wall_shape == "COBBLE_WALL"):
                 tile_sc = max(1.2, (1.0 / max(0.1, cobble_stone_size)) * 0.8)
                 mat = create_procedural_cobblestone_shader(name + "_Cobble_Mat", seed=seed, tile_scale=tile_sc)
+            elif category == "PILLAR":
+                mat = create_procedural_pillar_shader(name + "_Pillar_Mat", mat_type=pillar_mat_type, seed=seed)
             else:
                 mat = create_procedural_pbr_material(name + "_Mat", seed, is_grass=False)
             obj.data.materials.append(mat)

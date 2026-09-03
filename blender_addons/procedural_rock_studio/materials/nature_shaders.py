@@ -594,91 +594,149 @@ def create_procedural_pillar_shader(mat_name, mat_type="MARBLE", seed=0):
     nodes.clear()
 
     node_out = nodes.new(type='ShaderNodeOutputMaterial')
-    node_out.location = (750, 0)
+    node_out.location = (1100, 0)
 
     node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
-    node_bsdf.location = (450, 0)
+    node_bsdf.location = (800, 0)
     links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
 
     node_coord = nodes.new(type='ShaderNodeTexCoord')
-    node_coord.location = (-950, 0)
+    node_coord.location = (-1200, 0)
 
+    # ── 1. ノード基礎理論: Separate XYZ による「足元の泥・苔」高さマスク ──
+    node_sep = nodes.new(type='ShaderNodeSeparateXYZ')
+    node_sep.location = (-950, -300)
+    links.new(node_coord.outputs['Object'], node_sep.inputs['Vector'])
+
+    # 微小ノイズと混ぜて境界を有機的に乱す
+    noise_moss = nodes.new(type='ShaderNodeTexNoise')
+    noise_moss.location = (-950, -500)
+    noise_moss.inputs['Scale'].default_value = 8.0
+    noise_moss.inputs['Detail'].default_value = 4.0
+    links.new(node_coord.outputs['Object'], noise_moss.inputs['Vector'])
+
+    # 高さグラデーションRamp (下端付近で1.0、上に向かって0.0へ減衰)
+    ramp_dirt_mask = nodes.new(type='ShaderNodeValToRGB')
+    ramp_dirt_mask.location = (-650, -350)
+    ramp_dirt_mask.color_ramp.elements[0].position = 0.15 # 足元
+    ramp_dirt_mask.color_ramp.elements[0].color = (1.0, 1.0, 1.0, 1.0)
+    ramp_dirt_mask.color_ramp.elements[1].position = 0.45 # 上部
+    ramp_dirt_mask.color_ramp.elements[1].color = (0.0, 0.0, 0.0, 1.0)
+    links.new(node_sep.outputs['Z'], ramp_dirt_mask.inputs['Fac'])
+
+    # ノイズで揺らした最終足元マスク
+    mix_dirt_fac = nodes.new(type='ShaderNodeMixRGB')
+    mix_dirt_fac.location = (-400, -350)
+    mix_dirt_fac.blend_type = 'MULTIPLY'
+    mix_dirt_fac.inputs['Fac'].default_value = 0.70
+    links.new(ramp_dirt_mask.outputs['Color'], mix_dirt_fac.inputs[1])
+    links.new(noise_moss.outputs['Color'], mix_dirt_fac.inputs[2])
+
+    # ── 2. 各石材タイプごとのベースマテリアル ────────────────
     if mat_type == "MARBLE":
-        # 大理石（高級感のある筋模様と光沢）
-        node_bsdf.inputs['Roughness'].default_value = 0.22
+        # 大理石（高級感のある細い筋模様・ツルッとした磨き光沢）
+        node_bsdf.inputs['Roughness'].default_value = 0.18
+        
         node_noise = nodes.new(type='ShaderNodeTexNoise')
-        node_noise.location = (-650, 0)
-        node_noise.inputs['Scale'].default_value = 4.5
-        node_noise.inputs['Detail'].default_value = 6.0
-        node_noise.inputs['Roughness'].default_value = 0.6
-        node_noise.inputs['Distortion'].default_value = 0.8
+        node_noise.location = (-650, 100)
+        node_noise.inputs['Scale'].default_value = 3.5
+        node_noise.inputs['Detail'].default_value = 8.0
+        node_noise.inputs['Roughness'].default_value = 0.55
+        node_noise.inputs['Distortion'].default_value = 1.2
         links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
 
         node_ramp = nodes.new(type='ShaderNodeValToRGB')
-        node_ramp.location = (-250, 100)
-        node_ramp.color_ramp.elements[0].position = 0.25
-        node_ramp.color_ramp.elements[0].color = (0.35, 0.38, 0.42, 1.0) # 濃い筋
-        node_ramp.color_ramp.elements[1].position = 0.65
-        node_ramp.color_ramp.elements[1].color = (0.92, 0.93, 0.96, 1.0) # 白大理石
+        node_ramp.location = (-350, 100)
+        node_ramp.color_ramp.elements[0].position = 0.30
+        node_ramp.color_ramp.elements[0].color = (0.28, 0.30, 0.34, 1.0) # 濃い筋
+        node_ramp.color_ramp.elements[1].position = 0.72
+        node_ramp.color_ramp.elements[1].color = (0.94, 0.95, 0.97, 1.0) # 高級白大理石
         links.new(node_noise.outputs['Fac'], node_ramp.inputs['Fac'])
-        links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
 
         node_bump = nodes.new(type='ShaderNodeBump')
-        node_bump.location = (150, -150)
-        node_bump.inputs['Strength'].default_value = 0.08
-        node_bump.inputs['Distance'].default_value = 0.02
+        node_bump.location = (450, -200)
+        node_bump.inputs['Strength'].default_value = 0.05
+        node_bump.inputs['Distance'].default_value = 0.01
         links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
         links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
 
+        # 足元のわずかな埃・湿気汚れブレンド
+        mix_col = nodes.new(type='ShaderNodeMixRGB')
+        mix_col.location = (0, 50)
+        mix_col.blend_type = 'MIX'
+        dirt_tone = (0.45, 0.42, 0.38, 1.0)
+        mix_col.inputs[2].default_value = dirt_tone
+        links.new(mix_dirt_fac.outputs['Color'], mix_col.inputs[0])
+        links.new(node_ramp.outputs['Color'], mix_col.inputs[1])
+        links.new(mix_col.outputs['Color'], node_bsdf.inputs['Base Color'])
+
     elif mat_type == "MOSSY_RUINS":
-        # 苔むした遺跡石材
-        node_bsdf.inputs['Roughness'].default_value = 0.75
+        # 苔むした遺跡石材（足元から這い上がる濃い緑苔と風化石）
+        node_bsdf.inputs['Roughness'].default_value = 0.82
         node_noise = nodes.new(type='ShaderNodeTexNoise')
-        node_noise.location = (-650, 0)
-        node_noise.inputs['Scale'].default_value = 5.0
-        node_noise.inputs['Detail'].default_value = 4.0
+        node_noise.location = (-650, 100)
+        node_noise.inputs['Scale'].default_value = 5.5
+        node_noise.inputs['Detail'].default_value = 5.0
         links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
 
         node_ramp = nodes.new(type='ShaderNodeValToRGB')
-        node_ramp.location = (-250, 100)
-        node_ramp.color_ramp.elements[0].position = 0.35
-        node_ramp.color_ramp.elements[0].color = (0.28, 0.27, 0.25, 1.0) # 古代石
-        node_ramp.color_ramp.elements[1].position = 0.65
-        node_ramp.color_ramp.elements[1].color = (0.12, 0.35, 0.08, 1.0) # 苔グリーン
+        node_ramp.location = (-350, 100)
+        node_ramp.color_ramp.elements[0].position = 0.20
+        node_ramp.color_ramp.elements[0].color = (0.24, 0.23, 0.22, 1.0) # 暗い風化石
+        node_ramp.color_ramp.elements[1].position = 0.80
+        node_ramp.color_ramp.elements[1].color = (0.48, 0.46, 0.42, 1.0) # 乾いた石面
         links.new(node_noise.outputs['Fac'], node_ramp.inputs['Fac'])
-        links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
 
         node_bump = nodes.new(type='ShaderNodeBump')
-        node_bump.location = (150, -150)
+        node_bump.location = (450, -200)
         node_bump.inputs['Strength'].default_value = 0.35
         node_bump.inputs['Distance'].default_value = 0.05
         links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
         links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
 
+        # 足元苔ブレンド
+        mix_col = nodes.new(type='ShaderNodeMixRGB')
+        mix_col.location = (0, 50)
+        mix_col.blend_type = 'MIX'
+        moss_col = (0.10, 0.38, 0.06, 1.0) # 鮮やかな苔グリーン
+        mix_col.inputs[2].default_value = moss_col
+        links.new(mix_dirt_fac.outputs['Color'], mix_col.inputs[0])
+        links.new(node_ramp.outputs['Color'], mix_col.inputs[1])
+        links.new(mix_col.outputs['Color'], node_bsdf.inputs['Base Color'])
+
     else:
-        # ANCIENT_STONE（風化した古代砂岩）
-        node_bsdf.inputs['Roughness'].default_value = 0.8
+        # ANCIENT_STONE / SANDSTONE（風化した古代砂岩・神殿石材）
+        node_bsdf.inputs['Roughness'].default_value = 0.78
         node_noise = nodes.new(type='ShaderNodeTexNoise')
-        node_noise.location = (-650, 0)
+        node_noise.location = (-650, 100)
         node_noise.inputs['Scale'].default_value = 7.0
-        node_noise.inputs['Detail'].default_value = 5.0
+        node_noise.inputs['Detail'].default_value = 6.0
         links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
 
         node_ramp = nodes.new(type='ShaderNodeValToRGB')
-        node_ramp.location = (-250, 100)
-        node_ramp.color_ramp.elements[0].position = 0.2
-        node_ramp.color_ramp.elements[0].color = (0.42, 0.38, 0.32, 1.0)
-        node_ramp.color_ramp.elements[1].position = 0.8
-        node_ramp.color_ramp.elements[1].color = (0.75, 0.70, 0.62, 1.0)
+        node_ramp.location = (-350, 100)
+        node_ramp.color_ramp.elements[0].position = 0.15
+        node_ramp.color_ramp.elements[0].color = (0.40, 0.36, 0.30, 1.0) # 砂岩影
+        node_ramp.color_ramp.elements[1].position = 0.85
+        node_ramp.color_ramp.elements[1].color = (0.76, 0.72, 0.64, 1.0) # 暖色砂岩面
         links.new(node_noise.outputs['Fac'], node_ramp.inputs['Fac'])
-        links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
 
         node_bump = nodes.new(type='ShaderNodeBump')
-        node_bump.location = (150, -150)
-        node_bump.inputs['Strength'].default_value = 0.25
+        node_bump.location = (450, -200)
+        node_bump.inputs['Strength'].default_value = 0.28
         node_bump.inputs['Distance'].default_value = 0.04
         links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
         links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+        # 足元の土汚れブレンド
+        mix_col = nodes.new(type='ShaderNodeMixRGB')
+        mix_col.location = (0, 50)
+        mix_col.blend_type = 'MIX'
+        earth_dirt = (0.28, 0.22, 0.16, 1.0) # 湿った土色
+        mix_col.inputs[2].default_value = earth_dirt
+        links.new(mix_dirt_fac.outputs['Color'], mix_col.inputs[0])
+        links.new(node_ramp.outputs['Color'], mix_col.inputs[1])
+        links.new(mix_col.outputs['Color'], node_bsdf.inputs['Base Color'])
 
     return mat
 
