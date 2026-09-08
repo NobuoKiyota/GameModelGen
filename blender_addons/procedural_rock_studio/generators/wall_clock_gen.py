@@ -5,6 +5,28 @@ from mathutils import Vector, Matrix
 
 ROMAN_NUMS = ["XII", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI"]
 
+def find_clock_root(obj):
+    """時計の針や文字盤が選択されている場合、親の Wall_Clock ルートオブジェクトを探す"""
+    if not obj:
+        return None
+    curr = obj
+    while curr.parent:
+        curr = curr.parent
+    if "Clock" in curr.name or "clock" in curr.name.lower():
+        return curr
+    return curr
+
+
+def remove_clock_children(root_obj):
+    """既存の文字盤・数字・針・ガラスを安全に削除"""
+    children = list(root_obj.children)
+    for c in children:
+        mesh = c.data if c.type == 'MESH' else None
+        bpy.data.objects.remove(c, do_unlink=True)
+        if mesh and mesh.users == 0:
+            bpy.data.meshes.remove(mesh)
+
+
 def create_circle_profile_lathe(bm, profile_points, segments=48):
     """(radius, y) のプロファイルからY軸周りの回転体フレームを生成 (部屋向き: 前面=-Y)"""
     rings = []
@@ -112,7 +134,6 @@ def build_roman_numerals_mesh(context, radius_dial=0.17, y_pos=-0.038, scale=1.0
         txt_obj = bpy.data.objects.new(f"Txt_{txt}", curve_data)
         context.collection.objects.link(txt_obj)
         txt_obj.location = (x, y_pos, z)
-        # 前面 (-Y) を向くように X軸周りに -90度回転
         txt_obj.rotation_euler = (math.radians(-90.0), 0.0, 0.0)
         num_objs.append(txt_obj)
 
@@ -232,7 +253,6 @@ def create_hand_mesh(name, length=0.12, width=0.012, is_hour=False, is_second=Fa
             next_i = (i + 1) % len(pts)
             bm.faces.new((verts_front[i], verts_front[next_i], verts_back[next_i], verts_back[i]))
 
-    # 中心ピンキャップ
     r_cap = w * 1.2
     c_front = bm.verts.new((0.0, -thick * 1.8, 0.0))
     cap_ring = []
@@ -315,11 +335,12 @@ def generate_wall_clock_asset(
     show_seconds=True,
     show_glass=True,
     diameter=0.45,
-    scale=1.0
+    scale=1.0,
+    target_obj=None
 ):
     """
-    ローマ数字刻印の壁掛け時計をプロシージャル生成 (前面=-Y)
-    時針・分針・秒針が独立した子オブジェクトとして時刻角度に自動回転
+    ローマ数字刻印の壁掛け時計をプロシージャル生成・再構築
+    target_obj が指定された場合、既存のトランスフォーム(位置・回転)を維持して子オブジェクトとメッシュをその場で更新
     """
     radius = (diameter * 0.5) * scale
     r_dial = radius * 0.78
@@ -328,11 +349,24 @@ def generate_wall_clock_asset(
 
     f_mat, d_mat, n_mat, s_mat, g_mat = create_clock_materials(name, style=style)
 
-    mesh_frame = bpy.data.meshes.new(f"{name}_Frame_Mesh")
-    obj_clock = bpy.data.objects.new(name, mesh_frame)
-    context.collection.objects.link(obj_clock)
+    # 1. ルートオブジェクトの決定 (既存更新 or 新規生成)
+    root_clock = None
+    if target_obj:
+        root_clock = find_clock_root(target_obj)
 
-    bm_frame = bmesh.new()
+    if root_clock:
+        obj_clock = root_clock
+        remove_clock_children(obj_clock)
+        # 既存メッシュを再構築
+        mesh_frame = obj_clock.data
+        bm_frame = bmesh.new()
+    else:
+        mesh_frame = bpy.data.meshes.new(f"{name}_Frame_Mesh")
+        obj_clock = bpy.data.objects.new(name, mesh_frame)
+        context.collection.objects.link(obj_clock)
+        bm_frame = bmesh.new()
+
+    # 2. 外枠フレーム生成
     if shape == 'ROUND':
         prof = [
             (radius, 0.0),                      # 背面外周 (壁 y=0)
@@ -352,6 +386,7 @@ def generate_wall_clock_asset(
     for f in mesh_frame.polygons:
         f.use_smooth = True
 
+    obj_clock.data.materials.clear()
     obj_clock.data.materials.append(f_mat)
 
     # 3. 文字盤プレート
@@ -392,7 +427,6 @@ def generate_wall_clock_asset(
     obj_hour = bpy.data.objects.new(f"{name}_Hand_Hour", mesh_hour)
     context.collection.objects.link(obj_hour)
     obj_hour.location = (0.0, y_hands, 0.0)
-    # 前面(-Y)から見て時計回り回転 (Y軸周りにマイナス回転)
     hour_rot_deg = ((hour % 12 + minute / 60.0) / 12.0) * 360.0
     obj_hour.rotation_euler = (0.0, math.radians(hour_rot_deg), 0.0)
     obj_hour.data.materials.append(n_mat)

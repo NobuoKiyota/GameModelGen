@@ -1,4 +1,4 @@
-﻿import bpy
+import bpy
 import bmesh
 import math
 import random
@@ -215,6 +215,23 @@ def create_flask_materials(name_prefix, liquid_color=(0.9, 0.15, 0.25, 1.0), glo
     return g_mat, l_mat, c_mat
 
 
+def find_flask_root(obj):
+    if not obj:
+        return None
+    curr = obj
+    while curr.parent:
+        curr = curr.parent
+    return curr
+
+
+def remove_flask_children(root_obj):
+    for c in list(root_obj.children):
+        mesh = c.data if c.type == 'MESH' else None
+        bpy.data.objects.remove(c, do_unlink=True)
+        if mesh and mesh.users == 0:
+            bpy.data.meshes.remove(mesh)
+
+
 def generate_flask_potion_asset(
     context,
     name="Flask_Potion",
@@ -226,18 +243,28 @@ def generate_flask_potion_asset(
     liquid_color=(0.9, 0.15, 0.25, 1.0),
     glow=0.2,
     has_cork=True,
-    scale=1.0
+    scale=1.0,
+    target_obj=None
 ):
     """
-    フラスコ容器・液体・コルクを統合生成するマスター関数
-    容器自体の傾き(flask_tilt_deg)と、液面の水平補正傾き(liquid_tilt_deg)に対応
+    フラスコ容器・液体・コルクを統合生成・再構築するマスター関数
+    target_obj が指定された場合、既存のトランスフォーム(位置・回転)を維持して子オブジェクトとメッシュをその場で更新
     """
-    # 1. フラスコガラス容器
-    mesh_glass = bpy.data.meshes.new(f"{name}_Glass_Mesh")
-    obj_glass = bpy.data.objects.new(name, mesh_glass)
-    context.collection.objects.link(obj_glass)
+    root_flask = None
+    if target_obj:
+        root_flask = find_flask_root(target_obj)
 
-    bm_glass = bmesh.new()
+    if root_flask:
+        obj_glass = root_flask
+        remove_flask_children(obj_glass)
+        mesh_glass = obj_glass.data
+        bm_glass = bmesh.new()
+    else:
+        mesh_glass = bpy.data.meshes.new(f"{name}_Glass_Mesh")
+        obj_glass = bpy.data.objects.new(name, mesh_glass)
+        context.collection.objects.link(obj_glass)
+        bm_glass = bmesh.new()
+
     outer, _, _ = generate_flask_profiles(shape_type=shape_type, scale=scale)
     create_lathe_mesh(bm_glass, outer, segments=32)
     bm_glass.to_mesh(mesh_glass)
@@ -246,15 +273,15 @@ def generate_flask_potion_asset(
     for f in mesh_glass.polygons:
         f.use_smooth = True
 
-    # ガラスに厚みをつける (Solidify)
-    sol = obj_glass.modifiers.new(name="Glass_Thickness", type='SOLIDIFY')
-    sol.thickness = 0.010 * scale
-    sol.offset = -1.0
-    sol.use_rim = True
+    # モディファイアのクリアまたは再作成
+    if not root_flask:
+        sol = obj_glass.modifiers.new(name="Glass_Thickness", type='SOLIDIFY')
+        sol.thickness = 0.010 * scale
+        sol.offset = -1.0
+        sol.use_rim = True
 
-    # サブディビジョンで丸み
-    sub = obj_glass.modifiers.new(name="Subdiv", type='SUBSURF')
-    sub.levels = 1
+        sub = obj_glass.modifiers.new(name="Subdiv", type='SUBSURF')
+        sub.levels = 1
 
     # 2. 内部液体メッシュ
     mesh_liq = bpy.data.meshes.new(f"{name}_Liquid_Mesh")

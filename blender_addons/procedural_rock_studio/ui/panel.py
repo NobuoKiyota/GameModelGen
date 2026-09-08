@@ -61,8 +61,9 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 row_opt.prop(props, "clock_show_glass", text="風防ガラス")
 
                 col_btn = box_clock.column(align=True)
-                col_btn.scale_y = 1.4
-                col_btn.operator("mesh.generate_wall_clock", text="🕰️ 壁掛け時計を生成", icon='TIME')
+                col_btn.scale_y = 1.3
+                col_btn.operator("mesh.regenerate_wall_clock", text="🔄 再生成・更新 (選択中を更新)", icon='FILE_REFRESH')
+                col_btn.operator("mesh.generate_wall_clock", text="＋ 新規壁掛け時計を生成", icon='ADD')
 
             # Flask & Potion Specific
             elif props.prop_category == 'FLASK':
@@ -87,8 +88,9 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_liq.prop(props, "liquid_glow", text="発光の強さ", slider=True)
 
                 col_btn = box_flask.column(align=True)
-                col_btn.scale_y = 1.4
-                col_btn.operator("mesh.generate_flask_potion", text="🧪 液体入りフラスコを生成", icon='MATERIAL')
+                col_btn.scale_y = 1.3
+                col_btn.operator("mesh.regenerate_flask_potion", text="🔄 再生成・更新 (選択中を更新)", icon='FILE_REFRESH')
+                col_btn.operator("mesh.generate_flask_potion", text="＋ 新規フラスコを生成", icon='ADD')
 
             # Image Displace Studio Specific
             elif props.prop_category == 'IMAGE_DISPLACE':

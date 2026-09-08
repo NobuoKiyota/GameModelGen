@@ -566,10 +566,43 @@ class MESH_OT_generate_flask_potion(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class MESH_OT_regenerate_flask_potion(bpy.types.Operator):
+    """Regenerate currently selected Potion Flask in-place (keeps location and rotation)"""
+    bl_idname = "mesh.regenerate_flask_potion"
+    bl_label = "🔄 フラスコを再生成・更新"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..generators.flask_potion_gen import generate_flask_potion_asset, find_flask_root
+        active_obj = context.active_object
+        target = find_flask_root(active_obj)
+        if not target:
+            # 選択がなければ新規生成にフォールバック
+            return bpy.ops.mesh.generate_flask_potion()
+
+        obj_glass, obj_liq, obj_cork = generate_flask_potion_asset(
+            context=context,
+            name=target.name,
+            shape_type=props.flask_shape,
+            liquid_level=props.liquid_level,
+            flask_tilt_deg=props.flask_tilt,
+            liquid_tilt_deg=props.liquid_tilt,
+            surface_noise=props.liquid_surface_noise,
+            liquid_color=props.liquid_color,
+            glow=props.liquid_glow,
+            has_cork=props.flask_has_cork,
+            scale=props.flask_scale,
+            target_obj=target
+        )
+        self.report({'INFO'}, f"フラスコを更新しました: {obj_glass.name}")
+        return {'FINISHED'}
+
+
 class MESH_OT_generate_wall_clock(bpy.types.Operator):
-    """Generate Procedural Wall Clock with 3D Roman Numerals and Time Rotation Hands"""
+    """Generate New Procedural Wall Clock"""
     bl_idname = "mesh.generate_wall_clock"
-    bl_label = "🕰️ 壁掛け時計を生成"
+    bl_label = "＋ 新規壁掛け時計を生成"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -583,11 +616,45 @@ class MESH_OT_generate_wall_clock(bpy.types.Operator):
             style=props.clock_style,
             hour=props.clock_time_hour,
             minute=props.clock_time_minute,
-            second=props.clock_time_minute * 6 % 60, # 任意
+            second=props.clock_time_minute * 6 % 60,
             show_seconds=props.clock_show_seconds,
             show_glass=props.clock_show_glass,
             diameter=props.clock_diameter,
-            scale=1.0
+            scale=1.0,
+            target_obj=None
         )
-        self.report({'INFO'}, f"壁掛け時計生成完了: {obj_clock.name} ({props.clock_time_hour}:{props.clock_time_minute:02d})")
+        self.report({'INFO'}, f"新規壁掛け時計を生成しました: {obj_clock.name} ({props.clock_time_hour}:{props.clock_time_minute:02d})")
+        return {'FINISHED'}
+
+
+class MESH_OT_regenerate_wall_clock(bpy.types.Operator):
+    """Regenerate currently selected Wall Clock in-place (keeps location and rotation)"""
+    bl_idname = "mesh.regenerate_wall_clock"
+    bl_label = "🔄 壁掛け時計を再生成・更新"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..generators.wall_clock_gen import generate_wall_clock_asset, find_clock_root
+        active_obj = context.active_object
+        target = find_clock_root(active_obj)
+        if not target:
+            # 選択がなければ新規生成にフォールバック
+            return bpy.ops.mesh.generate_wall_clock()
+
+        obj_clock, obj_dial, obj_nums, obj_hour, obj_min, obj_sec, obj_glass = generate_wall_clock_asset(
+            context=context,
+            name=target.name,
+            shape=props.clock_shape,
+            style=props.clock_style,
+            hour=props.clock_time_hour,
+            minute=props.clock_time_minute,
+            second=props.clock_time_minute * 6 % 60,
+            show_seconds=props.clock_show_seconds,
+            show_glass=props.clock_show_glass,
+            diameter=props.clock_diameter,
+            scale=1.0,
+            target_obj=target
+        )
+        self.report({'INFO'}, f"壁掛け時計を更新しました: {obj_clock.name} ({props.clock_time_hour}:{props.clock_time_minute:02d})")
         return {'FINISHED'}

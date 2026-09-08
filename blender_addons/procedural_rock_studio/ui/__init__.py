@@ -16,7 +16,9 @@ from .operators import (
     MESH_OT_import_dropped_image,
     MESH_OT_auto_detect_background_color,
     MESH_OT_generate_flask_potion,
-    MESH_OT_generate_wall_clock
+    MESH_OT_regenerate_flask_potion,
+    MESH_OT_generate_wall_clock,
+    MESH_OT_regenerate_wall_clock
 )
 from .panel import VIEW3D_PT_prop_studio_panel
 
@@ -38,7 +40,9 @@ classes = (
     MESH_OT_import_dropped_image,
     MESH_OT_auto_detect_background_color,
     MESH_OT_generate_flask_potion,
+    MESH_OT_regenerate_flask_potion,
     MESH_OT_generate_wall_clock,
+    MESH_OT_regenerate_wall_clock,
     VIEW3D_PT_prop_studio_panel,
 )
 
