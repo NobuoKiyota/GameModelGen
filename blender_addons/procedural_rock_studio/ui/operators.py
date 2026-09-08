@@ -658,3 +658,55 @@ class MESH_OT_regenerate_wall_clock(bpy.types.Operator):
         )
         self.report({'INFO'}, f"壁掛け時計を更新しました: {obj_clock.name} ({props.clock_time_hour}:{props.clock_time_minute:02d})")
         return {'FINISHED'}
+
+
+class MESH_OT_generate_speaker(bpy.types.Operator):
+    """Generate New Procedural Audio Speaker"""
+    bl_idname = "mesh.generate_speaker"
+    bl_label = "＋ 新規スピーカーを生成"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..generators.speaker_gen import generate_speaker_asset
+        name = props.asset_name.strip() or "Studio_Speaker"
+        obj_cabinet, obj_woofer, obj_tweeter, obj_led, obj_grille = generate_speaker_asset(
+            context=context,
+            name=name,
+            style=props.speaker_style,
+            cone_color=props.speaker_cone_color,
+            has_grille=props.speaker_has_grille,
+            led_color=props.speaker_led_color,
+            scale=props.speaker_scale,
+            target_obj=None
+        )
+        self.report({'INFO'}, f"新規スピーカーを生成しました: {obj_cabinet.name}")
+        return {'FINISHED'}
+
+
+class MESH_OT_regenerate_speaker(bpy.types.Operator):
+    """Regenerate currently selected Speaker in-place (keeps location and rotation)"""
+    bl_idname = "mesh.regenerate_speaker"
+    bl_label = "🔄 スピーカーを再生成・更新"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..generators.speaker_gen import generate_speaker_asset, find_speaker_root
+        active_obj = context.active_object
+        target = find_speaker_root(active_obj)
+        if not target:
+            return bpy.ops.mesh.generate_speaker()
+
+        obj_cabinet, obj_woofer, obj_tweeter, obj_led, obj_grille = generate_speaker_asset(
+            context=context,
+            name=target.name,
+            style=props.speaker_style,
+            cone_color=props.speaker_cone_color,
+            has_grille=props.speaker_has_grille,
+            led_color=props.speaker_led_color,
+            scale=props.speaker_scale,
+            target_obj=target
+        )
+        self.report({'INFO'}, f"スピーカーを更新しました: {obj_cabinet.name}")
+        return {'FINISHED'}

@@ -18,7 +18,9 @@ from .operators import (
     MESH_OT_generate_flask_potion,
     MESH_OT_regenerate_flask_potion,
     MESH_OT_generate_wall_clock,
-    MESH_OT_regenerate_wall_clock
+    MESH_OT_regenerate_wall_clock,
+    MESH_OT_generate_speaker,
+    MESH_OT_regenerate_speaker
 )
 from .panel import VIEW3D_PT_prop_studio_panel
 
@@ -43,6 +45,8 @@ classes = (
     MESH_OT_regenerate_flask_potion,
     MESH_OT_generate_wall_clock,
     MESH_OT_regenerate_wall_clock,
+    MESH_OT_generate_speaker,
+    MESH_OT_regenerate_speaker,
     VIEW3D_PT_prop_studio_panel,
 )
 

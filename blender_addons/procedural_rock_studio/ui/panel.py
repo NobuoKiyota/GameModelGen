@@ -40,8 +40,26 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
         # 🌟 4. Tab 1: Shape & Dimensions & Specific Controls
         if props.studio_tab == 'SHAPE':
+            # Speaker Specific
+            if props.prop_category == 'SPEAKER':
+                box_spk = layout.box()
+                box_spk.label(text="🔊 スタジオモニター・スピーカー設定:", icon='SPEAKER')
+                box_spk.prop(props, "speaker_style", text="様式")
+                box_spk.prop(props, "speaker_cone_color", text="コーン色")
+                box_spk.prop(props, "speaker_scale", text="スケール")
+
+                box_opt = box_spk.box()
+                box_opt.label(text="パーツ・イルミネーション設定:", icon='LIGHT')
+                box_opt.prop(props, "speaker_has_grille", text="保護サランネット (Grille)")
+                box_opt.prop(props, "speaker_led_color", text="電源LED色")
+
+                col_btn = box_spk.column(align=True)
+                col_btn.scale_y = 1.3
+                col_btn.operator("mesh.regenerate_speaker", text="🔄 再生成・更新 (選択中を更新)", icon='FILE_REFRESH')
+                col_btn.operator("mesh.generate_speaker", text="＋ 新規スピーカーを生成", icon='ADD')
+
             # Wall Clock Specific
-            if props.prop_category == 'CLOCK':
+            elif props.prop_category == 'CLOCK':
                 box_clock = layout.box()
                 box_clock.label(text="🕰️ ローマ数字・壁掛け時計設定:", icon='TIME')
                 box_clock.prop(props, "clock_shape", text="外枠形状")

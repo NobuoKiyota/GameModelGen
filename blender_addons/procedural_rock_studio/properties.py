@@ -238,6 +238,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
+            ('SPEAKER', "🔊 スタジオモニター・スピーカー (Audio Speaker)", "DTM/3Dオーディオ・ベベルキャビネット・ウーファー・ツイーター・LED・グリル"),
             ('CLOCK', "🕰️ ローマ数字・壁掛け時計 (Wall Clock)", "モールディング外枠・3Dローマ数字立体刻印・時刻連動回転針・風防ガラス"),
             ('FLASK', "🧪 魔法フラスコ・ポーション (Potion Flask)", "透過屈折ガラス容器・色変更・表面波歪み・傾き水平追従液体"),
             ('IMAGE_DISPLACE', "🖼️ 2D画像立体化 (Image Displace Studio)", "2D画像から3Dレリーフ・コイン・地形を半自動立体化（アスペクト比自動同期＆クローズド密閉）"),
@@ -950,6 +951,39 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     clock_diameter: bpy.props.FloatProperty(
         name="直径 (m)", default=0.45, min=0.15, max=2.0,
         description="壁掛け時計の直径サイズ (m)"
+    )
+
+    # ── SPEAKER Properties ──
+    speaker_style: bpy.props.EnumProperty(
+        name="スピーカー様式",
+        items=[
+            ('STUDIO_BLACK', "🖤 スタジオモニター黒 (Studio Monitor Black)", "定番のマットブラックキャビネット"),
+            ('STUDIO_WHITE', "🤍 スタジオモニター白 (Studio Monitor White)", "スタイリッシュなオールホワイト"),
+            ('VINTAGE_WOOD', "🪵 クラシック木製 (Vintage Walnut)", "高級オーディオ風ウォールナット木目")
+        ],
+        default='STUDIO_BLACK'
+    )
+    speaker_cone_color: bpy.props.EnumProperty(
+        name="ウーファーコーン色",
+        items=[
+            ('WHITE_CONE', "⚪ ホワイトコーン (Yamaha HS調)", "視認性の高いクラシック白コーン"),
+            ('BLACK_CONE', "⚫ ブラックコーン (Polypropylene)", "シックな同色ブラック"),
+            ('YELLOW_KEVLAR', "🟡 イエローケブラー (KRK調)", "高剛性アラミド繊維調の黄色コーン")
+        ],
+        default='WHITE_CONE'
+    )
+    speaker_has_grille: bpy.props.BoolProperty(
+        name="保護サランネット (Grille)", default=False,
+        description="前面を覆う保護布メッシュグリル"
+    )
+    speaker_led_color: bpy.props.FloatVectorProperty(
+        name="電源LED色", subtype='COLOR', size=4,
+        default=(0.1, 0.6, 1.0, 1.0), min=0.0, max=1.0,
+        description="電源ONを示す発光LEDの色"
+    )
+    speaker_scale: bpy.props.FloatProperty(
+        name="スケール (Scale)", default=1.0, min=0.2, max=5.0,
+        description="スピーカー全体のサイズ倍率"
     )
 
 
