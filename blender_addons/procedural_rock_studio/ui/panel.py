@@ -40,8 +40,32 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
         # 🌟 4. Tab 1: Shape & Dimensions & Specific Controls
         if props.studio_tab == 'SHAPE':
+            # Wall Clock Specific
+            if props.prop_category == 'CLOCK':
+                box_clock = layout.box()
+                box_clock.label(text="🕰️ ローマ数字・壁掛け時計設定:", icon='TIME')
+                box_clock.prop(props, "clock_shape", text="外枠形状")
+                box_clock.prop(props, "clock_style", text="質感")
+                box_clock.prop(props, "clock_diameter", text="直径 (m)")
+
+                box_time = box_clock.box()
+                box_time.label(text="⏰ 時刻設定 (時・分):", icon='PREVIEW_RANGE')
+                row_t = box_time.row(align=True)
+                row_t.prop(props, "clock_time_hour", text="時")
+                row_t.prop(props, "clock_time_minute", text="分")
+
+                box_opt = box_clock.box()
+                box_opt.label(text="パーツ表示設定:", icon='HIDE_OFF')
+                row_opt = box_opt.row(align=True)
+                row_opt.prop(props, "clock_show_seconds", text="秒針")
+                row_opt.prop(props, "clock_show_glass", text="風防ガラス")
+
+                col_btn = box_clock.column(align=True)
+                col_btn.scale_y = 1.4
+                col_btn.operator("mesh.generate_wall_clock", text="🕰️ 壁掛け時計を生成", icon='TIME')
+
             # Flask & Potion Specific
-            if props.prop_category == 'FLASK':
+            elif props.prop_category == 'FLASK':
                 box_flask = layout.box()
                 box_flask.label(text="🧪 魔法フラスコ・ポーション設定:", icon='MATERIAL')
                 box_flask.prop(props, "flask_shape", text="形状")

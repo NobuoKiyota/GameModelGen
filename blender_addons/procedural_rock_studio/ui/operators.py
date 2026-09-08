@@ -564,3 +564,30 @@ class MESH_OT_generate_flask_potion(bpy.types.Operator):
         )
         self.report({'INFO'}, f"フラスコ・ポーション生成完了: {obj_glass.name}")
         return {'FINISHED'}
+
+
+class MESH_OT_generate_wall_clock(bpy.types.Operator):
+    """Generate Procedural Wall Clock with 3D Roman Numerals and Time Rotation Hands"""
+    bl_idname = "mesh.generate_wall_clock"
+    bl_label = "🕰️ 壁掛け時計を生成"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..generators.wall_clock_gen import generate_wall_clock_asset
+        name = props.asset_name.strip() or "Wall_Clock"
+        obj_clock, obj_dial, obj_nums, obj_hour, obj_min, obj_sec, obj_glass = generate_wall_clock_asset(
+            context=context,
+            name=name,
+            shape=props.clock_shape,
+            style=props.clock_style,
+            hour=props.clock_time_hour,
+            minute=props.clock_time_minute,
+            second=props.clock_time_minute * 6 % 60, # 任意
+            show_seconds=props.clock_show_seconds,
+            show_glass=props.clock_show_glass,
+            diameter=props.clock_diameter,
+            scale=1.0
+        )
+        self.report({'INFO'}, f"壁掛け時計生成完了: {obj_clock.name} ({props.clock_time_hour}:{props.clock_time_minute:02d})")
+        return {'FINISHED'}

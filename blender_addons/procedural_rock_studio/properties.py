@@ -238,6 +238,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
+            ('CLOCK', "🕰️ ローマ数字・壁掛け時計 (Wall Clock)", "モールディング外枠・3Dローマ数字立体刻印・時刻連動回転針・風防ガラス"),
             ('FLASK', "🧪 魔法フラスコ・ポーション (Potion Flask)", "透過屈折ガラス容器・色変更・表面波歪み・傾き水平追従液体"),
             ('IMAGE_DISPLACE', "🖼️ 2D画像立体化 (Image Displace Studio)", "2D画像から3Dレリーフ・コイン・地形を半自動立体化（アスペクト比自動同期＆クローズド密閉）"),
             ('BUSH', "🌿 低木・茂み・シダ (Bush / Shrub / Fern)", "textures/Grass/ と自動連動（丸型低木/野生の藪/シダ株/生垣・球状法線転送）"),
@@ -910,6 +911,45 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     flask_scale: bpy.props.FloatProperty(
         name="スケール (Scale)", default=1.0, min=0.1, max=5.0,
         description="フラスコの全体サイズ倍率"
+    )
+
+    # ── WALL CLOCK Properties ──
+    clock_shape: bpy.props.EnumProperty(
+        name="外枠形状",
+        items=[
+            ('ROUND', "⚪ クラシック丸型 (Classic Round)", "円形モールディング木製/真鍮フレーム"),
+            ('OCTAGON', "🛑 八角形 (Vintage Octagon)", "アンティーク洋館・ボンボン時計風の八角形フレーム")
+        ],
+        default='ROUND'
+    )
+    clock_style: bpy.props.EnumProperty(
+        name="マテリアル質感",
+        items=[
+            ('ANTIQUE_WOOD', "🪵 アンティーク木製 (Antique Mahogany)", "高級感のある濃色マホガニー・ウォールナット"),
+            ('VINTAGE_BRASS', "🎷 ヴィンテージ真鍮 (Vintage Brass)", "経年変化の味わいがあるアンティークゴールド真鍮"),
+            ('MODERN_BLACK', "🖤 モダンブラック (Modern Black)", "シックな黒フレーム ＆ アイボリー文字盤")
+        ],
+        default='ANTIQUE_WOOD'
+    )
+    clock_time_hour: bpy.props.IntProperty(
+        name="時 (Hour)", default=10, min=1, max=12,
+        description="時針が指す時刻（1〜12）"
+    )
+    clock_time_minute: bpy.props.IntProperty(
+        name="分 (Minute)", default=10, min=0, max=59,
+        description="分針が指す時刻（0〜59分）"
+    )
+    clock_show_seconds: bpy.props.BoolProperty(
+        name="秒針を表示", default=True,
+        description="細身の秒針とセンターピンを表示"
+    )
+    clock_show_glass: bpy.props.BoolProperty(
+        name="前面風防ガラス", default=True,
+        description="文字盤を覆うドーム型透明ガラス"
+    )
+    clock_diameter: bpy.props.FloatProperty(
+        name="直径 (m)", default=0.45, min=0.15, max=2.0,
+        description="壁掛け時計の直径サイズ (m)"
     )
 
 
