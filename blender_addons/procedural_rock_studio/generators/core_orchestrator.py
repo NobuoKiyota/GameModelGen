@@ -393,6 +393,9 @@ def generate_procedural_prop_mesh(
     # 🪨 Cave Preset (新・岩棚テラス＆水流トレンチ＆断崖天井アーチ)
     if category == "CAVE":
         from .cave_gen import create_procedural_cave_scene
+        import re
+        # Strip any existing suffixes to strictly prevent object duplication
+        cave_clean_name = re.sub(r'(_Floor|_Water|_Ceiling)+$', '', name).strip() or "Cave_Dungeon"
         c_river = kwargs.get('cave_has_river', True)
         c_r_w = kwargs.get('cave_river_width', 4.5)
         c_r_d = kwargs.get('cave_river_depth', 1.3)
@@ -408,7 +411,7 @@ def generate_procedural_prop_mesh(
 
         floor_obj, water_obj, ceil_obj = create_procedural_cave_scene(
             context=context,
-            name=name,
+            name=cave_clean_name,
             seed=seed,
             has_river=c_river,
             floor_width=c_f_w,

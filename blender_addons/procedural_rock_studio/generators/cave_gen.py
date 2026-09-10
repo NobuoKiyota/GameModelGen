@@ -648,6 +648,14 @@ def create_procedural_cave_scene(
     """
     col = context.collection
 
+    # 0. Sanitize base name (prevent _Floor_Floor accumulation)
+    import re
+    clean_name = re.sub(r'(_Floor|_Water|_Ceiling)+$', '', name).strip() or "Cave_Dungeon"
+
+    floor_obj_name = clean_name + "_Floor"
+    water_obj_name = clean_name + "_Water"
+    ceiling_obj_name = clean_name + "_Ceiling"
+
     # 1. Build Floor BMesh
     bm_floor = build_terraced_cave_floor_bmesh(
         width=floor_width,
@@ -660,8 +668,6 @@ def create_procedural_cave_scene(
         roughness=roughness,
         seed=seed
     )
-
-    floor_obj_name = name + "_Floor"
     floor_obj = bpy.data.objects.get(floor_obj_name)
     if floor_obj and floor_obj.type == 'MESH':
         bm_floor.to_mesh(floor_obj.data)
@@ -674,14 +680,14 @@ def create_procedural_cave_scene(
 
     bm_floor.free()
 
-    mat_floor = get_or_create_cave_floor_material(name + "_Floor_Mat", has_river=has_river)
+    mat_floor = get_or_create_cave_floor_material(clean_name + "_Floor_Mat", has_river=has_river)
     if floor_obj.data.materials:
         floor_obj.data.materials[0] = mat_floor
     else:
         floor_obj.data.materials.append(mat_floor)
 
     # 2. Handle River Water Mesh
-    water_obj_name = name + "_Water"
+    # water_obj_name already set to clean_name + "_Water"
     water_obj = bpy.data.objects.get(water_obj_name)
 
     if has_river:
@@ -704,7 +710,7 @@ def create_procedural_cave_scene(
 
         bm_water.free()
 
-        mat_water = get_or_create_cave_water_material(name + "_Water_Mat")
+        mat_water = get_or_create_cave_water_material(clean_name + "_Water_Mat")
         if water_obj.data.materials:
             water_obj.data.materials[0] = mat_water
         else:
@@ -715,7 +721,7 @@ def create_procedural_cave_scene(
             water_obj = None
 
     # 3. Handle Ceiling & Cliff Walls Mesh (Step 2)
-    ceiling_obj_name = name + "_Ceiling"
+    # ceiling_obj_name already set to clean_name + "_Ceiling"
     ceiling_obj = bpy.data.objects.get(ceiling_obj_name)
 
     if generate_ceiling:
@@ -739,7 +745,7 @@ def create_procedural_cave_scene(
 
         bm_ceiling.free()
 
-        mat_ceiling = get_or_create_cave_ceiling_material(name + "_Ceiling_Mat")
+        mat_ceiling = get_or_create_cave_ceiling_material(clean_name + "_Ceiling_Mat")
         if ceiling_obj.data.materials:
             ceiling_obj.data.materials[0] = mat_ceiling
         else:

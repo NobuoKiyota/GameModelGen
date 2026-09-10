@@ -200,11 +200,17 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
         cat = params.pop("category", "ROCK")
         seed_val = params.pop("seed", props.seed)
         
+        # For CAVE, sanitize name so selecting Floor/Water/Ceiling does not append _Floor_Floor
+        prop_name = props.asset_name if not target else target.name
+        if cat == "CAVE":
+            import re
+            prop_name = re.sub(r'(_Floor|_Water|_Ceiling)+$', '', prop_name).strip() or "Cave_Dungeon"
+
         generate_procedural_prop_mesh(
             context=context,
             target_obj=target,
             category=cat,
-            name=props.asset_name if not target else target.name,
+            name=prop_name,
             seed=seed_val,
             **params
         )
