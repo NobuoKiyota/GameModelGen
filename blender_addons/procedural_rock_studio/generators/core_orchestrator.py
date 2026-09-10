@@ -7,6 +7,7 @@ import os
 from ..materials.rock_shaders import build_procedural_rock_material
 from ..materials.nature_shaders import (
     create_procedural_grass_blade_shader,
+    create_procedural_bush_leaf_shader,
     create_procedural_ground_terrain_shader,
     create_procedural_water_shader,
     create_procedural_water_bed_shader,
@@ -210,6 +211,7 @@ def resolve_prop_parameters(props):
         "bush_foliage_style": props.bush_foliage_style,
         "bush_density": props.bush_density,
         "bush_leaf_size": props.bush_leaf_size,
+        "bush_include_fiddleheads": getattr(props, "bush_include_fiddleheads", True),
         "water_animate": props.water_animate,
         "water_wind_speed": props.water_wind_speed,
         "water_anim_frames": props.water_anim_frames,
@@ -286,6 +288,7 @@ def generate_procedural_prop_mesh(
     bush_foliage_style="LEAF_CARDS",
     bush_density=18,
     bush_leaf_size=0.35,
+    bush_include_fiddleheads=True,
     uv_mode="FIT",
     size_x=2.0,
     size_y=2.0,
@@ -423,6 +426,7 @@ def generate_procedural_prop_mesh(
             size_z=size_z,
             density=bush_density,
             leaf_size=bush_leaf_size,
+            include_fiddleheads=bush_include_fiddleheads,
             seed=seed
         )
     elif category == "FENCE":
@@ -605,16 +609,22 @@ def generate_procedural_prop_mesh(
 
     # 6. Material Assignment
     if category == "BUSH":
-        mat_leaf = create_procedural_grass_blade_shader(name + "_Leaf_Mat", seed)
+        mat_leaf = create_procedural_bush_leaf_shader(name + "_Leaf_Mat", seed)
         mat_stem = create_procedural_pbr_material(name + "_Stem_Mat", seed + 5, is_grass=False)
-        obj.data.materials.clear()
-        obj.data.materials.append(mat_leaf)
-        obj.data.materials.append(mat_stem)
+        if len(obj.data.materials) == 0:
+            obj.data.materials.append(mat_leaf)
+            obj.data.materials.append(mat_stem)
+        else:
+            obj.data.materials[0] = mat_leaf
+            if len(obj.data.materials) > 1:
+                obj.data.materials[1] = mat_stem
+            else:
+                obj.data.materials.append(mat_stem)
 
-        # 樹冠球状法線転送（ふんわり陰影）
+        # 樹冠球状法線転送（ふんわりハイブリッド陰影）
         if bush_foliage_style == "LEAF_CARDS":
             try:
-                apply_bush_spherical_normals(obj, leaf_mat_idx=0)
+                apply_bush_spherical_normals(obj, leaf_mat_idx=0, blend_factor=0.65)
             except Exception:
                 pass
     elif category == "FENCE":

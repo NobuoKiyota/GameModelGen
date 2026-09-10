@@ -745,6 +745,11 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="Leaf Size (葉サイズ)", default=0.35, min=0.15, max=0.8,
         description="葉カードのサイズ (m)"
     )
+    bush_include_fiddleheads: bpy.props.BoolProperty(
+        name="ゼンマイ新芽 (Fiddleheads)",
+        default=True,
+        description="シダ植物の中心からクルリと巻いた新芽（ゼンマイ）を生やす"
+    )
 
     # ── PILLAR & COLUMN Properties ──
     pillar_type: bpy.props.EnumProperty(

@@ -942,3 +942,128 @@ def create_procedural_cobblestone_shader(mat_name, seed=0, tile_scale=6.0):
     links.new(bump_micro.outputs['Normal'], node_bsdf.inputs['Normal'])
 
     return mat
+
+
+def create_procedural_bush_leaf_shader(mat_name, seed=0, base_tint=None):
+    """
+    【次世代リアル植物・低木・シダ専用PBRシェーダー】
+    - Translucent BSDF + Principled BSDF（Subsurface Scattering）による光透過
+    - UV.X に基づく中央主脈（Midrib）の明るい葉脈ハイライト
+    - UV.Y に基づく根元（深緑）〜 先端（ライムグリーン新芽）の自然なグラデーション
+    - 表面の微細セル・光沢（Roughness 0.35）
+    """
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    hue = ((seed % 17) - 8) * 0.006
+
+    # ── 出力 & Mix Shader (透過光) ────────────────────────
+    node_out = nodes.new('ShaderNodeOutputMaterial')
+    node_out.location = (950, 0)
+
+    node_mix_shader = nodes.new('ShaderNodeMixShader')
+    node_mix_shader.location = (750, 0)
+    node_mix_shader.inputs['Fac'].default_value = 0.18 # 18% 光透過 (深みのある透過)
+    links.new(node_mix_shader.outputs['Shader'], node_out.inputs['Surface'])
+
+    # ── Principled BSDF ───────────────────────────────────
+    node_bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (450, 80)
+    node_bsdf.inputs['Roughness'].default_value = 0.36
+    try:
+        node_bsdf.inputs['Subsurface Weight'].default_value = 0.22
+    except Exception:
+        try:
+            node_bsdf.inputs['Subsurface'].default_value = 0.22
+        except Exception:
+            pass
+    links.new(node_bsdf.outputs['BSDF'], node_mix_shader.inputs[1])
+
+    # ── Translucent BSDF ──────────────────────────────────
+    node_trans = nodes.new('ShaderNodeBsdfTranslucent')
+    node_trans.location = (450, -180)
+    node_trans.inputs['Color'].default_value = (0.10 + hue * 0.2, 0.55 + hue, 0.04, 1.0)
+    links.new(node_trans.outputs['BSDF'], node_mix_shader.inputs[2])
+
+    # ── テクスチャ座標 & UV分離 ────────────────────────────
+    node_coord = nodes.new('ShaderNodeTexCoord')
+    node_coord.location = (-950, 0)
+
+    node_sep_uv = nodes.new('ShaderNodeSeparateXYZ')
+    node_sep_uv.location = (-750, 120)
+    links.new(node_coord.outputs['UV'], node_sep_uv.inputs['Vector'])
+
+    # ── 1. UV.Y 根元〜先端カラーグラデーション ─────────────
+    ramp_length = nodes.new('ShaderNodeValToRGB')
+    ramp_length.location = (-500, 150)
+    ramp_length.color_ramp.interpolation = 'EASE'
+
+    # 根元: 深いフォレストグリーン (自然光下で浮かない重みのあるトーン)
+    ramp_length.color_ramp.elements[0].position = 0.05
+    ramp_length.color_ramp.elements[0].color = (0.02, 0.15 + hue * 0.5, 0.02, 1.0)
+    # 先端: 瑞々しいライムグリーン
+    ramp_length.color_ramp.elements[1].position = 0.95
+    ramp_length.color_ramp.elements[1].color = (0.18 + hue * 0.4, 0.58 + hue, 0.06, 1.0)
+    # 中間: 豊かな天然リーフグリーン
+    el_mid = ramp_length.color_ramp.elements.new(0.45)
+    el_mid.color = (0.07 + hue * 0.3, 0.36 + hue * 0.8, 0.04, 1.0)
+    links.new(node_sep_uv.outputs['Y'], ramp_length.inputs['Fac'])
+
+    # ── 2. UV.X 主脈（Midrib）検出: abs(U - 0.5) ───────────
+    math_sub = nodes.new('ShaderNodeMath')
+    math_sub.location = (-750, -150)
+    math_sub.operation = 'SUBTRACT'
+    math_sub.inputs[1].default_value = 0.5
+    links.new(node_sep_uv.outputs['X'], math_sub.inputs[0])
+
+    math_abs = nodes.new('ShaderNodeMath')
+    math_abs.location = (-580, -150)
+    math_abs.operation = 'ABSOLUTE'
+    links.new(math_sub.outputs['Value'], math_abs.inputs[0])
+
+    # 主脈ラインマスク (中央付近のみ1.0)
+    ramp_midrib = nodes.new('ShaderNodeValToRGB')
+    ramp_midrib.location = (-400, -150)
+    ramp_midrib.color_ramp.elements[0].position = 0.02
+    ramp_midrib.color_ramp.elements[0].color = (0.42, 0.78, 0.15, 1.0) # 主脈の黄緑色
+    ramp_midrib.color_ramp.elements[1].position = 0.09
+    ramp_midrib.color_ramp.elements[1].color = (0.0, 0.0, 0.0, 1.0)     # 周囲は黒
+    links.new(math_abs.outputs['Value'], ramp_midrib.inputs['Fac'])
+
+    # ── 3. 微細葉脈・セルノイズ ───────────────────────────
+    node_noise = nodes.new('ShaderNodeTexNoise')
+    node_noise.location = (-400, -380)
+    node_noise.inputs['Scale'].default_value = 24.0
+    node_noise.inputs['Detail'].default_value = 3.0
+    links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
+
+    # ── 4. 合成 (ColorRamp + Midrib + Noise) ───────────────
+    mix_color = nodes.new('ShaderNodeMixRGB')
+    mix_color.location = (-150, 80)
+    mix_color.blend_type = 'SCREEN'
+    mix_color.inputs['Fac'].default_value = 0.32
+    links.new(ramp_length.outputs['Color'], mix_color.inputs[1])
+    links.new(ramp_midrib.outputs['Color'], mix_color.inputs[2])
+
+    mix_final = nodes.new('ShaderNodeMixRGB')
+    mix_final.location = (100, 80)
+    mix_final.blend_type = 'MULTIPLY'
+    mix_final.inputs['Fac'].default_value = 0.12
+    links.new(mix_color.outputs['Color'], mix_final.inputs[1])
+    links.new(node_noise.outputs['Color'], mix_final.inputs[2])
+    links.new(mix_final.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+    # ── 5. Bump ノード（主脈と微小セルをノーマルへ反映）──
+    node_bump = nodes.new('ShaderNodeBump')
+    node_bump.location = (200, -150)
+    node_bump.inputs['Strength'].default_value = 0.18
+    node_bump.inputs['Distance'].default_value = 0.02
+    links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    return mat

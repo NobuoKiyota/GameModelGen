@@ -234,6 +234,16 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                     box_tree.prop(props, "tree_leaf_style", text="葉のスタイル")
                     box_tree.prop(props, "tree_leaf_count", text="葉の密度")
 
+            # Bush Specific
+            elif props.prop_category == 'BUSH':
+                box_bush = layout.box()
+                box_bush.label(text="🌿 低木・茂み・シダ設定 (Bush & Foliage):", icon='OUTLINER_OB_CURVE')
+                box_bush.prop(props, "bush_type", text="タイプ")
+                box_bush.prop(props, "bush_density", text="密度 (Density)")
+                box_bush.prop(props, "bush_leaf_size", text="葉サイズ (Size)")
+                if props.bush_type == 'FERN_CLUMP':
+                    box_bush.prop(props, "bush_include_fiddleheads", text="🌀 ゼンマイ新芽を付ける")
+
             # Chair Specific
             elif props.prop_category in ('CHAIR', 'OFFICE_CHAIR'):
                 box_chair = layout.box()
