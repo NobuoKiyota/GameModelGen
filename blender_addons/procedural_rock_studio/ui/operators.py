@@ -200,11 +200,11 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
         cat = params.pop("category", "ROCK")
         seed_val = params.pop("seed", props.seed)
         
-        # For CAVE, sanitize name so selecting Floor/Water/Ceiling does not append _Floor_Floor
+        # For CAVE, sanitize name so selecting Floor/Water/Ceiling/Pillars/Debris does not append duplicate suffixes
         prop_name = props.asset_name if not target else target.name
         if cat == "CAVE":
             import re
-            prop_name = re.sub(r'(_Floor|_Water|_Ceiling)+$', '', prop_name).strip() or "Cave_Dungeon"
+            prop_name = re.sub(r'(_Floor|_Water|_Ceiling|_Pillars|_Debris)+$', '', prop_name).strip() or "Cave_Dungeon"
 
         generate_procedural_prop_mesh(
             context=context,
@@ -1114,12 +1114,13 @@ class MESH_OT_regenerate_cave(bpy.types.Operator):
 
         active_obj = context.active_object
         target = None
-        if active_obj and active_obj.type == 'MESH' and ("_Floor" in active_obj.name or "_Water" in active_obj.name):
+        if active_obj and active_obj.type == 'MESH' and any(s in active_obj.name for s in ["_Floor", "_Water", "_Ceiling", "_Pillars", "_Debris"]):
             target = active_obj
 
-        name = target.name.replace("_Floor", "").replace("_Water", "") if target else (props.asset_name.strip() or "Cave")
+        import re
+        name = re.sub(r'(_Floor|_Water|_Ceiling|_Pillars|_Debris)+$', '', target.name).strip() if target else (props.asset_name.strip() or "Cave")
 
-        floor_obj, water_obj, ceil_obj = create_procedural_cave_scene(
+        floor_obj, water_obj, ceil_obj, pillar_obj, debris_obj = create_procedural_cave_scene(
             context=context,
             name=name,
             seed=props.seed,
@@ -1137,6 +1138,12 @@ class MESH_OT_regenerate_cave(bpy.types.Operator):
             ceiling_fissure=props.cave_ceiling_fissure,
             ceiling_roughness=props.cave_ceiling_roughness,
             generate_ceiling=props.cave_generate_ceiling,
+            generate_pillars=props.cave_generate_pillars,
+            pillar_count=props.cave_pillar_count,
+            generate_stalactites=props.cave_generate_stalactites,
+            stalactite_density=props.cave_stalactite_density,
+            generate_boulders=props.cave_generate_boulders,
+            boulder_count=props.cave_boulder_count,
             setup_lights=props.cave_setup_lights,
             light_intensity=props.cave_light_intensity,
             target_obj=target
@@ -1185,7 +1192,7 @@ class MESH_OT_create_cave(bpy.types.Operator):
 
         from ..generators.cave_gen import create_procedural_cave_scene
 
-        floor_obj, water_obj, ceil_obj = create_procedural_cave_scene(
+        floor_obj, water_obj, ceil_obj, pillar_obj, debris_obj = create_procedural_cave_scene(
             context=context,
             name=name,
             seed=props.seed,
@@ -1203,6 +1210,12 @@ class MESH_OT_create_cave(bpy.types.Operator):
             ceiling_fissure=props.cave_ceiling_fissure,
             ceiling_roughness=props.cave_ceiling_roughness,
             generate_ceiling=props.cave_generate_ceiling,
+            generate_pillars=props.cave_generate_pillars,
+            pillar_count=props.cave_pillar_count,
+            generate_stalactites=props.cave_generate_stalactites,
+            stalactite_density=props.cave_stalactite_density,
+            generate_boulders=props.cave_generate_boulders,
+            boulder_count=props.cave_boulder_count,
             setup_lights=props.cave_setup_lights,
             light_intensity=props.cave_light_intensity,
             target_obj=None

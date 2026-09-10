@@ -259,6 +259,12 @@ def resolve_prop_parameters(props):
         "cave_ceiling_roughness": props.cave_ceiling_roughness,
         "cave_setup_lights": props.cave_setup_lights,
         "cave_light_intensity": props.cave_light_intensity,
+        "cave_generate_pillars": getattr(props, 'cave_generate_pillars', True),
+        "cave_pillar_count": getattr(props, 'cave_pillar_count', 4),
+        "cave_generate_stalactites": getattr(props, 'cave_generate_stalactites', True),
+        "cave_stalactite_density": getattr(props, 'cave_stalactite_density', 1.0),
+        "cave_generate_boulders": getattr(props, 'cave_generate_boulders', True),
+        "cave_boulder_count": getattr(props, 'cave_boulder_count', 16),
     }
 
 
@@ -399,7 +405,7 @@ def generate_procedural_prop_mesh(
         from .cave_gen import create_procedural_cave_scene
         import re
         # Strip any existing suffixes to strictly prevent object duplication
-        cave_clean_name = re.sub(r'(_Floor|_Water|_Ceiling)+$', '', name).strip() or "Cave_Dungeon"
+        cave_clean_name = re.sub(r'(_Floor|_Water|_Ceiling|_Pillars|_Debris)+$', '', name).strip() or "Cave_Dungeon"
         c_path = kwargs.get('cave_path_type', 'S_CURVE')
         c_style = kwargs.get('cave_rock_style', 'SLATE')
         c_river = kwargs.get('cave_has_river', True)
@@ -416,8 +422,14 @@ def generate_procedural_prop_mesh(
         c_c_r = kwargs.get('cave_ceiling_roughness', 0.9)
         c_lights = kwargs.get('cave_setup_lights', True)
         c_l_int = kwargs.get('cave_light_intensity', 1.0)
+        c_pillars = kwargs.get('cave_generate_pillars', True)
+        c_p_count = kwargs.get('cave_pillar_count', 4)
+        c_stalactites = kwargs.get('cave_generate_stalactites', True)
+        c_s_dens = kwargs.get('cave_stalactite_density', 1.0)
+        c_boulders = kwargs.get('cave_generate_boulders', True)
+        c_b_count = kwargs.get('cave_boulder_count', 16)
 
-        floor_obj, water_obj, ceil_obj = create_procedural_cave_scene(
+        floor_obj, water_obj, ceil_obj, pillar_obj, debris_obj = create_procedural_cave_scene(
             context=context,
             name=cave_clean_name,
             seed=seed,
@@ -435,6 +447,12 @@ def generate_procedural_prop_mesh(
             ceiling_fissure=c_c_f,
             ceiling_roughness=c_c_r,
             generate_ceiling=c_ceil,
+            generate_pillars=c_pillars,
+            pillar_count=c_p_count,
+            generate_stalactites=c_stalactites,
+            stalactite_density=c_s_dens,
+            generate_boulders=c_boulders,
+            boulder_count=c_b_count,
             setup_lights=c_lights,
             light_intensity=c_l_int,
             target_obj=target_obj

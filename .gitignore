@@ -35,6 +35,10 @@ ai_archives/
 *.blend1
 *.blend2
 
-# Exports
-exports/*.fbx
-exports/*.png
+# Exports & heavy assets
+exports/
+textures/
+scratch/
+$RECYCLE.BIN/
+*.blend1
+*.blend2

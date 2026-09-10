@@ -509,7 +509,26 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                     row_cc2.prop(props, "cave_ceiling_fissure", text="天窓亀裂 (m)")
                     row_cc2.prop(props, "cave_ceiling_roughness", text="天井起伏", slider=True)
 
-                                # 4. 洞窟内部ライティング設定
+                # 4. 地質装飾 (Step 3: 岩柱・鍾乳石・石筍・崩落瓦礫)
+                box_c_feat = box_cave.box()
+                box_c_feat.label(text="地質装飾 (岩柱・鍾乳石・瓦礫):", icon='SNAP_VOLUME')
+                
+                row_cp = box_c_feat.row(align=True)
+                row_cp.prop(props, "cave_generate_pillars", text="🏛️ 天地貫通の岩柱 (Pillars)", toggle=True)
+                if props.cave_generate_pillars:
+                    row_cp.prop(props, "cave_pillar_count", text="本数")
+
+                row_cs = box_c_feat.row(align=True)
+                row_cs.prop(props, "cave_generate_stalactites", text="🧊 鍾乳石・石筍 (Speleothems)", toggle=True)
+                if props.cave_generate_stalactites:
+                    row_cs.prop(props, "cave_stalactite_density", text="密度倍率")
+
+                row_cb = box_c_feat.row(align=True)
+                row_cb.prop(props, "cave_generate_boulders", text="🪨 崩落巨石・瓦礫 (Debris)", toggle=True)
+                if props.cave_generate_boulders:
+                    row_cb.prop(props, "cave_boulder_count", text="個数")
+
+                # 5. 洞窟内部ライティング設定
                 box_c_light = box_cave.box()
                 row_cl = box_c_light.row(align=True)
                 row_cl.prop(props, "cave_setup_lights", text="💡 洞窟ライトを自動配置 (Auto Lights)", toggle=True)
@@ -520,8 +539,8 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
                 # 構造ヒント
                 box_c_hint = box_cave.box()
-                box_c_hint.label(text="💡 床面 (Floor)・天井 (Ceiling)・水面 (Water) が完全分離生成されます", icon='INFO')
-                box_c_hint.label(text="   天井を非表示(Hキー)にするとフロア内部が丸見えになります")
+                box_c_hint.label(text="💡 Floor / Water / Ceiling / Pillars / Debris が階層分離生成されます", icon='INFO')
+                box_c_hint.label(text="   天井を非表示(Hキー)にするとフロアや岩柱の内部が丸見えになります")
 
                 # 操作ボタン
                 col_c_btn = box_cave.column(align=True)

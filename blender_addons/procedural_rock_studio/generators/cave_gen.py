@@ -4,6 +4,7 @@ import math
 import mathutils
 from mathutils import Vector, Matrix, Euler
 import random
+from .rock_gen import build_convex_hull_rock
 
 # ==============================================================================
 # 1. Procedural Noise & Voronoi Helpers (岩石断層・ファセット計算)
@@ -863,6 +864,260 @@ def get_or_create_cave_water_material(mat_name="Cave_Water_Mat", rock_style='SLA
     return mat
 
 
+
+# ==============================================================================
+# 5. Speleothem & Debris Helpers (Step 3: 岩柱・鍾乳石・石筍・崩落巨石)
+# ==============================================================================
+
+def create_speleothem_cone_bmesh(bm, base_pos, tip_pos, base_radius=0.35, tip_radius=0.03, segments=12, rings=8, noise_seed=0):
+    """Creates an organic stalactite or stalagmite with smooth ribs and natural curvature."""
+    rng = random.Random(noise_seed)
+    diff = tip_pos - base_pos
+    length = diff.length
+    if length < 0.08:
+        return
+    
+    dir_vec = diff.normalized()
+    up = Vector((0, 0, 1))
+    if abs(dir_vec.dot(up)) > 0.95:
+        up = Vector((1, 0, 0))
+    side1 = dir_vec.cross(up).normalized()
+    side2 = dir_vec.cross(side1).normalized()
+
+    wobble_dx = rng.uniform(-0.08, 0.08) * length
+    wobble_dy = rng.uniform(-0.08, 0.08) * length
+
+    ring_verts_list = []
+    for r in range(rings + 1):
+        t = r / float(rings)
+        node_swell = 1.0 + 0.22 * math.sin(t * math.pi * 3.5 + noise_seed) * (1.0 - t * 0.7)
+        rad = (base_radius * ((1.0 - t)**1.15) + tip_radius * t) * node_swell
+        if t >= 0.98:
+            rad = max(0.015, tip_radius * 0.4)
+
+        center = base_pos + dir_vec * (length * t)
+        center += side1 * (wobble_dx * (t**1.4))
+        center += side2 * (wobble_dy * (t**1.4))
+
+        ring_verts = []
+        for s in range(segments):
+            ang = s * (2.0 * math.pi / segments)
+            rib = 1.0 + 0.16 * math.sin(ang * 5.0 + noise_seed) + 0.06 * math.cos(ang * 3.0)
+            nv = pseudo_noise_3d(center.x + math.cos(ang), center.y + math.sin(ang), center.z + t * 4.0, noise_seed)
+            r_final = max(0.01, rad * rib * (1.0 + nv * 0.14))
+
+            px = center.x + (side1.x * math.cos(ang) + side2.x * math.sin(ang)) * r_final
+            py = center.y + (side1.y * math.cos(ang) + side2.y * math.sin(ang)) * r_final
+            pz = center.z + (side1.z * math.cos(ang) + side2.z * math.sin(ang)) * r_final
+            ring_verts.append(bm.verts.new((px, py, pz)))
+        ring_verts_list.append(ring_verts)
+
+    for r in range(rings):
+        rv1 = ring_verts_list[r]
+        rv2 = ring_verts_list[r + 1]
+        for s in range(segments):
+            s_next = (s + 1) % segments
+            f = bm.faces.new((rv1[s], rv1[s_next], rv2[s_next], rv2[s]))
+            f.smooth = True
+
+    f_base = bm.faces.new(reversed(ring_verts_list[0]))
+    f_base.smooth = True
+    tip_vert = bm.verts.new(tip_pos + side1 * wobble_dx + side2 * wobble_dy)
+    for s in range(segments):
+        s_next = (s + 1) % segments
+        f = bm.faces.new((ring_verts_list[-1][s], ring_verts_list[-1][s_next], tip_vert))
+        f.smooth = True
+
+
+def build_stalactites_on_ceiling_bmesh(bm, length, width, ceiling_height, path_type, cluster_count=35, seed=0):
+    """Sprouts clusters of stalactites hanging downwards from the cave ceiling."""
+    rng = random.Random(seed + 1234)
+    for c in range(cluster_count):
+        cy = rng.uniform(-length * 0.44, length * 0.44)
+        cx, wm, hm = get_cave_profile_at_y(cy, length, path_type, seed)
+        eff_w = (width * 0.5) * wm
+        eff_h = ceiling_height * hm
+
+        offset_x = rng.uniform(-eff_w * 0.78, eff_w * 0.78)
+        px = cx + offset_x
+        lat_ratio = abs(offset_x) / max(1.0, eff_w)
+        arch = max(0.0, 1.0 - (lat_ratio ** 1.8))
+        pz = eff_h * (0.65 + 0.35 * arch) + 0.2
+
+        sub_count = rng.randint(2, 5)
+        for sc in range(sub_count):
+            sp_x = px + rng.uniform(-0.7, 0.7)
+            sp_y = cy + rng.uniform(-0.7, 0.7)
+            base_z = pz + rng.uniform(-0.1, 0.3)
+            
+            s_len = rng.uniform(0.9, 2.6) if (sc == 0) else rng.uniform(0.35, 1.3)
+            base_r = rng.uniform(0.20, 0.42) if (sc == 0) else rng.uniform(0.09, 0.22)
+            tip_r = rng.uniform(0.02, 0.04)
+
+            base_pos = Vector((sp_x, sp_y, base_z))
+            tip_pos = Vector((sp_x, sp_y, base_z - s_len))
+            create_speleothem_cone_bmesh(
+                bm, base_pos, tip_pos,
+                base_radius=base_r, tip_radius=tip_r,
+                segments=12, rings=8,
+                noise_seed=seed + c * 50 + sc
+            )
+
+
+def build_stalagmites_on_floor_bmesh(bm, length, width, path_type, cluster_count=26, seed=0):
+    """Sprouts clusters of stalagmites standing upwards from the cave floor/terraces."""
+    rng = random.Random(seed + 5678)
+    for c in range(cluster_count):
+        cy = rng.uniform(-length * 0.42, length * 0.42)
+        cx, wm, hm = get_cave_profile_at_y(cy, length, path_type, seed)
+        eff_w = (width * 0.5) * wm
+
+        side = 1.0 if rng.random() > 0.5 else -1.0
+        offset_x = side * rng.uniform(2.3, eff_w * 0.82)
+        px = cx + offset_x
+        pz = rng.uniform(0.1, 0.6)
+
+        sub_count = rng.randint(1, 4)
+        for sc in range(sub_count):
+            sp_x = px + rng.uniform(-0.6, 0.6)
+            sp_y = cy + rng.uniform(-0.6, 0.6)
+            base_z = pz - 0.35
+
+            s_len = rng.uniform(0.7, 2.0) if (sc == 0) else rng.uniform(0.3, 0.9)
+            base_r = rng.uniform(0.25, 0.50) if (sc == 0) else rng.uniform(0.12, 0.25)
+            tip_r = rng.uniform(0.04, 0.09)
+
+            base_pos = Vector((sp_x, sp_y, base_z))
+            tip_pos = Vector((sp_x, sp_y, base_z + s_len))
+            create_speleothem_cone_bmesh(
+                bm, base_pos, tip_pos,
+                base_radius=base_r, tip_radius=tip_r,
+                segments=12, rings=8,
+                noise_seed=seed + c * 40 + sc
+            )
+
+
+def build_cave_pillars_bmesh(length, width, ceiling_height, path_type, count=4, seed=0):
+    """Builds organic speleothem rock pillars connecting floor to ceiling with smooth shading."""
+    bm = bmesh.new()
+    rng = random.Random(seed + 777)
+    if count <= 0:
+        return bm
+
+    y_step = (length * 0.72) / max(1, count)
+    y_start = -length * 0.36
+
+    for i in range(count):
+        py = y_start + (i + 0.5) * y_step + rng.uniform(-length * 0.06, length * 0.06)
+        cx, wm, hm = get_cave_profile_at_y(py, length, path_type, seed)
+        eff_w = (width * 0.5) * wm
+        eff_h = ceiling_height * hm
+
+        side = 1.0 if (i % 2 == 0) else -1.0
+        min_dist = min(3.0, eff_w * 0.38)
+        max_dist = max(min_dist + 0.6, eff_w * 0.76)
+        offset_x = side * rng.uniform(min_dist, max_dist)
+        px = cx + offset_x
+
+        pz_floor = -0.8
+        lat_ratio = abs(offset_x) / max(1.0, eff_w)
+        arch = max(0.0, 1.0 - (lat_ratio ** 1.8))
+        pz_ceiling = eff_h * (0.65 + 0.35 * arch) + 0.8
+
+        pillar_h = pz_ceiling - pz_floor
+        if pillar_h < 1.5:
+            continue
+
+        base_radius = rng.uniform(0.70, 1.15)
+        segments = 16
+        rings = 16
+
+        ring_verts_list = []
+        p_seed = seed + i * 37
+        for r in range(rings + 1):
+            t = r / float(rings)
+            z = pz_floor + t * pillar_h
+
+            nz = 2.0 * t - 1.0
+            hourglass = 1.0 + 0.60 * (nz ** 2)
+            waist = 1.0 - 0.22 * math.exp(-5.0 * (nz ** 2))
+            rad = base_radius * hourglass * waist
+
+            lx = math.sin(t * math.pi + p_seed) * 0.22
+            ly = math.cos(t * math.pi + p_seed * 1.5) * 0.22
+
+            ring_verts = []
+            for s in range(segments):
+                ang = s * (2.0 * math.pi / segments)
+                flute = 1.0 + 0.16 * math.sin(ang * 6.0 + p_seed) + 0.07 * math.cos(ang * 3.0)
+                n = pseudo_noise_3d(px + math.cos(ang) * rad, py + math.sin(ang) * rad, z * 0.8, p_seed)
+                r_final = max(0.18, rad * flute * (1.0 + n * 0.14))
+
+                vx = px + lx + math.cos(ang) * r_final
+                vy = py + ly + math.sin(ang) * r_final
+                vz = z
+                ring_verts.append(bm.verts.new((vx, vy, vz)))
+            ring_verts_list.append(ring_verts)
+
+        for r in range(rings):
+            rv1 = ring_verts_list[r]
+            rv2 = ring_verts_list[r + 1]
+            for s in range(segments):
+                s_next = (s + 1) % segments
+                f = bm.faces.new((rv1[s], rv1[s_next], rv2[s_next], rv2[s]))
+                f.smooth = True
+
+        f_bottom = bm.faces.new(reversed(ring_verts_list[0]))
+        f_top = bm.faces.new(ring_verts_list[-1])
+        f_bottom.smooth = True
+        f_top.smooth = True
+
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return bm
+
+
+def build_cave_debris_bmesh(length, width, path_type, count=18, seed=0):
+    """Builds fallen boulders and rock debris scattered along riverbanks and terraces."""
+    bm = bmesh.new()
+    rng = random.Random(seed + 999)
+
+    for i in range(count):
+        py = rng.uniform(-length * 0.44, length * 0.44)
+        cx, wm, hm = get_cave_profile_at_y(py, length, path_type, seed)
+        eff_w = (width * 0.5) * wm
+
+        side = 1.0 if rng.random() > 0.5 else -1.0
+        dist = rng.uniform(1.6, eff_w * 0.75)
+        px = cx + side * dist
+        pz = rng.uniform(-0.15, 0.40)
+
+        sx = rng.uniform(0.65, 1.9)
+        sy = rng.uniform(0.65, 1.9)
+        sz = rng.uniform(0.45, 1.3)
+
+        bm_rock = bmesh.new()
+        build_convex_hull_rock(bm_rock, sx, sy, sz, point_count=18, is_crag=(i % 2 == 0), seed=seed + i * 19)
+
+        rot_mat = Euler((
+            rng.uniform(-0.4, 0.4),
+            rng.uniform(-0.4, 0.4),
+            rng.uniform(0, math.pi * 2)
+        ), 'XYZ').to_matrix().to_4x4()
+        trans_mat = Matrix.Translation((px, py, pz))
+        bm_rock.transform(trans_mat @ rot_mat)
+
+        vert_map = {}
+        for v in bm_rock.verts:
+            vert_map[v] = bm.verts.new(v.co)
+        for f in bm_rock.faces:
+            nf = bm.faces.new([vert_map[v] for v in f.verts])
+            nf.smooth = True
+        bm_rock.free()
+
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return bm
+
+
 def create_procedural_cave_scene(
     context,
     name="Cave",
@@ -882,6 +1137,12 @@ def create_procedural_cave_scene(
     ceiling_fissure=0.3,
     ceiling_roughness=0.9,
     generate_ceiling=True,
+    generate_pillars=True,
+    pillar_count=4,
+    generate_stalactites=True,
+    stalactite_density=1.0,
+    generate_boulders=True,
+    boulder_count=16,
     target_obj=None,
     **kwargs
 ):
@@ -896,11 +1157,13 @@ def create_procedural_cave_scene(
 
     # 0. Sanitize base name (prevent _Floor_Floor accumulation)
     import re
-    clean_name = re.sub(r'(_Floor|_Water|_Ceiling)+$', '', name).strip() or "Cave_Dungeon"
+    clean_name = re.sub(r'(_Floor|_Water|_Ceiling|_Pillars|_Debris)+$', '', name).strip() or "Cave_Dungeon"
 
     floor_obj_name = clean_name + "_Floor"
     water_obj_name = clean_name + "_Water"
     ceiling_obj_name = clean_name + "_Ceiling"
+    pillar_obj_name = clean_name + "_Pillars"
+    debris_obj_name = clean_name + "_Debris"
 
     # 1. Build Floor BMesh
     bm_floor = build_terraced_cave_floor_bmesh(
@@ -915,6 +1178,16 @@ def create_procedural_cave_scene(
         roughness=roughness,
         seed=seed
     )
+    if generate_stalactites:
+        stalagmite_clusters = int(24 * stalactite_density)
+        build_stalagmites_on_floor_bmesh(
+            bm=bm_floor,
+            length=floor_length,
+            width=floor_width,
+            path_type=path_type,
+            cluster_count=stalagmite_clusters,
+            seed=seed
+        )
     floor_obj = bpy.data.objects.get(floor_obj_name)
     if floor_obj and floor_obj.type == 'MESH':
         bm_floor.to_mesh(floor_obj.data)
@@ -983,6 +1256,17 @@ def create_procedural_cave_scene(
             roughness=ceiling_roughness,
             seed=seed
         )
+        if generate_stalactites:
+            stalactite_clusters = int(35 * stalactite_density)
+            build_stalactites_on_ceiling_bmesh(
+                bm=bm_ceiling,
+                length=floor_length,
+                width=floor_width,
+                ceiling_height=ceiling_height,
+                path_type=path_type,
+                cluster_count=stalactite_clusters,
+                seed=seed
+            )
         if ceiling_obj and ceiling_obj.type == 'MESH':
             bm_ceiling.to_mesh(ceiling_obj.data)
             ceiling_obj.data.update()
@@ -1017,7 +1301,68 @@ def create_procedural_cave_scene(
         enable_lights=enable_lights
     )
 
+    # 5. Handle Cave Pillars Object (天地貫通の岩柱)
+    pillar_obj = bpy.data.objects.get(pillar_obj_name)
+    if generate_pillars and pillar_count > 0:
+        bm_pillars = build_cave_pillars_bmesh(
+            length=floor_length,
+            width=floor_width,
+            ceiling_height=ceiling_height,
+            path_type=path_type,
+            count=pillar_count,
+            seed=seed
+        )
+        if pillar_obj and pillar_obj.type == 'MESH':
+            bm_pillars.to_mesh(pillar_obj.data)
+            pillar_obj.data.update()
+        else:
+            mesh_pillars = bpy.data.meshes.new(pillar_obj_name)
+            bm_pillars.to_mesh(mesh_pillars)
+            pillar_obj = bpy.data.objects.new(pillar_obj_name, mesh_pillars)
+            col.objects.link(pillar_obj)
+        bm_pillars.free()
+
+        mat_rock = get_or_create_cave_ceiling_material(clean_name + "_Rock_Mat", rock_style=rock_style)
+        if pillar_obj.data.materials:
+            pillar_obj.data.materials[0] = mat_rock
+        else:
+            pillar_obj.data.materials.append(mat_rock)
+    else:
+        if pillar_obj:
+            bpy.data.objects.remove(pillar_obj, do_unlink=True)
+            pillar_obj = None
+
+    # 6. Handle Cave Debris Object (崩落巨石・瓦礫)
+    debris_obj = bpy.data.objects.get(debris_obj_name)
+    if generate_boulders and boulder_count > 0:
+        bm_debris = build_cave_debris_bmesh(
+            length=floor_length,
+            width=floor_width,
+            path_type=path_type,
+            count=boulder_count,
+            seed=seed
+        )
+        if debris_obj and debris_obj.type == 'MESH':
+            bm_debris.to_mesh(debris_obj.data)
+            debris_obj.data.update()
+        else:
+            mesh_debris = bpy.data.meshes.new(debris_obj_name)
+            bm_debris.to_mesh(mesh_debris)
+            debris_obj = bpy.data.objects.new(debris_obj_name, mesh_debris)
+            col.objects.link(debris_obj)
+        bm_debris.free()
+
+        mat_rock = get_or_create_cave_ceiling_material(clean_name + "_Rock_Mat", rock_style=rock_style)
+        if debris_obj.data.materials:
+            debris_obj.data.materials[0] = mat_rock
+        else:
+            debris_obj.data.materials.append(mat_rock)
+    else:
+        if debris_obj:
+            bpy.data.objects.remove(debris_obj, do_unlink=True)
+            debris_obj = None
+
     context.view_layer.objects.active = floor_obj
     floor_obj.select_set(True)
 
-    return floor_obj, water_obj, ceiling_obj
+    return floor_obj, water_obj, ceiling_obj, pillar_obj, debris_obj

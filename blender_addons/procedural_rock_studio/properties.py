@@ -1417,5 +1417,36 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default=1.0, min=0.1, max=5.0,
         description="洞窟ライト群の光量・エネルギー倍率"
     )
+    # ── CAVE Step 3: Speleothems & Debris Properties ──
+    cave_generate_pillars: bpy.props.BoolProperty(
+        name="🏛️ 天地貫通の岩柱 (Pillars)",
+        default=True,
+        description="天井から床までを力強く繋ぎ止める巨大な鍾乳石柱・侵食岩柱を生成"
+    )
+    cave_pillar_count: bpy.props.IntProperty(
+        name="岩柱の本数 (Pillar Count)",
+        default=4, min=0, max=12,
+        description="洞窟内に配置する岩柱の本数"
+    )
+    cave_generate_stalactites: bpy.props.BoolProperty(
+        name="🧊 鍾乳石・石筍 (Speleothems)",
+        default=True,
+        description="天井から垂れ下がるツララ状鍾乳石と、床から立ち上がる石筍クラスタを生成"
+    )
+    cave_stalactite_density: bpy.props.FloatProperty(
+        name="鍾乳石密度 (Density)",
+        default=1.0, min=0.2, max=3.0,
+        description="鍾乳石・石筍クラスタの群生密度倍率"
+    )
+    cave_generate_boulders: bpy.props.BoolProperty(
+        name="🪨 崩落巨石・瓦礫 (Debris)",
+        default=True,
+        description="川岸や岩棚に散乱する崩落巨石・岩石瓦礫群を生成"
+    )
+    cave_boulder_count: bpy.props.IntProperty(
+        name="巨石・瓦礫数 (Debris Count)",
+        default=16, min=0, max=40,
+        description="洞窟内に散布する崩落岩の個数"
+    )
 
 
