@@ -26,7 +26,10 @@ from .operators import (
     MESH_OT_apply_fence_colors,
     MESH_OT_create_biome_scatter,
     MESH_OT_regenerate_biome_scatter,
-    MESH_OT_convert_scatter_to_game_mesh
+    MESH_OT_convert_scatter_to_game_mesh,
+    MESH_OT_create_castle_wall,
+    MESH_OT_regenerate_castle_wall,
+    MESH_OT_convert_castle_wall_to_game_mesh
 )
 
 
@@ -61,6 +64,9 @@ classes = (
     MESH_OT_create_biome_scatter,
     MESH_OT_regenerate_biome_scatter,
     MESH_OT_convert_scatter_to_game_mesh,
+    MESH_OT_create_castle_wall,
+    MESH_OT_regenerate_castle_wall,
+    MESH_OT_convert_castle_wall_to_game_mesh,
     VIEW3D_PT_prop_studio_panel,
 )
 

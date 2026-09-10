@@ -415,6 +415,39 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                     box_wshape.prop(props, "cobble_stone_size", text="石の大きさ (Stone Size)")
                     box_wshape.prop(props, "cobble_jitter", text="突出・歪み (Jitter)", slider=True)
 
+            # Castle Wall (Stone Scatter) Specific
+            elif props.prop_category == 'CASTLE_WALL':
+                box_cwall = layout.box()
+                box_cwall.label(text="🏰 中世城壁・石積み壁 (Castle Stone Wall):", icon='MOD_BUILD')
+                box_cwall.prop(props, "castle_wall_shape", text="城壁形状")
+                box_cwall.prop(props, "castle_wall_style", text="石積み様式")
+
+                # 寸法設定
+                box_cw_dim = box_cwall.box()
+                box_cw_dim.label(text="📐 城壁寸法 & 胸壁設定:", icon='ARROW_LEFTRIGHT')
+                row_cw1 = box_cw_dim.row(align=True)
+                row_cw1.prop(props, "castle_wall_length", text="長さ (m)")
+                row_cw1.prop(props, "castle_wall_height", text="高さ (m)")
+                row_cw1.prop(props, "castle_wall_thickness", text="厚み (m)")
+                if props.castle_wall_shape in ('STRAIGHT', 'BATTLEMENT'):
+                    box_cw_dim.prop(props, "castle_wall_has_crenels", text="🛡️ 銃眼胸壁 (Crenels / 狭間) を付ける")
+
+                # 散布設定
+                box_cw_scat = box_cwall.box()
+                box_cw_scat.label(text="🧱 石材散布設定 (Poisson Disk):", icon='MOD_PARTICLES')
+                row_cws = box_cw_scat.row(align=True)
+                row_cws.prop(props, "castle_wall_density", text="石材密度")
+                row_cws.prop(props, "castle_wall_min_dist", text="最小間隔 (m)")
+                box_cw_scat.prop(props, "castle_wall_jitter", text="凹凸・飛び出し (Jitter)", slider=True)
+
+                # 操作ボタン
+                col_cw_btn = box_cwall.column(align=True)
+                col_cw_btn.scale_y = 1.3
+                col_cw_btn.operator("mesh.regenerate_castle_wall", text="🔄 再生成・更新 (選択中を更新)", icon='FILE_REFRESH')
+                col_cw_btn.operator("mesh.create_castle_wall", text="➕ 新規城壁を生成", icon='ADD')
+                col_cw_btn.separator()
+                col_cw_btn.operator("mesh.convert_castle_wall_to_game_mesh", text="🎮 ゲーム用実体メッシュへ変換 (Make Real)", icon='CHECKMARK')
+
             # Dimensions Box
             box_dim = layout.box()
             row_dh = box_dim.row(align=True)

@@ -960,5 +960,113 @@ class MESH_OT_convert_scatter_to_game_mesh(bpy.types.Operator):
             return {'CANCELLED'}
 
 
+# ==============================================================================
+# Castle Stone Wall Operators (Geometry Nodes 散布型城壁)
+# ==============================================================================
+
+class MESH_OT_regenerate_castle_wall(bpy.types.Operator):
+    bl_idname = "mesh.regenerate_castle_wall"
+    bl_label = "🔄 再生成・更新 (選択中を更新)"
+    bl_description = "選択中の城壁（または直前の城壁）を、現在のパラメータでその場更新・再生成します（重複堆積しません）"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..generators.castle_wall_gen import create_castle_wall_scene
+
+        active_obj = context.active_object
+        target = None
+        if active_obj and active_obj.type == 'MESH' and ("CastleWallScatter" in active_obj.modifiers or "_Core" in active_obj.name):
+            target = active_obj
+
+        name = target.name.replace("_Core", "") if target else (props.asset_name.strip() or "Castle_Wall")
+
+        wall_obj, stone_col = create_castle_wall_scene(
+            context=context,
+            name=name,
+            seed=props.seed,
+            wall_shape=props.castle_wall_shape,
+            wall_style=props.castle_wall_style,
+            length=props.castle_wall_length,
+            height=props.castle_wall_height,
+            thickness=props.castle_wall_thickness,
+            crenels=props.castle_wall_has_crenels,
+            density=props.castle_wall_density,
+            min_dist=props.castle_wall_min_dist,
+            jitter=props.castle_wall_jitter,
+            target_obj=target
+        )
+
+        context.view_layer.objects.active = wall_obj
+        wall_obj.select_set(True)
+        self.report({'INFO'}, f"城壁を更新しました: {wall_obj.name}")
+        return {'FINISHED'}
+
+
+class MESH_OT_create_castle_wall(bpy.types.Operator):
+    bl_idname = "mesh.create_castle_wall"
+    bl_label = "➕ 新規城壁を生成"
+    bl_description = "立体石材散布型の本格中世城壁・石垣・銃眼胸壁をGeometry Nodesで自動生成します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        base_name = props.asset_name.strip() or "Castle_Wall"
+
+        name = base_name
+        counter = 1
+        while (name + "_Core") in bpy.data.objects:
+            name = f"{base_name}_{counter:02d}"
+            counter += 1
+
+        from ..generators.castle_wall_gen import create_castle_wall_scene
+
+        wall_obj, stone_col = create_castle_wall_scene(
+            context=context,
+            name=name,
+            seed=props.seed,
+            wall_shape=props.castle_wall_shape,
+            wall_style=props.castle_wall_style,
+            length=props.castle_wall_length,
+            height=props.castle_wall_height,
+            thickness=props.castle_wall_thickness,
+            crenels=props.castle_wall_has_crenels,
+            density=props.castle_wall_density,
+            min_dist=props.castle_wall_min_dist,
+            jitter=props.castle_wall_jitter,
+            target_obj=None
+        )
+
+        context.view_layer.objects.active = wall_obj
+        wall_obj.select_set(True)
+        self.report({'INFO'}, f"新規城壁を生成しました: {wall_obj.name}")
+        return {'FINISHED'}
+
+
+class MESH_OT_convert_castle_wall_to_game_mesh(bpy.types.Operator):
+    bl_idname = "mesh.convert_castle_wall_to_game_mesh"
+    bl_label = "🎮 ゲーム用実体メッシュへ変換 (Make Real)"
+    bl_description = "選択中城壁の石材散布インスタンスを実体メッシュとして確定し、Unity/UE向けFBX出力可能にします"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        obj = context.active_object
+        if not obj or obj.type != 'MESH':
+            self.report({'WARNING'}, "城壁オブジェクトを選択してください")
+            return {'CANCELLED'}
+
+        from ..generators.castle_wall_gen import convert_castle_wall_to_game_mesh
+
+        ok = convert_castle_wall_to_game_mesh(context, obj)
+        if ok:
+            v_cnt = len(obj.data.vertices)
+            p_cnt = len(obj.data.polygons)
+            self.report({'INFO'}, f"ゲーム用実体メッシュへ変換完了: {obj.name} ({v_cnt}頂点 / {p_cnt}ポリゴン)")
+            return {'FINISHED'}
+        else:
+            self.report({'WARNING'}, "有効な城壁 Geometry Nodes モディファイアが見つかりませんでした")
+            return {'CANCELLED'}
+
+
 
 

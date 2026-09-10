@@ -33,7 +33,8 @@ def update_category_preset(self, context):
         'BED': "Antique_Bed",
         'FENCE': "Wooden_Fence",
         'BUSH': "Bush_Shrub",
-        'IMAGE_DISPLACE': "Image_Displace_Asset"
+        'IMAGE_DISPLACE': "Image_Displace_Asset",
+        'CASTLE_WALL': "Castle_Wall"
     }
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
@@ -327,6 +328,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('GRASS', "🌿 草原・草地 (Grassland / Meadow)", "textures/Grass/ と自動連動（草地丘陵スラブ＆十字草むら）"),
             ('FLOOR', "🟫 床・タイル (Floor / Tile)", "textures/Floor/ と自動連動（正方形・円形・六角形＆有機的亀裂）"),
             ('WALL', "🧱 壁・城壁 (Wall / Ruins)", "textures/Wall/ と自動連動（直線・L字・円弧・▲三角切妻壁）"),
+            ('CASTLE_WALL', "🏰 城壁・石積み壁 (Castle Stone Wall)", "動画の散布手法を応用した立体石材ブロック積みの城壁・石垣・銃眼胸壁"),
             ('PILLAR', "🏛️ 柱・石柱 (Pillar / Column)", "textures/Pillar/ と自動連動"),
             ('BEAM', "🪵 梁・丸太支柱 (Timber Log Beam)", "textures/Wood/ と自動連動（シリンダー丸太梁）"),
             ('BEAM_ARCH', "🪵🏛️ 梁アーチ (Beam Arch)", "textures/Wood/ と自動連動（シリンダー丸太アーチ）")
@@ -1210,6 +1212,63 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="地面の起伏 (Undulation)",
         default=0.45, min=0.0, max=2.0,
         description="FBMフラクタルによる地面の高低差・うねりの強さ"
+    )
+
+    # ── CASTLE WALL (Stone Scatter) Properties ──
+    castle_wall_shape: bpy.props.EnumProperty(
+        name="城壁形状",
+        items=[
+            ('STRAIGHT', "⬛ 直線城壁 (Straight Wall)", "中世城塞の標準的なカーテンウォール"),
+            ('BATTLEMENT', "🛡️ 銃眼胸壁 (Battlement / Parapet)", "凸凹の戦闘用狭間（銃眼）を持つ防衛城壁"),
+            ('TOWER_CURVED', "🗼 監視塔・円弧壁 (Tower / Curved)", "半円柱・円形タワーの強固な曲面石壁"),
+            ('CORNER_L', "🧱 L字コーナー壁 (Corner Bastion)", "90度コーナーの要塞堡塁壁")
+        ],
+        default='STRAIGHT',
+        description="城壁・石垣の基礎構造形状"
+    )
+    castle_wall_style: bpy.props.EnumProperty(
+        name="石積み様式",
+        items=[
+            ('ASHLAR', "切石積み (Ashlar / Chiseled)", "整然と手削りされた重厚な角ブロック石積み"),
+            ('RUBBLE', "野面積み・乱積み (Rubble / Fieldstone)", "自然な形の石を巧みに組んだ野趣あふれる古城石垣")
+        ],
+        default='ASHLAR',
+        description="散布する石材の加工様式"
+    )
+    castle_wall_length: bpy.props.FloatProperty(
+        name="壁の長さ (Length)",
+        default=6.0, min=2.0, max=50.0,
+        description="城壁の全長（メートル）"
+    )
+    castle_wall_height: bpy.props.FloatProperty(
+        name="壁の高さ (Height)",
+        default=3.5, min=1.0, max=20.0,
+        description="城壁の高さ（メートル）"
+    )
+    castle_wall_thickness: bpy.props.FloatProperty(
+        name="壁の厚み (Thickness)",
+        default=1.2, min=0.4, max=5.0,
+        description="城壁の奥行き厚み（メートル）"
+    )
+    castle_wall_has_crenels: bpy.props.BoolProperty(
+        name="銃眼・狭間を付ける",
+        default=True,
+        description="城壁天面に兵士が身を隠す凸凹の銃眼胸壁（Crenels）を設置"
+    )
+    castle_wall_density: bpy.props.FloatProperty(
+        name="石材密度 (Density)",
+        default=22.0, min=5.0, max=60.0,
+        description="壁表面1平方メートルあたりの石材ブロック配置密度"
+    )
+    castle_wall_min_dist: bpy.props.FloatProperty(
+        name="石材最小間隔 (Min Distance)",
+        default=0.22, min=0.05, max=0.6,
+        description="石材ブロック同士の過度な重なりを防ぐ最小離隔距離"
+    )
+    castle_wall_jitter: bpy.props.FloatProperty(
+        name="凹凸・不揃い (Jitter)",
+        default=0.04, min=0.0, max=0.15,
+        description="手積みによる石材の前後段差・飛び出しの度合い"
     )
 
 
