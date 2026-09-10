@@ -168,11 +168,12 @@ def build_terraced_cave_floor_bmesh(
         row = []
 
         for ix in range(subdivisions_x + 1):
-            x_pos = -effective_hx + ix * effective_dx
+            offset_x = -effective_hx + ix * effective_dx
+            x_pos = center_x + offset_x
             
-            # Distance from cave/river center
-            dist_to_center = abs(x_pos - center_x)
-            norm_dist = dist_to_center / max(1.0, effective_hx * 0.85)
+            # Distance from cave/river center (strictly relative to cave centerline)
+            dist_to_center = abs(offset_x)
+            norm_dist = min(1.3, dist_to_center / max(1.0, effective_hx * 0.85))
             
             # Base canyon slope: sides rise up towards cave walls
             base_z = (norm_dist ** 1.8) * (terrace_steps * step_height)
