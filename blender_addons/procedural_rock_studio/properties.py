@@ -244,8 +244,10 @@ def update_fence_live_color(self, context):
             frame_color=self.fence_frame_color,
             body_color=self.fence_body_color,
             metallic=self.fence_metallic,
-            roughness=self.fence_roughness
+            roughness=self.fence_roughness,
+            weathering=getattr(self, 'fence_wood_weathering', 0.4)
         )
+
 
 
 def update_fence_color_preset(self, context):
@@ -1128,6 +1130,36 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         description="マテリアル表面の微細な粗さ・ツヤ",
         update=update_fence_live_color
     )
+
+    # ── WOOD FENCE REALISM & WEATHERING Properties ──
+    fence_wood_top_style: bpy.props.EnumProperty(
+        name="上部形状スタイル",
+        items=[
+            ('POINTED', "🔺 先端尖り (Pointed / Picket)", "ピケット風のクラシックな山型45度カット"),
+            ('ROUNDED', "⚪ 丸型アーチ (Rounded / Dome)", "柔らかく親しみやすい半円ドームカット"),
+            ('DOG_EAR', "🐕 ドッグイヤー (Dog-Ear)", "欧米フェンス定番の左右45度角落とし"),
+            ('FLAT', "⬛ 直線平ら (Square / Flat)", "直線スクエアカット")
+        ],
+        default='POINTED',
+        description="木板上端のカット形状（尖り・丸み・ドッグイヤー・平ら）"
+    )
+    fence_wood_jitter: bpy.props.FloatProperty(
+        name="ゆがみ・反り (Warp & Jitter)",
+        default=0.35, min=0.0, max=1.0,
+        description="板ごとの厚みムラ、前後の段差、微細な傾きの度合い（揃いすぎを解消）"
+    )
+    fence_wood_wear: bpy.props.FloatProperty(
+        name="角欠け・劣化 (Edge Chips)",
+        default=0.25, min=0.0, max=1.0,
+        description="板の角やエッジに現れる経年劣化・角欠けの度合い"
+    )
+    fence_wood_weathering: bpy.props.FloatProperty(
+        name="木目・汚し (Wood Weathering)",
+        default=0.40, min=0.0, max=1.0,
+        description="プロシージャル木目の年輪感および風化・雨だれ汚れの度合い",
+        update=update_fence_live_color
+    )
+
 
 
 

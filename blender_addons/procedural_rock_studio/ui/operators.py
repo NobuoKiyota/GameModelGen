@@ -736,6 +736,12 @@ class MESH_OT_generate_fence_preset(bpy.types.Operator):
         }
         name = name_map.get(props.fence_preset_type, "Fence_Asset")
 
+        use_custom = (props.fence_color_preset != 'PRESET_DEFAULT')
+        f_col = props.fence_frame_color if use_custom else None
+        b_col = props.fence_body_color if use_custom else None
+        met   = props.fence_metallic if use_custom else None
+        rgh   = props.fence_roughness if use_custom else None
+
         obj_fence = generate_fence_preset_asset(
             context=context,
             name=name,
@@ -745,10 +751,14 @@ class MESH_OT_generate_fence_preset(bpy.types.Operator):
             post_spacing=props.fence_post_spacing,
             slat_gap=props.fence_slat_gap,
             scale=props.fence_scale,
-            frame_color=props.fence_frame_color,
-            body_color=props.fence_body_color,
-            metallic=props.fence_metallic,
-            roughness=props.fence_roughness,
+            frame_color=f_col,
+            body_color=b_col,
+            metallic=met,
+            roughness=rgh,
+            top_style=props.fence_wood_top_style,
+            wood_jitter=props.fence_wood_jitter,
+            wood_wear=props.fence_wood_wear,
+            wood_weathering=props.fence_wood_weathering,
             target_obj=None
         )
         self.report({'INFO'}, f"新規フェンスを生成しました: {obj_fence.name}")
@@ -785,6 +795,12 @@ class MESH_OT_regenerate_fence_preset(bpy.types.Operator):
         }
         name = name_map.get(props.fence_preset_type, target.name)
 
+        use_custom = (props.fence_color_preset != 'PRESET_DEFAULT')
+        f_col = props.fence_frame_color if use_custom else None
+        b_col = props.fence_body_color if use_custom else None
+        met   = props.fence_metallic if use_custom else None
+        rgh   = props.fence_roughness if use_custom else None
+
         obj_fence = generate_fence_preset_asset(
             context=context,
             name=name,
@@ -794,14 +810,19 @@ class MESH_OT_regenerate_fence_preset(bpy.types.Operator):
             post_spacing=props.fence_post_spacing,
             slat_gap=props.fence_slat_gap,
             scale=props.fence_scale,
-            frame_color=props.fence_frame_color,
-            body_color=props.fence_body_color,
-            metallic=props.fence_metallic,
-            roughness=props.fence_roughness,
+            frame_color=f_col,
+            body_color=b_col,
+            metallic=met,
+            roughness=rgh,
+            top_style=props.fence_wood_top_style,
+            wood_jitter=props.fence_wood_jitter,
+            wood_wear=props.fence_wood_wear,
+            wood_weathering=props.fence_wood_weathering,
             target_obj=target
         )
         self.report({'INFO'}, f"フェンスを更新しました: {obj_fence.name}")
         return {'FINISHED'}
+
 
 
 class MESH_OT_apply_fence_colors(bpy.types.Operator):
@@ -820,12 +841,14 @@ class MESH_OT_apply_fence_colors(bpy.types.Operator):
             frame_color=props.fence_frame_color,
             body_color=props.fence_body_color,
             metallic=props.fence_metallic,
-            roughness=props.fence_roughness
+            roughness=props.fence_roughness,
+            weathering=props.fence_wood_weathering
         )
         if ok:
             self.report({'INFO'}, "選択中フェンスのマテリアル色を更新しました")
         else:
             self.report({'WARNING'}, "フェンスオブジェクトが選択されていません")
         return {'FINISHED'}
+
 
 

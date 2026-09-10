@@ -470,11 +470,144 @@ def build_wire_x_fence(bm, length=4.0, height=1.8, post_spacing=2.0):
                 add_box(bm, mid_p, (wire_r * 2.0, wire_r * 2.0, l_seg), rot_euler=rot, mat_idx=1)
 
 
-def build_wood_horizontal_fence(bm, length=4.0, height=1.6, post_spacing=1.8, slat_h=0.09, slat_gap=0.015):
+def build_wood_slat_mesh(
+    bm,
+    center_pos,
+    size,
+    top_style="FLAT",
+    jitter=0.35,
+    wear=0.25,
+    rot_euler=None,
+    mat_idx=1,
+    seed=0
+):
+    """
+    リアルな木板スラット（上部形状・ゆがみ・角欠け対応）を密閉メッシュで生成
+    size: (width_w, thick_t, height_h)
+    top_style: 'FLAT', 'POINTED', 'ROUNDED', 'DOG_EAR'
+    """
+    rng = random.Random(seed)
+    w, t, h = size
+    hw = w * 0.5
+    hh = h * 0.5
+    ht = t * 0.5
+
+    # 1. 2D輪郭頂点の構築 (XZ平面、反時計回り)
+    pts_2d = []
+    # 底面 2点
+    pts_2d.append((-hw, -hh))
+    pts_2d.append(( hw, -hh))
+
+    if top_style == "POINTED":
+        # 山型尖り (ピケット風45度カット)
+        shoulder_h = hh - hw * 0.55
+        pts_2d.append(( hw, shoulder_h))
+        # 頂点 (わずかにランダム左右に揺らす)
+        peak_x = rng.uniform(-0.002, 0.002) * jitter
+        pts_2d.append((peak_x, hh))
+        pts_2d.append((-hw, shoulder_h))
+
+    elif top_style == "DOG_EAR":
+        # ドッグイヤー (角取り45度カット)
+        d = min(hw * 0.42, 0.024)
+        pts_2d.append(( hw, hh - d))
+        pts_2d.append(( hw - d, hh))
+        pts_2d.append((-hw + d, hh))
+        pts_2d.append((-hw, hh - d))
+
+    elif top_style == "ROUNDED":
+        # アーチ丸型 (多角形円弧)
+        r = hw
+        cy = hh - r
+        segs = 6
+        for s in range(segs + 1):
+            ang = s * (math.pi / segs)
+            rx = r * math.cos(ang)
+            rz = cy + r * math.sin(ang)
+            pts_2d.append((rx, rz))
+
+    else:
+        # FLAT (直線カット)
+        pts_2d.append(( hw, hh))
+        pts_2d.append((-hw, hh))
+
+    # 2. 角欠け (Chips / Notch)
+    if wear > 0.08 and rng.random() < wear * 0.7:
+        # 上部頂点のいずれかを欠けさせる
+        c_idx = rng.randint(2, len(pts_2d) - 1)
+        px, pz = pts_2d[c_idx]
+        chip_amount = rng.uniform(0.004, 0.014) * wear
+        pts_2d[c_idx] = (px * (1.0 - chip_amount * 2.0), pz - chip_amount)
+
+    # 3. Y軸前後の頂点生成（厚みムラ・ゆがみを付与）
+    front_verts = []
+    back_verts = []
+
+    # スラット全体の回転マトリクス（反り・傾き）
+    base_rot = rot_euler if rot_euler else Euler((0, 0, 0), 'XYZ')
+    jx = rng.uniform(-0.015, 0.015) * jitter
+    jy = rng.uniform(-0.010, 0.010) * jitter
+    jz = rng.uniform(-0.018, 0.018) * jitter
+    total_rot = Euler((base_rot.x + jx, base_rot.y + jy, base_rot.z + jz), 'XYZ')
+    rot_mat = total_rot.to_matrix().to_4x4()
+
+    # 全体の微小位置オフセット
+    dy = rng.uniform(-0.0025, 0.0025) * jitter
+    dz = rng.uniform(-0.012, 0.012) * jitter if top_style != "FLAT" else rng.uniform(-0.004, 0.004) * jitter
+    offset_center = center_pos + Vector((0.0, dy, dz))
+
+    for px, pz in pts_2d:
+        # 表面の細かな揺らぎ
+        vy_f = -ht + rng.uniform(-0.0012, 0.0012) * jitter
+        vy_b =  ht + rng.uniform(-0.0012, 0.0012) * jitter
+
+        v_local_f = rot_mat @ Vector((px, vy_f, pz))
+        v_local_b = rot_mat @ Vector((px, vy_b, pz))
+
+        front_verts.append(bm.verts.new(offset_center + v_local_f))
+        back_verts.append(bm.verts.new(offset_center + v_local_b))
+
+    # 4. 面の構築
+    n = len(pts_2d)
+    # 前面 (反時計回り)
+    f_front = bm.faces.new(front_verts)
+    f_front.material_index = mat_idx
+    f_front.smooth = False
+
+    # 背面 (時計回りで外向き)
+    f_back = bm.faces.new(reversed(back_verts))
+    f_back.material_index = mat_idx
+    f_back.smooth = False
+
+    # 側面 (前と奥を繋ぐ四角形)
+    for i in range(n):
+        i_next = (i + 1) % n
+        v1 = front_verts[i]
+        v2 = front_verts[i_next]
+        v3 = back_verts[i_next]
+        v4 = back_verts[i]
+        f_side = bm.faces.new((v1, v2, v3, v4))
+        f_side.material_index = mat_idx
+        f_side.smooth = False
+
+
+def build_wood_horizontal_fence(
+    bm,
+    length=4.0,
+    height=1.6,
+    post_spacing=1.8,
+    slat_h=0.09,
+    slat_gap=0.015,
+    jitter=0.35,
+    wear=0.25,
+    top_style="FLAT",
+    seed=42
+):
     """
     3. 木板打ち付け・横 (WOOD_HORIZ): 画像2準拠
-    角柱支柱 + 等間隔スリット隙間の横板スラットルーバー
+    角柱支柱 + 等間隔スリット隙間のリアルな横板スラットルーバー（反り・段差・ビス）
     """
+    rng = random.Random(seed)
     num_posts = max(2, int(math.ceil(length / post_spacing)) + 1)
     actual_spacing = length / float(num_posts - 1)
     half_l = length * 0.5
@@ -486,9 +619,13 @@ def build_wood_horizontal_fence(bm, length=4.0, height=1.6, post_spacing=1.8, sl
     # 1. 支柱 (角柱支柱)
     for i in range(num_posts):
         x = -half_l + i * actual_spacing
-        # 支柱は板の裏側 (Y = +post_d*0.5)
+        p_seed = seed + i * 83
+        p_rng = random.Random(p_seed)
+        p_jx = p_rng.uniform(-0.01, 0.01) * jitter
+        p_jy = p_rng.uniform(-0.01, 0.01) * jitter
+        rot_p = Euler((p_jx, p_jy, 0.0), 'XYZ')
         c_pos = Vector((x, post_d * 0.5 + 0.001, height * 0.5))
-        add_box(bm, c_pos, (post_w, post_d, height), mat_idx=0)
+        add_box(bm, c_pos, (post_w, post_d, height), rot_euler=rot_p, mat_idx=0)
 
     # 2. 横板スラット (Horizontal Slats)
     pitch = slat_h + slat_gap
@@ -496,21 +633,44 @@ def build_wood_horizontal_fence(bm, length=4.0, height=1.6, post_spacing=1.8, sl
     z_start = 0.06
 
     for s in range(num_slats):
+        s_seed = seed + s * 137
+        s_rng = random.Random(s_seed)
         sz = z_start + s * pitch + slat_h * 0.5
-        c_slat = Vector((0.0, -slat_thick * 0.5, sz))
-        add_box(bm, c_slat, (length, slat_thick, slat_h), mat_idx=1)
+
+        # 板ごとの前後のわずかな浮き沈み（光が当たると段差シャドウがクッキリ出る）
+        s_dy = s_rng.uniform(-0.0025, 0.0025) * jitter
+        c_slat = Vector((0.0, -slat_thick * 0.5 + s_dy, sz))
+
+        # 横板の微妙な傾き
+        rot_s = Euler((s_rng.uniform(-0.02, 0.02) * jitter, 0.0, s_rng.uniform(-0.005, 0.005) * jitter), 'XYZ')
+
+        # 横板を生成 (横向きサイズ: length, slat_thick, slat_h)
+        add_box(bm, c_slat, (length, slat_thick, slat_h), rot_euler=rot_s, mat_idx=1)
 
         # 支柱ごとの固定ビス（ネジ頭）
         for i in range(num_posts):
-            bx = -half_l + i * actual_spacing
-            add_box(bm, Vector((bx, -slat_thick - 0.001, sz)), (0.008, 0.004, 0.008), mat_idx=0)
+            bx = -half_l + i * actual_spacing + s_rng.uniform(-0.002, 0.002) * jitter
+            bz = sz + s_rng.uniform(-0.003, 0.003) * jitter
+            add_box(bm, Vector((bx, -slat_thick + s_dy - 0.001, bz)), (0.008, 0.004, 0.008), mat_idx=0)
 
 
-def build_wood_vertical_fence(bm, length=4.0, height=1.6, post_spacing=1.8, slat_w=0.08, slat_gap=0.02):
+def build_wood_vertical_fence(
+    bm,
+    length=4.0,
+    height=1.6,
+    post_spacing=1.8,
+    slat_w=0.08,
+    slat_gap=0.02,
+    top_style="POINTED",
+    jitter=0.35,
+    wear=0.25,
+    seed=42
+):
     """
     4. 木板打ち付け・縦 (WOOD_VERT):
-    角柱支柱 + 上下横桟レール + 等間隔スリットの縦板スラット
+    角柱支柱 + 上下横桟レール + 上部形状スタイル（尖り/丸み/ドッグイヤー）＆ゆがみ・欠け付き縦板
     """
+    rng = random.Random(seed)
     num_posts = max(2, int(math.ceil(length / post_spacing)) + 1)
     actual_spacing = length / float(num_posts - 1)
     half_l = length * 0.5
@@ -538,9 +698,21 @@ def build_wood_vertical_fence(bm, length=4.0, height=1.6, post_spacing=1.8, slat
     slat_z_mid = height * 0.5
 
     for s in range(num_slats):
+        s_seed = seed + s * 71
         sx = x_start + s * pitch
         c_slat = Vector((sx, -slat_thick * 0.5, slat_z_mid))
-        add_box(bm, c_slat, (slat_w, slat_thick, slat_len), mat_idx=1)
+
+        build_wood_slat_mesh(
+            bm,
+            center_pos=c_slat,
+            size=(slat_w, slat_thick, slat_len),
+            top_style=top_style,
+            jitter=jitter,
+            wear=wear,
+            mat_idx=1,
+            seed=s_seed
+        )
+
 
 
 def get_or_create_material(mat_name):
@@ -552,13 +724,87 @@ def get_or_create_material(mat_name):
     return mat
 
 
+def setup_wood_weathering_shader(material, base_color=(0.42, 0.25, 0.15, 1.0), weathering=0.4, roughness=0.55, is_vertical=True):
+    """プロシージャルな木目（縦繊維/横繊維・年輪）と経年汚しを構築"""
+    material.use_nodes = True
+    tree = material.node_tree
+    tree.nodes.clear()
+
+    node_out = tree.nodes.new("ShaderNodeOutputMaterial")
+    node_out.location = (600, 0)
+
+    node_bsdf = tree.nodes.new("ShaderNodeBsdfPrincipled")
+    node_bsdf.location = (300, 0)
+    tree.links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    if weathering <= 0.05:
+        node_bsdf.inputs['Base Color'].default_value = base_color
+        node_bsdf.inputs['Roughness'].default_value = roughness
+        node_bsdf.inputs['Metallic'].default_value = 0.0
+        return
+
+    node_tc = tree.nodes.new("ShaderNodeTexCoord")
+    node_tc.location = (-700, 0)
+
+    node_map = tree.nodes.new("ShaderNodeMapping")
+    node_map.location = (-500, 0)
+
+    # 縦板（WOOD_VERT）なら繊維がZ方向に伸びる（Zスケール小、Xスケール大、帯はX方向）
+    # 横板（WOOD_HORIZ）なら繊維がX方向に伸びる（Xスケール小、Zスケール大、帯はZ方向）
+    if is_vertical:
+        node_map.inputs['Scale'].default_value = (10.0, 2.0, 0.05)
+        wave_dir = 'X'
+    else:
+        node_map.inputs['Scale'].default_value = (0.05, 2.0, 10.0)
+        wave_dir = 'Z'
+
+    tree.links.new(node_tc.outputs['Generated'], node_map.inputs['Vector'])
+
+    node_wave = tree.nodes.new("ShaderNodeTexWave")
+    node_wave.location = (-300, 100)
+    node_wave.wave_type = 'BANDS'
+    node_wave.bands_direction = wave_dir
+    node_wave.inputs['Scale'].default_value = 1.8
+    node_wave.inputs['Distortion'].default_value = 5.5
+    node_wave.inputs['Detail'].default_value = 2.5
+    node_wave.inputs['Detail Scale'].default_value = 1.0
+    node_wave.inputs['Detail Roughness'].default_value = 0.5
+    tree.links.new(node_map.outputs['Vector'], node_wave.inputs['Vector'])
+
+    node_ramp = tree.nodes.new("ShaderNodeValToRGB")
+    node_ramp.location = (-50, 0)
+    cr = node_ramp.color_ramp
+    cr.interpolation = 'EASE'
+
+    # 年輪と汚しの3段階カラー (汚し強度 weathering に応じた自然な陰影コントラスト)
+    contrast = 0.20 + weathering * 0.35
+    dark_mult = max(0.40, 1.0 - contrast)
+    light_mult = min(1.30, 1.0 + contrast * 0.40)
+
+    cr.elements[0].position = 0.22
+    cr.elements[0].color = (base_color[0] * dark_mult, base_color[1] * dark_mult * 0.95, base_color[2] * dark_mult * 0.90, 1.0)
+
+    cr.elements[1].position = 0.78
+    cr.elements[1].color = (min(1.0, base_color[0] * light_mult), min(1.0, base_color[1] * light_mult), min(1.0, base_color[2] * light_mult), 1.0)
+
+    el_mid = cr.elements.new(0.50)
+    el_mid.color = base_color
+
+    tree.links.new(node_wave.outputs['Fac'], node_ramp.inputs['Fac'])
+    tree.links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+    node_bsdf.inputs['Roughness'].default_value = roughness
+    node_bsdf.inputs['Metallic'].default_value = 0.0
+
+
 def create_fence_materials(
     name_prefix,
     preset_type="WIRE_CROSS",
     frame_color=None,
     body_color=None,
     metallic=None,
-    roughness=None
+    roughness=None,
+    weathering=0.40
 ):
     """各プリセットに最適化されたPBRマテリアルを構築・色反映"""
     m0 = get_or_create_material(f"{name_prefix}_Frame")
@@ -596,15 +842,19 @@ def create_fence_materials(
         b0.inputs['Metallic'].default_value = met
         b0.inputs['Roughness'].default_value = rgh
 
-    if b1:
-        b1.inputs['Base Color'].default_value = b_col
-        b1.inputs['Metallic'].default_value = met
-        b1.inputs['Roughness'].default_value = rgh
+    if preset_type in ("WOOD_HORIZ", "WOOD_VERT") and weathering > 0.05:
+        is_vert = (preset_type == "WOOD_VERT")
+        setup_wood_weathering_shader(m1, base_color=b_col, weathering=weathering, roughness=rgh, is_vertical=is_vert)
+    else:
+        if b1:
+            b1.inputs['Base Color'].default_value = b_col
+            b1.inputs['Metallic'].default_value = met
+            b1.inputs['Roughness'].default_value = rgh
 
     return m0, m1
 
 
-def apply_fence_material_colors(obj, frame_color, body_color, metallic=0.2, roughness=0.4):
+def apply_fence_material_colors(obj, frame_color, body_color, metallic=0.2, roughness=0.4, weathering=0.4):
     """選択中フェンスのマテリアル色・質感をメッシュ再構築なしで即座に塗り替え"""
     if not obj:
         return False
@@ -614,20 +864,24 @@ def apply_fence_material_colors(obj, frame_color, body_color, metallic=0.2, roug
         return False
 
     mats = target.data.materials
-    # Slot 0: Frame (支柱)
     if len(mats) > 0 and mats[0] and mats[0].use_nodes:
         bsdf0 = mats[0].node_tree.nodes.get("Principled BSDF")
         if bsdf0:
             bsdf0.inputs['Base Color'].default_value = frame_color
             bsdf0.inputs['Metallic'].default_value = metallic
             bsdf0.inputs['Roughness'].default_value = roughness
-    # Slot 1: Body (鉄線 / 板)
+
     if len(mats) > 1 and mats[1] and mats[1].use_nodes:
-        bsdf1 = mats[1].node_tree.nodes.get("Principled BSDF")
-        if bsdf1:
-            bsdf1.inputs['Base Color'].default_value = body_color
-            bsdf1.inputs['Metallic'].default_value = metallic
-            bsdf1.inputs['Roughness'].default_value = roughness
+        is_wood = "Wood" in target.name or "WOOD" in target.name
+        if is_wood and weathering > 0.05:
+            is_vert = "Vert" in target.name or "VERT" in target.name
+            setup_wood_weathering_shader(mats[1], base_color=body_color, weathering=weathering, roughness=roughness, is_vertical=is_vert)
+        else:
+            bsdf1 = mats[1].node_tree.nodes.get("Principled BSDF")
+            if bsdf1:
+                bsdf1.inputs['Base Color'].default_value = body_color
+                bsdf1.inputs['Metallic'].default_value = metallic
+                bsdf1.inputs['Roughness'].default_value = roughness
     return True
 
 
@@ -644,13 +898,16 @@ def generate_fence_preset_asset(
     body_color=None,
     metallic=None,
     roughness=None,
+    top_style="POINTED",
+    wood_jitter=0.35,
+    wood_wear=0.25,
+    wood_weathering=0.40,
     target_obj=None
 ):
     """
     実用フェンス4大プリセットをプロシージャル一発生成・再構築
     target_obj が渡された場合はその場でトランスフォームを維持して置換
     """
-    # 🌟 Editモードの場合は安全にObjectモードに切り替え
     if context.mode != 'OBJECT':
         try:
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -683,30 +940,56 @@ def generate_fence_preset_asset(
     elif preset_type == "WIRE_X":
         build_wire_x_fence(bm, length=scaled_l, height=scaled_h, post_spacing=scaled_spacing)
     elif preset_type == "WOOD_HORIZ":
-        build_wood_horizontal_fence(bm, length=scaled_l, height=scaled_h, post_spacing=scaled_spacing, slat_gap=slat_gap * scale)
+        build_wood_horizontal_fence(
+            bm,
+            length=scaled_l,
+            height=scaled_h,
+            post_spacing=scaled_spacing,
+            slat_gap=slat_gap * scale,
+            jitter=wood_jitter,
+            wear=wood_wear,
+            top_style=top_style
+        )
     elif preset_type == "WOOD_VERT":
-        build_wood_vertical_fence(bm, length=scaled_l, height=scaled_h, post_spacing=scaled_spacing, slat_gap=slat_gap * scale)
+        build_wood_vertical_fence(
+            bm,
+            length=scaled_l,
+            height=scaled_h,
+            post_spacing=scaled_spacing,
+            slat_gap=slat_gap * scale,
+            top_style=top_style,
+            jitter=wood_jitter,
+            wear=wood_wear
+        )
 
-    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0005)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    bm.to_mesh(mesh_fence)
-    bm.free()
-
-    # マテリアル適用
+    # マテリアル構築・割り当て（bm.to_mesh より前にスロットを用意してマテリアルインデックスの欠落を防止）
     m0, m1 = create_fence_materials(
         name_prefix=name,
         preset_type=preset_type,
         frame_color=frame_color,
         body_color=body_color,
         metallic=metallic,
-        roughness=roughness
+        roughness=roughness,
+        weathering=wood_weathering
     )
-    obj_fence.data.materials.clear()
-    obj_fence.data.materials.append(m0)
-    obj_fence.data.materials.append(m1)
+    if len(mesh_fence.materials) == 0:
+        mesh_fence.materials.append(m0)
+        mesh_fence.materials.append(m1)
+    else:
+        mesh_fence.materials[0] = m0
+        if len(mesh_fence.materials) > 1:
+            mesh_fence.materials[1] = m1
+        else:
+            mesh_fence.materials.append(m1)
+
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0005)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh_fence)
+    bm.free()
 
     context.view_layer.objects.active = obj_fence
     obj_fence.select_set(True)
 
     return obj_fence
+
 

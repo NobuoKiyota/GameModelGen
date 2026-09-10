@@ -304,8 +304,19 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                     box_dim.prop(props, "fence_slat_gap", text="木板の隙間 (m)")
                 box_dim.prop(props, "fence_scale", text="スケール")
 
+                # 🪵 木板リアル化 & 経年劣化設定 (WOOD_HORIZ / WOOD_VERT 用)
+                if props.fence_preset_type in ('WOOD_HORIZ', 'WOOD_VERT'):
+                    box_wood = box_fence.box()
+                    box_wood.label(text="🪵 木板リアル化 & 経年劣化 (Realism):", icon='MOD_EDGESPLIT')
+                    if props.fence_preset_type == 'WOOD_VERT':
+                        box_wood.prop(props, "fence_wood_top_style", text="上部形状")
+                    box_wood.prop(props, "fence_wood_jitter", text="ゆがみ・反り", slider=True)
+                    box_wood.prop(props, "fence_wood_wear", text="角欠け・劣化", slider=True)
+                    box_wood.prop(props, "fence_wood_weathering", text="木目・汚し", slider=True)
+
                 # 🎨 カラー・質感設定 (支柱・鉄線・板の色分け)
                 box_color = box_fence.box()
+
                 box_color.label(text="🎨 カラー & 質感設定 (支柱・鉄線・木板):", icon='COLOR')
                 box_color.prop(props, "fence_color_preset", text="パレット")
                 row_col = box_color.row(align=True)
