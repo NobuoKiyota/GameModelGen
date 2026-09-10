@@ -427,6 +427,198 @@ def get_or_create_cave_water_material(mat_name="Cave_Water_Mat"):
 # 6. Main Procedural Cave Scene Builder (Step 1 統合)
 # ==============================================================================
 
+
+# ==============================================================================
+# 5. Overhanging Cliff & Ceiling Arch BMesh Builder (新・断崖側壁＆天井岩盤アーチ)
+# ==============================================================================
+
+def build_cliff_ceiling_bmesh(
+    width=18.0,
+    length=35.0,
+    ceiling_height=6.5,
+    overhang=0.85,
+    fissure_width=0.3,
+    roughness=0.9,
+    seed=0,
+    subdivisions_arc=40,
+    subdivisions_y=80
+):
+    """
+    Creates realistic vertical cliff walls and overhanging rock slabs that arch overhead.
+    Features:
+    - Vertical layered rock strata on the walls
+    - Cantilevered overhanging slabs meeting near the ceiling centerline
+    - Central fissure/aperture for dramatic overhead sky lighting
+    - Voronoi faceted slabs (no smooth worm-like shapes)
+    """
+    bm = bmesh.new()
+
+    hx = width * 0.5
+    hy = length * 0.5
+    dy = length / float(subdivisions_y)
+
+    # Cross-section profile:
+    # We parameterize the arch from left floor wall (u=0.0) up to ceiling and down to right floor wall (u=1.0)
+    # u in [0, 0.5] is left wall + left ceiling
+    # u in [0.5, 1.0] is right ceiling + right wall
+    
+    grid_verts = []
+
+    for iy in range(subdivisions_y + 1):
+        y_pos = -hy + iy * dy
+        center_x = get_cave_center_x(y_pos, length=length, seed=seed)
+        row = []
+
+        for iu in range(subdivisions_arc + 1):
+            u = iu / float(subdivisions_arc)  # 0.0 to 1.0
+            
+            # Map u to arch coordinates (x_rel, z_base)
+            # Left wall (u < 0.25): rises vertically from floor edge
+            # Left ceiling (0.25 <= u < 0.5): arches inward towards center
+            # Right ceiling (0.5 <= u < 0.75): arches outward
+            # Right wall (u >= 0.75): descends vertically to right floor edge
+            
+            if u < 0.25:
+                # Left vertical cliff
+                t = u / 0.25
+                x_rel = -hx * (1.0 - t * 0.15)
+                z_base = t * (ceiling_height * 0.55)
+            elif u < 0.5:
+                # Left ceiling overhang
+                t = (u - 0.25) / 0.25
+                # Inward overhang
+                x_rel = -hx * 0.85 + t * (hx * 0.85 - fissure_width * 0.5) * overhang
+                # Arch up to ceiling height
+                arch_t = math.sin(t * math.pi * 0.5)
+                z_base = ceiling_height * (0.55 + arch_t * 0.45)
+            elif u < 0.75:
+                # Right ceiling overhang
+                t = (u - 0.5) / 0.25
+                x_rel = (fissure_width * 0.5) + t * (hx * 0.85 - fissure_width * 0.5) * overhang
+                # Arch down from ceiling height
+                arch_t = math.cos(t * math.pi * 0.5)
+                z_base = ceiling_height * (0.55 + arch_t * 0.45)
+            else:
+                # Right vertical cliff
+                t = (u - 0.75) / 0.25
+                x_rel = hx * (0.85 + t * 0.15)
+                z_base = (1.0 - t) * (ceiling_height * 0.55)
+
+            # World X position following cave centerline
+            x_pos = center_x + x_rel
+
+            # Voronoi Faceted Rock Slabs (Just The Basics & Kev Binge approach)
+            d1, fissure_val, cell_id = voronoi_cell_noise(x_pos, y_pos + z_base * 0.5, cell_size=2.6, seed=seed + 77)
+            slab_disp = (cell_id - 0.5) * 0.55 * roughness
+            crack_indent = (1.0 - min(1.0, fissure_val * 3.5)) * -0.4 * roughness
+
+            # Horizontal strata steps (Z quantization on walls)
+            strata_step = 0.55
+            z_quant = math.floor(z_base / strata_step) * strata_step
+            z_frac = (z_base / strata_step) - math.floor(z_base / strata_step)
+            cliff_blend = z_frac ** 3 * (z_frac * (z_frac * 6 - 15) + 10)
+            z_strata = z_quant + cliff_blend * strata_step
+            z_final = z_base * 0.5 + z_strata * 0.5
+
+            # Micro roughness
+            micro = pseudo_noise_3d(x_pos * 0.7, y_pos * 0.7, z_final * 0.9, seed=seed + 99) * 0.35 * roughness
+
+            # Inward/Outward displacement based on wall normal
+            norm_sign = -1.0 if x_rel < 0 else 1.0
+            x_disp = norm_sign * (slab_disp + crack_indent) * 0.7
+            z_disp = slab_disp + micro
+
+            vert = bm.verts.new((x_pos + x_disp, y_pos, z_final + z_disp))
+            row.append(vert)
+
+        grid_verts.append(row)
+
+    bm.verts.ensure_lookup_table()
+
+    # Create Faces
+    for iy in range(subdivisions_y):
+        for iu in range(subdivisions_arc):
+            v1 = grid_verts[iy][iu]
+            v2 = grid_verts[iy][iu + 1]
+            v3 = grid_verts[iy + 1][iu + 1]
+            v4 = grid_verts[iy + 1][iu]
+            try:
+                bm.faces.new((v1, v2, v3, v4))
+            except ValueError:
+                pass
+
+    bm.faces.ensure_lookup_table()
+    bm.normal_update()
+
+    # Smooth shading
+    for f in bm.faces:
+        f.smooth = True
+
+    return bm
+
+
+def get_or_create_cave_ceiling_material(mat_name="Cave_Ceiling_Cliff_Mat"):
+    """Creates procedural PBR material for dry, rough cliff walls and ceiling slabs."""
+    mat = bpy.data.materials.get(mat_name)
+    if mat is None:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    tree = mat.node_tree
+    nodes = tree.nodes
+    links = tree.links
+    nodes.clear()
+
+    coord = nodes.new(type='ShaderNodeTexCoord')
+    coord.location = (-1000, 100)
+
+    # Base Rock Noise
+    noise = nodes.new(type='ShaderNodeTexNoise')
+    noise.location = (-750, 200)
+    noise.inputs['Scale'].default_value = 5.5
+    noise.inputs['Detail'].default_value = 9.0
+    noise.inputs['Roughness'].default_value = 0.68
+    links.new(coord.outputs['Object'], noise.inputs['Vector'])
+
+    # Horizontal Strata Banding
+    strata = nodes.new(type='ShaderNodeTexWave')
+    strata.location = (-750, -50)
+    strata.wave_type = 'BANDS'
+    strata.bands_direction = 'Z'
+    strata.inputs['Scale'].default_value = 2.8
+    strata.inputs['Distortion'].default_value = 4.2
+    strata.inputs['Detail'].default_value = 6.0
+    links.new(coord.outputs['Object'], strata.inputs['Vector'])
+
+    # Color Ramp for Dry Cliff Stone
+    ramp = nodes.new(type='ShaderNodeValToRGB')
+    ramp.location = (-450, 150)
+    ramp.color_ramp.elements[0].position = 0.2
+    ramp.color_ramp.elements[0].color = (0.05, 0.05, 0.055, 1.0)
+    ramp.color_ramp.elements[1].position = 0.8
+    ramp.color_ramp.elements[1].color = (0.18, 0.16, 0.14, 1.0)
+    links.new(noise.outputs['Fac'], ramp.inputs['Fac'])
+
+    # Bump Map
+    bump = nodes.new(type='ShaderNodeBump')
+    bump.location = (-200, -100)
+    bump.inputs['Strength'].default_value = 0.55
+    bump.inputs['Distance'].default_value = 0.18
+    links.new(noise.outputs['Fac'], bump.inputs['Height'])
+
+    # Principled BSDF
+    bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    bsdf.location = (100, 100)
+    bsdf.inputs['Roughness'].default_value = 0.86
+    links.new(ramp.outputs['Color'], bsdf.inputs['Base Color'])
+    links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+
+    output = nodes.new(type='ShaderNodeOutputMaterial')
+    output.location = (400, 100)
+    links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+    return mat
+
+
 def create_procedural_cave_scene(
     context,
     name="Cave",
@@ -439,13 +631,20 @@ def create_procedural_cave_scene(
     terrace_steps=4,
     step_height=0.6,
     roughness=0.8,
+    ceiling_height=6.5,
+    ceiling_overhang=0.85,
+    ceiling_fissure=0.3,
+    ceiling_roughness=0.9,
+    generate_ceiling=True,
     target_obj=None,
     **kwargs
 ):
     """
-    Main entry point for New Cave Step 1.
-    Builds the terraced cliff cave floor and optional river trench water mesh.
-    Supports in-place updates to avoid object piling.
+    Main entry point for Cave System (Step 1 & Step 2).
+    Builds:
+    - Terraced rock floor with voronoi slabs
+    - Optional river trench with water mesh
+    - Vertical cliff walls and overhanging ceiling arch (separate object)
     """
     col = context.collection
 
@@ -511,12 +710,46 @@ def create_procedural_cave_scene(
         else:
             water_obj.data.materials.append(mat_water)
     else:
-        # If river is disabled and water object exists, remove or hide it
         if water_obj:
             bpy.data.objects.remove(water_obj, do_unlink=True)
             water_obj = None
 
+    # 3. Handle Ceiling & Cliff Walls Mesh (Step 2)
+    ceiling_obj_name = name + "_Ceiling"
+    ceiling_obj = bpy.data.objects.get(ceiling_obj_name)
+
+    if generate_ceiling:
+        bm_ceiling = build_cliff_ceiling_bmesh(
+            width=floor_width,
+            length=floor_length,
+            ceiling_height=ceiling_height,
+            overhang=ceiling_overhang,
+            fissure_width=ceiling_fissure,
+            roughness=ceiling_roughness,
+            seed=seed
+        )
+        if ceiling_obj and ceiling_obj.type == 'MESH':
+            bm_ceiling.to_mesh(ceiling_obj.data)
+            ceiling_obj.data.update()
+        else:
+            mesh_ceiling = bpy.data.meshes.new(ceiling_obj_name)
+            bm_ceiling.to_mesh(mesh_ceiling)
+            ceiling_obj = bpy.data.objects.new(ceiling_obj_name, mesh_ceiling)
+            col.objects.link(ceiling_obj)
+
+        bm_ceiling.free()
+
+        mat_ceiling = get_or_create_cave_ceiling_material(name + "_Ceiling_Mat")
+        if ceiling_obj.data.materials:
+            ceiling_obj.data.materials[0] = mat_ceiling
+        else:
+            ceiling_obj.data.materials.append(mat_ceiling)
+    else:
+        if ceiling_obj:
+            bpy.data.objects.remove(ceiling_obj, do_unlink=True)
+            ceiling_obj = None
+
     context.view_layer.objects.active = floor_obj
     floor_obj.select_set(True)
 
-    return floor_obj, water_obj
+    return floor_obj, water_obj, ceiling_obj

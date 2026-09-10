@@ -1113,7 +1113,7 @@ class MESH_OT_regenerate_cave(bpy.types.Operator):
 
         name = target.name.replace("_Floor", "").replace("_Water", "") if target else (props.asset_name.strip() or "Cave")
 
-        floor_obj, water_obj = create_procedural_cave_scene(
+        floor_obj, water_obj, ceil_obj = create_procedural_cave_scene(
             context=context,
             name=name,
             seed=props.seed,
@@ -1124,6 +1124,11 @@ class MESH_OT_regenerate_cave(bpy.types.Operator):
             river_depth=props.cave_river_depth,
             terrace_steps=props.cave_terrace_steps,
             roughness=props.cave_roughness,
+            ceiling_height=props.cave_ceiling_height,
+            ceiling_overhang=props.cave_ceiling_overhang,
+            ceiling_fissure=props.cave_ceiling_fissure,
+            ceiling_roughness=props.cave_ceiling_roughness,
+            generate_ceiling=props.cave_generate_ceiling,
             target_obj=target
         )
 
@@ -1170,7 +1175,7 @@ class MESH_OT_create_cave(bpy.types.Operator):
 
         from ..generators.cave_gen import create_procedural_cave_scene
 
-        floor_obj, water_obj = create_procedural_cave_scene(
+        floor_obj, water_obj, ceil_obj = create_procedural_cave_scene(
             context=context,
             name=name,
             seed=props.seed,
@@ -1181,6 +1186,11 @@ class MESH_OT_create_cave(bpy.types.Operator):
             river_depth=props.cave_river_depth,
             terrace_steps=props.cave_terrace_steps,
             roughness=props.cave_roughness,
+            ceiling_height=props.cave_ceiling_height,
+            ceiling_overhang=props.cave_ceiling_overhang,
+            ceiling_fissure=props.cave_ceiling_fissure,
+            ceiling_roughness=props.cave_ceiling_roughness,
+            generate_ceiling=props.cave_generate_ceiling,
             target_obj=None
         )
 

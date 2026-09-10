@@ -1355,3 +1355,30 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default=False,
         description="再抽選時に川幅や岩棚の段数・起伏もランダムに自動変化"
     )
+    # ── CAVE Step 2 (Ceiling & Cliff Walls) Properties ──
+    cave_generate_ceiling: bpy.props.BoolProperty(
+        name="🏛️ 天井・断崖壁を生成 (Ceiling & Cliffs)",
+        default=True,
+        description="頭上に覆い被さる角張った断崖側壁と天井岩盤スラブ（別オブジェクト）を生成"
+    )
+    cave_ceiling_height: bpy.props.FloatProperty(
+        name="天井高 (Ceiling Height)",
+        default=6.5, min=2.5, max=25.0,
+        description="洞窟床面から天井岩盤までの高さ（メートル）"
+    )
+    cave_ceiling_overhang: bpy.props.FloatProperty(
+        name="せり出し度 (Overhang)",
+        default=0.85, min=0.3, max=1.0,
+        description="左右の断崖壁から中央頭上へ張り出す岩盤アーチのせり出し度合い"
+    )
+    cave_ceiling_fissure: bpy.props.FloatProperty(
+        name="天井の亀裂・天窓 (Fissure)",
+        default=0.3, min=0.0, max=6.0,
+        description="天井中央の割れ目・光が差し込む天窓スリットの幅（0で完全密閉）"
+    )
+    cave_ceiling_roughness: bpy.props.FloatProperty(
+        name="天井岩盤の起伏 (Ceiling Roughness)",
+        default=0.9, min=0.1, max=2.0,
+        description="天井・断崖岩壁のボロノイ断層・ゴツゴツしたスラブ感の強さ"
+    )
+

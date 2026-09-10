@@ -491,12 +491,25 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 row_cd2.prop(props, "cave_terrace_steps", text="岩棚段数")
                 row_cd2.prop(props, "cave_roughness", text="断層起伏 (Roughness)", slider=True)
 
+                # 3. 天井・断崖側壁設定 (Step 2)
+                box_c_ceil = box_cave.box()
+                row_cc = box_c_ceil.row(align=True)
+                row_cc.prop(props, "cave_generate_ceiling", text="🏛️ 天井・断崖壁を生成 (Ceiling & Cliffs)", toggle=True)
+                if props.cave_generate_ceiling:
+                    row_cc1 = box_c_ceil.row(align=True)
+                    row_cc1.prop(props, "cave_ceiling_height", text="天井高 (m)")
+                    row_cc1.prop(props, "cave_ceiling_overhang", text="せり出し度", slider=True)
+
+                    row_cc2 = box_c_ceil.row(align=True)
+                    row_cc2.prop(props, "cave_ceiling_fissure", text="天窓亀裂 (m)")
+                    row_cc2.prop(props, "cave_ceiling_roughness", text="天井起伏", slider=True)
+
                 box_cave.prop(props, "cave_randomize_shape", text="🎲 Re-Roll時に幅・段差も自動抽選")
 
                 # 構造ヒント
                 box_c_hint = box_cave.box()
-                box_c_hint.label(text="💡 床面 (Floor) と水面 (Water) が独立生成されます", icon='INFO')
-                box_c_hint.label(text="   ボロノイ断層により角張った平坦な岩盤スラブが形成されます")
+                box_c_hint.label(text="💡 床面 (Floor)・天井 (Ceiling)・水面 (Water) が完全分離生成されます", icon='INFO')
+                box_c_hint.label(text="   天井を非表示(Hキー)にするとフロア内部が丸見えになります")
 
                 # 操作ボタン
                 col_c_btn = box_cave.column(align=True)

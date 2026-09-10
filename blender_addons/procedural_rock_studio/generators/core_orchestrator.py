@@ -250,6 +250,11 @@ def resolve_prop_parameters(props):
         "cave_floor_width": props.cave_floor_width,
         "cave_floor_length": props.cave_floor_length,
         "cave_roughness": props.cave_roughness,
+        "cave_generate_ceiling": props.cave_generate_ceiling,
+        "cave_ceiling_height": props.cave_ceiling_height,
+        "cave_ceiling_overhang": props.cave_ceiling_overhang,
+        "cave_ceiling_fissure": props.cave_ceiling_fissure,
+        "cave_ceiling_roughness": props.cave_ceiling_roughness,
     }
 
 
@@ -385,7 +390,7 @@ def generate_procedural_prop_mesh(
         )
         return wall_obj
 
-    # 🪨 Cave Preset (新・岩棚テラス＆水流トレンチ洞窟フロア基盤)
+    # 🪨 Cave Preset (新・岩棚テラス＆水流トレンチ＆断崖天井アーチ)
     if category == "CAVE":
         from .cave_gen import create_procedural_cave_scene
         c_river = kwargs.get('cave_has_river', True)
@@ -395,8 +400,13 @@ def generate_procedural_prop_mesh(
         c_f_w = kwargs.get('cave_floor_width', 18.0)
         c_f_l = kwargs.get('cave_floor_length', 35.0)
         c_rough = kwargs.get('cave_roughness', 0.8)
+        c_ceil = kwargs.get('cave_generate_ceiling', True)
+        c_c_h = kwargs.get('cave_ceiling_height', 6.5)
+        c_c_o = kwargs.get('cave_ceiling_overhang', 0.85)
+        c_c_f = kwargs.get('cave_ceiling_fissure', 0.3)
+        c_c_r = kwargs.get('cave_ceiling_roughness', 0.9)
 
-        floor_obj, water_obj = create_procedural_cave_scene(
+        floor_obj, water_obj, ceil_obj = create_procedural_cave_scene(
             context=context,
             name=name,
             seed=seed,
@@ -407,6 +417,11 @@ def generate_procedural_prop_mesh(
             river_depth=c_r_d,
             terrace_steps=c_steps,
             roughness=c_rough,
+            ceiling_height=c_c_h,
+            ceiling_overhang=c_c_o,
+            ceiling_fissure=c_c_f,
+            ceiling_roughness=c_c_r,
+            generate_ceiling=c_ceil,
             target_obj=target_obj
         )
         return floor_obj
