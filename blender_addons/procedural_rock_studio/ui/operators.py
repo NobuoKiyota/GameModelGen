@@ -987,6 +987,9 @@ class MESH_OT_regenerate_castle_wall(bpy.types.Operator):
             seed=props.seed,
             wall_shape=props.castle_wall_shape,
             wall_style=props.castle_wall_style,
+            stone_aspect=props.castle_wall_stone_aspect,
+            stone_roundness=props.castle_wall_stone_roundness,
+            stone_chipping=props.castle_wall_stone_chipping,
             length=props.castle_wall_length,
             height=props.castle_wall_height,
             thickness=props.castle_wall_thickness,
@@ -1003,6 +1006,19 @@ class MESH_OT_regenerate_castle_wall(bpy.types.Operator):
         wall_obj.select_set(True)
         self.report({'INFO'}, f"城壁を更新しました: {wall_obj.name}")
         return {'FINISHED'}
+
+
+class MESH_OT_reroll_castle_wall(bpy.types.Operator):
+    """Re-roll castle wall shape, stone blocks, and scatter with a new random seed"""
+    bl_idname = "mesh.reroll_castle_wall"
+    bl_label = "🎲 形状・石材を全再抽選 (Re-Roll All)"
+    bl_description = "壁面の形状（起伏・出っ張り・傾き）、石材アセットの削り形状、散布配置を新しいシードで完全再抽選します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        props.seed = random.randint(1, 999999)
+        return bpy.ops.mesh.regenerate_castle_wall()
 
 
 class MESH_OT_create_castle_wall(bpy.types.Operator):
@@ -1029,6 +1045,9 @@ class MESH_OT_create_castle_wall(bpy.types.Operator):
             seed=props.seed,
             wall_shape=props.castle_wall_shape,
             wall_style=props.castle_wall_style,
+            stone_aspect=props.castle_wall_stone_aspect,
+            stone_roundness=props.castle_wall_stone_roundness,
+            stone_chipping=props.castle_wall_stone_chipping,
             length=props.castle_wall_length,
             height=props.castle_wall_height,
             thickness=props.castle_wall_thickness,

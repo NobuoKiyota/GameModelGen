@@ -227,6 +227,21 @@ def resolve_prop_parameters(props):
         "telescope_azimuth": props.telescope_azimuth_angle,
         "telescope_tripod_height": props.telescope_tripod_height,
         "telescope_tube_length": props.telescope_tube_length,
+        # Castle Wall parameters
+        "castle_wall_shape": random.choice(['STRAIGHT', 'BATTLEMENT', 'TOWER_CURVED', 'CORNER_L', 'CRANK_Z', 'GATE_ARCH']) if props.castle_wall_shape == 'RANDOM' else props.castle_wall_shape,
+        "castle_wall_style": props.castle_wall_style,
+        "castle_wall_stone_aspect": props.castle_wall_stone_aspect,
+        "castle_wall_stone_roundness": props.castle_wall_stone_roundness,
+        "castle_wall_stone_chipping": props.castle_wall_stone_chipping,
+        "castle_wall_length": round(random.uniform(4.0, 9.0), 1) if getattr(props, 'castle_wall_randomize_dimensions', False) else props.castle_wall_length,
+        "castle_wall_height": round(random.uniform(2.5, 5.0), 1) if getattr(props, 'castle_wall_randomize_dimensions', False) else props.castle_wall_height,
+        "castle_wall_thickness": round(random.uniform(0.9, 1.8), 1) if getattr(props, 'castle_wall_randomize_dimensions', False) else props.castle_wall_thickness,
+        "castle_wall_has_crenels": random.choice([True, False]) if getattr(props, 'castle_wall_randomize_dimensions', False) else props.castle_wall_has_crenels,
+        "castle_wall_density": props.castle_wall_density,
+        "castle_wall_min_dist": props.castle_wall_min_dist,
+        "castle_wall_jitter": props.castle_wall_jitter,
+        "castle_wall_batter": props.castle_wall_batter,
+        "castle_wall_roughness": props.castle_wall_roughness,
     }
 
 
@@ -311,7 +326,8 @@ def generate_procedural_prop_mesh(
     disp_subdiv=2,
     apply_disp=True,
     rock_palette="AUTO",
-    seed=0
+    seed=0,
+    **kwargs
 ):
     if context.mode != 'OBJECT':
         try:
@@ -320,6 +336,46 @@ def generate_procedural_prop_mesh(
             pass
 
     random.seed(seed)
+
+    # 🏰 Castle Wall Preset (中世城壁・石積み壁)
+    if category == "CASTLE_WALL":
+        from .castle_wall_gen import create_castle_wall_scene
+        c_shape = kwargs.get('castle_wall_shape', 'STRAIGHT')
+        c_style = kwargs.get('castle_wall_style', 'ASHLAR')
+        c_len = kwargs.get('castle_wall_length', 6.0)
+        c_h = kwargs.get('castle_wall_height', 3.5)
+        c_t = kwargs.get('castle_wall_thickness', 1.2)
+        c_crenels = kwargs.get('castle_wall_has_crenels', True)
+        c_dens = kwargs.get('castle_wall_density', 22.0)
+        c_min_d = kwargs.get('castle_wall_min_dist', 0.22)
+        c_jit = kwargs.get('castle_wall_jitter', 0.04)
+        c_bat = kwargs.get('castle_wall_batter', 0.18)
+        c_rough = kwargs.get('castle_wall_roughness', 0.14)
+        c_rnd = kwargs.get('castle_wall_stone_roundness', 0.035)
+        c_chip = kwargs.get('castle_wall_stone_chipping', 0.016)
+        c_asp = kwargs.get('castle_wall_stone_aspect', 'STANDARD')
+
+        wall_obj, _ = create_castle_wall_scene(
+            context=context,
+            name=name,
+            seed=seed,
+            wall_shape=c_shape,
+            wall_style=c_style,
+            stone_aspect=c_asp,
+            stone_roundness=c_rnd,
+            stone_chipping=c_chip,
+            length=c_len,
+            height=c_h,
+            thickness=c_t,
+            crenels=c_crenels,
+            density=c_dens,
+            min_dist=c_min_d,
+            jitter=c_jit,
+            batter=c_bat,
+            roughness=c_rough,
+            target_obj=target_obj
+        )
+        return wall_obj
 
     # 🔭 Telescope Preset (天体望遠鏡: 三脚・マウント・鏡筒 独立階層)
     if category == "TELESCOPE":

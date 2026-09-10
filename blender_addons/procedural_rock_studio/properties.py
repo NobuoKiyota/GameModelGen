@@ -1218,10 +1218,13 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     castle_wall_shape: bpy.props.EnumProperty(
         name="城壁形状",
         items=[
+            ('RANDOM', "🎲 ランダム形状 (Random Shape)", "直線・L字・塔・折れ曲がり・城門等を自動抽選"),
             ('STRAIGHT', "⬛ 直線城壁 (Straight Wall)", "中世城塞の標準的なカーテンウォール"),
             ('BATTLEMENT', "🛡️ 銃眼胸壁 (Battlement / Parapet)", "凸凹の戦闘用狭間（銃眼）を持つ防衛城壁"),
             ('TOWER_CURVED', "🗼 監視塔・円弧壁 (Tower / Curved)", "半円柱・円形タワーの強固な曲面石壁"),
-            ('CORNER_L', "🧱 L字コーナー壁 (Corner Bastion)", "90度コーナーの要塞堡塁壁")
+            ('CORNER_L', "🧱 L字コーナー壁 (Corner Bastion)", "90度コーナーの要塞堡塁壁"),
+            ('CRANK_Z', "⚡ クランク折れ曲がり壁 (Crank / Z-Wall)", "段差・ジグザグの要塞防衛壁"),
+            ('GATE_ARCH', "⛩️ 城門アーチ壁 (Gate Arch)", "アーチ開口部を持つ通行用城門壁")
         ],
         default='STRAIGHT',
         description="城壁・石垣の基礎構造形状"
@@ -1229,11 +1232,39 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     castle_wall_style: bpy.props.EnumProperty(
         name="石積み様式",
         items=[
-            ('ASHLAR', "切石積み (Ashlar / Chiseled)", "整然と手削りされた重厚な角ブロック石積み"),
-            ('RUBBLE', "野面積み・乱積み (Rubble / Fieldstone)", "自然な形の石を巧みに組んだ野趣あふれる古城石垣")
+            ('ASHLAR', "切石積み (Ashlar Blocks)", "整然と手削りされた重厚な角ブロック石積み"),
+            ('RUBBLE', "野面・乱積み丸石 (Rubble / Cobble)", "自然な角丸の石を巧みに組んだ野趣あふれる古城石垣"),
+            ('SLATE', "薄板スレート積み (Dry Stone / Slate)", "薄く平たい板石を幾重にも積み重ねた石垣"),
+            ('CYCLOPEAN', "巨石積み (Cyclopean / Megalith)", "巨大で不揃いな巨石が噛み合う古代・要塞石垣")
         ],
         default='ASHLAR',
-        description="散布する石材の加工様式"
+        description="散布する石材ブロックの加工様式"
+    )
+    castle_wall_stone_aspect: bpy.props.EnumProperty(
+        name="石材プロポーション",
+        items=[
+            ('STANDARD', "標準ブロック (Standard)", "中世城壁の標準的な比率 (幅:高=2:1)"),
+            ('WIDE', "横長切石 (Wide Ashlar)", "横幅が広いワイドな長方形ブロック (幅:高=3:1)"),
+            ('SQUARE', "正方形・角石 (Square Block)", "縦横比が正方形に近い厚手の石材"),
+            ('FLAT', "極薄スレート (Flat Slab)", "薄く平べったい積層板石 (幅:高=4:1)")
+        ],
+        default='STANDARD',
+        description="石材ブロック自体の縦横比プロポーション"
+    )
+    castle_wall_stone_roundness: bpy.props.FloatProperty(
+        name="石の丸み・面取り (Roundness)",
+        default=0.035, min=0.005, max=0.15,
+        description="石材ブロックの角の面取り・丸みの強さ"
+    )
+    castle_wall_stone_chipping: bpy.props.FloatProperty(
+        name="チゼル欠け・荒さ (Chipping)",
+        default=0.016, min=0.0, max=0.06,
+        description="手削りによる石材表面の微小な欠け・チゼル凹凸"
+    )
+    castle_wall_randomize_dimensions: bpy.props.BoolProperty(
+        name="Re-Roll時に寸法もランダム化",
+        default=False,
+        description="再抽選時に壁の長さ・高さ・厚みも自動でバリエーション生成"
     )
     castle_wall_length: bpy.props.FloatProperty(
         name="壁の長さ (Length)",

@@ -422,14 +422,24 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_cwall.prop(props, "castle_wall_shape", text="城壁形状")
                 box_cwall.prop(props, "castle_wall_style", text="石積み様式")
 
+                # 石材ブロック自体の形状設定
+                box_cw_stone = box_cwall.box()
+                box_cw_stone.label(text="🧱 石材ブロック自体の形状調整:", icon='MESH_ICOSPHERE')
+                box_cw_stone.prop(props, "castle_wall_stone_aspect", text="プロポーション")
+                row_cws_shp = box_cw_stone.row(align=True)
+                row_cws_shp.prop(props, "castle_wall_stone_roundness", text="角の丸み", slider=True)
+                row_cws_shp.prop(props, "castle_wall_stone_chipping", text="チゼル欠け", slider=True)
+
                 # 寸法設定
                 box_cw_dim = box_cwall.box()
                 box_cw_dim.label(text="📐 城壁寸法 & 胸壁設定:", icon='ARROW_LEFTRIGHT')
+                box_cw_dim.prop(props, "castle_wall_randomize_dimensions", text="🎲 Re-Roll時に寸法もランダム化")
                 row_cw1 = box_cw_dim.row(align=True)
+                row_cw1.enabled = not props.castle_wall_randomize_dimensions
                 row_cw1.prop(props, "castle_wall_length", text="長さ (m)")
                 row_cw1.prop(props, "castle_wall_height", text="高さ (m)")
                 row_cw1.prop(props, "castle_wall_thickness", text="厚み (m)")
-                if props.castle_wall_shape in ('STRAIGHT', 'BATTLEMENT'):
+                if props.castle_wall_shape in ('STRAIGHT', 'BATTLEMENT', 'RANDOM'):
                     box_cw_dim.prop(props, "castle_wall_has_crenels", text="🛡️ 銃眼胸壁 (Crenels / 狭間) を付ける")
 
                 # 土台メッシュ形状設定（歪み・傾き・出っ張り）
@@ -450,7 +460,8 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 # 操作ボタン
                 col_cw_btn = box_cwall.column(align=True)
                 col_cw_btn.scale_y = 1.3
-                col_cw_btn.operator("mesh.regenerate_castle_wall", text="🔄 再生成・更新 (選択中を更新)", icon='FILE_REFRESH')
+                col_cw_btn.operator("mesh.reroll_castle_wall", text="🎲 形状・石材を全再抽選 (Re-Roll All)", icon='FILE_REFRESH')
+                col_cw_btn.operator("mesh.regenerate_castle_wall", text="🔄 現在の設定で更新 (その場更新)", icon='FILE_CACHE')
                 col_cw_btn.operator("mesh.create_castle_wall", text="➕ 新規城壁を生成", icon='ADD')
                 col_cw_btn.separator()
                 col_cw_btn.operator("mesh.convert_castle_wall_to_game_mesh", text="🎮 ゲーム用実体メッシュへ変換 (Make Real)", icon='CHECKMARK')

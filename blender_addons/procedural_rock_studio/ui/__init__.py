@@ -29,6 +29,7 @@ from .operators import (
     MESH_OT_convert_scatter_to_game_mesh,
     MESH_OT_create_castle_wall,
     MESH_OT_regenerate_castle_wall,
+    MESH_OT_reroll_castle_wall,
     MESH_OT_convert_castle_wall_to_game_mesh
 )
 
@@ -66,6 +67,7 @@ classes = (
     MESH_OT_convert_scatter_to_game_mesh,
     MESH_OT_create_castle_wall,
     MESH_OT_regenerate_castle_wall,
+    MESH_OT_reroll_castle_wall,
     MESH_OT_convert_castle_wall_to_game_mesh,
     VIEW3D_PT_prop_studio_panel,
 )
@@ -84,5 +86,6 @@ __all__ = [
     'MESH_OT_convert_grass_to_game_mesh',
     'MESH_OT_export_animated_water_fbx',
     'MESH_OT_setup_water_sky_lighting',
+    'MESH_OT_reroll_castle_wall',
     'VIEW3D_PT_prop_studio_panel'
 ]

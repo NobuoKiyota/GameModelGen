@@ -10,27 +10,66 @@ import random
 # ==============================================================================
 
 def build_chiseled_stone_block(bm, width=0.6, height=0.3, depth=0.35,
-                               bevel_radius=0.03, chip_noise=0.015,
+                               bevel_radius=0.035, chip_noise=0.016,
+                               style='ASHLAR', aspect='STANDARD',
                                seed=0, mat_idx=0):
     rng = random.Random(seed)
     res = bmesh.ops.create_cube(bm, size=1.0)
     verts = res['verts']
-    wx = width * rng.uniform(0.92, 1.08)
-    hy = height * rng.uniform(0.92, 1.08)
-    dz = depth * rng.uniform(0.92, 1.08)
+
+    # アスペクト比の調整
+    aspect_w, aspect_h, aspect_d = 1.0, 1.0, 1.0
+    if aspect == 'WIDE':
+        aspect_w, aspect_h = 1.35, 0.85
+    elif aspect == 'SQUARE':
+        aspect_w, aspect_h = 0.85, 1.20
+    elif aspect == 'FLAT':
+        aspect_w, aspect_h, aspect_d = 1.45, 0.55, 1.15
+
+    # スタイルによる寸法の調整
+    if style == 'CYCLOPEAN':
+        aspect_w *= 1.4
+        aspect_h *= 1.35
+        aspect_d *= 1.3
+    elif style == 'SLATE':
+        aspect_h *= 0.6
+        aspect_w *= 1.25
+
+    wx = width * aspect_w * rng.uniform(0.90, 1.10)
+    hy = height * aspect_h * rng.uniform(0.90, 1.10)
+    dz = depth * aspect_d * rng.uniform(0.90, 1.10)
     bmesh.ops.scale(bm, vec=(wx, dz, hy), verts=verts)
-    bmesh.ops.bevel(
-        bm,
-        geom=bm.edges[:] + bm.verts[:],
-        offset=bevel_radius * rng.uniform(0.7, 1.3),
-        segments=2,
-        profile=0.5,
-        affect='EDGES'
-    )
-    for v in bm.verts:
-        v.co.x += rng.uniform(-chip_noise, chip_noise)
-        v.co.y += rng.uniform(-chip_noise, chip_noise)
-        v.co.z += rng.uniform(-chip_noise, chip_noise)
+
+    if style == 'RUBBLE':
+        # 野面・丸石: 細分化して丸みを帯びさせる
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=2, use_grid_fill=True)
+        for v in bm.verts:
+            n = v.co.normalized()
+            v.co = v.co.lerp(n * (wx * 0.45), 0.35)
+            v.co.x += rng.uniform(-chip_noise * 1.5, chip_noise * 1.5)
+            v.co.y += rng.uniform(-chip_noise * 1.5, chip_noise * 1.5)
+            v.co.z += rng.uniform(-chip_noise * 1.5, chip_noise * 1.5)
+    else:
+        # 切石・スレート・巨石: 面取り（Bevel）とチゼル削り
+        bev = bevel_radius
+        if style == 'CYCLOPEAN':
+            bev *= 1.8
+        elif style == 'SLATE':
+            bev *= 0.6
+
+        bmesh.ops.bevel(
+            bm,
+            geom=bm.edges[:] + bm.verts[:],
+            offset=bev * rng.uniform(0.75, 1.25),
+            segments=2,
+            profile=0.5,
+            affect='EDGES'
+        )
+        for v in bm.verts:
+            v.co.x += rng.uniform(-chip_noise, chip_noise)
+            v.co.y += rng.uniform(-chip_noise, chip_noise)
+            v.co.z += rng.uniform(-chip_noise, chip_noise)
+
     for f in bm.faces:
         f.material_index = mat_idx
         f.smooth = True
@@ -38,7 +77,8 @@ def build_chiseled_stone_block(bm, width=0.6, height=0.3, depth=0.35,
     bm.faces.ensure_lookup_table()
     return bm.verts[:]
 
-def build_stone_block_assets(base_name, seed=0, style='ASHLAR', mat_stone=None):
+def build_stone_block_assets(base_name, seed=0, style='ASHLAR', aspect='STANDARD',
+                            roundness=0.035, chipping=0.016, mat_stone=None):
     col_name = base_name + '_StoneAssets'
     if col_name in bpy.data.collections:
         old_col = bpy.data.collections[col_name]
@@ -54,18 +94,19 @@ def build_stone_block_assets(base_name, seed=0, style='ASHLAR', mat_stone=None):
     rng = random.Random(seed)
 
     defs = [
-        ('Ashlar_Large_A', 0.65, 0.32, 0.38, 0.035, 0.015),
-        ('Ashlar_Large_B', 0.72, 0.30, 0.36, 0.030, 0.014),
-        ('Ashlar_Mid_A',   0.45, 0.26, 0.32, 0.025, 0.012),
-        ('Ashlar_Mid_B',   0.40, 0.28, 0.34, 0.028, 0.013),
-        ('Cobble_Small',   0.24, 0.20, 0.26, 0.040, 0.018),
-        ('Corner_Quoin',   0.55, 0.38, 0.42, 0.035, 0.015),
+        ('Ashlar_Large_A', 0.68, 0.32, 0.38),
+        ('Ashlar_Large_B', 0.75, 0.30, 0.36),
+        ('Ashlar_Mid_A',   0.48, 0.26, 0.32),
+        ('Ashlar_Mid_B',   0.42, 0.28, 0.34),
+        ('Cobble_Small',   0.26, 0.20, 0.26),
+        ('Corner_Quoin',   0.58, 0.38, 0.42),
     ]
-    for suffix, w, h, d, bev, chip in defs:
+    for suffix, w, h, d in defs:
         bm = bmesh.new()
         build_chiseled_stone_block(
             bm, width=w, height=h, depth=d,
-            bevel_radius=bev, chip_noise=chip,
+            bevel_radius=roundness, chip_noise=chipping,
+            style=style, aspect=aspect,
             seed=rng.randint(1, 99999), mat_idx=0
         )
         mesh = bpy.data.meshes.new(f'{base_name}_{suffix}')
@@ -171,6 +212,10 @@ def build_castle_wall_base_mesh(
 ):
     half_l = length * 0.5
     half_t = thickness * 0.5
+    rng = random.Random(seed)
+    if shape == 'RANDOM':
+        shape = rng.choice(['STRAIGHT', 'BATTLEMENT', 'TOWER_CURVED', 'CORNER_L', 'CRANK_Z', 'GATE_ARCH'])
+
     if shape == 'TOWER_CURVED':
         radius = length * 0.5
         segments = 24
@@ -205,11 +250,47 @@ def build_castle_wall_base_mesh(
         res2 = bmesh.ops.create_cube(bm, size=1.0)
         bmesh.ops.scale(bm, vec=(thickness, length - thickness, height), verts=res2['verts'])
         bmesh.ops.translate(bm, vec=(0, (length - thickness) * 0.5 + half_t, height * 0.5), verts=res2['verts'])
+    elif shape == 'CRANK_Z':
+        # クランク折れ曲がり壁 (Z字・段差要塞壁)
+        seg_w = length * 0.45
+        offset_y = thickness * 1.6
+        res1 = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(seg_w, thickness, height), verts=res1['verts'])
+        bmesh.ops.translate(bm, vec=(-half_l + seg_w * 0.5, 0, height * 0.5), verts=res1['verts'])
+
+        res_conn = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(thickness, offset_y + thickness, height), verts=res_conn['verts'])
+        bmesh.ops.translate(bm, vec=(0, offset_y * 0.5, height * 0.5), verts=res_conn['verts'])
+
+        res2 = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(seg_w, thickness, height), verts=res2['verts'])
+        bmesh.ops.translate(bm, vec=(half_l - seg_w * 0.5, offset_y, height * 0.5), verts=res2['verts'])
+    elif shape == 'GATE_ARCH':
+        # 城門アーチ開口壁 (左右の門柱壁 + 上部アーチ梁)
+        pier_w = length * 0.32
+        open_w = length - pier_w * 2.0
+        gate_h = height * 0.65
+        lintel_h = height - gate_h
+
+        # 左壁
+        res_l = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(pier_w, thickness, height), verts=res_l['verts'])
+        bmesh.ops.translate(bm, vec=(-half_l + pier_w * 0.5, 0, height * 0.5), verts=res_l['verts'])
+
+        # 右壁
+        res_r = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(pier_w, thickness, height), verts=res_r['verts'])
+        bmesh.ops.translate(bm, vec=(half_l - pier_w * 0.5, 0, height * 0.5), verts=res_r['verts'])
+
+        # 上部梁
+        res_t = bmesh.ops.create_cube(bm, size=1.0)
+        bmesh.ops.scale(bm, vec=(open_w, thickness, lintel_h), verts=res_t['verts'])
+        bmesh.ops.translate(bm, vec=(0, 0, gate_h + lintel_h * 0.5), verts=res_t['verts'])
     else:
         res = bmesh.ops.create_cube(bm, size=1.0)
         bmesh.ops.scale(bm, vec=(length, thickness, height), verts=res['verts'])
         bmesh.ops.translate(bm, vec=(0, 0, height * 0.5), verts=res['verts'])
-        if crenels:
+        if crenels or shape == 'BATTLEMENT':
             step = crenel_width + crenel_gap
             num_crenels = max(2, int(length / step))
             start_x = -((num_crenels - 1) * step) * 0.5
@@ -398,6 +479,9 @@ def create_castle_wall_scene(
     seed=0,
     wall_shape='STRAIGHT',
     wall_style='ASHLAR',
+    stone_aspect='STANDARD',
+    stone_roundness=0.035,
+    stone_chipping=0.016,
     length=6.0,
     height=3.5,
     thickness=1.2,
@@ -413,7 +497,10 @@ def create_castle_wall_scene(
     mat_stone = get_or_create_castle_stone_mat(name + '_Stone_Mat')
     mat_mortar = get_or_create_castle_mortar_mat(name + '_Mortar_Mat')
 
-    stone_col = build_stone_block_assets(name, seed=seed, style=wall_style, mat_stone=mat_stone)
+    stone_col = build_stone_block_assets(
+        name, seed=seed, style=wall_style, aspect=stone_aspect,
+        roundness=stone_roundness, chipping=stone_chipping, mat_stone=mat_stone
+    )
     wall_obj_name = name + '_Core'
 
     if not target_obj:
