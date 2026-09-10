@@ -265,6 +265,8 @@ def resolve_prop_parameters(props):
         "cave_stalactite_density": getattr(props, 'cave_stalactite_density', 1.0),
         "cave_generate_boulders": getattr(props, 'cave_generate_boulders', True),
         "cave_boulder_count": getattr(props, 'cave_boulder_count', 16),
+        "cave_add_moss": getattr(props, 'cave_add_moss', True),
+        "cave_moss_amount": getattr(props, 'cave_moss_amount', 0.6),
     }
 
 
@@ -428,6 +430,8 @@ def generate_procedural_prop_mesh(
         c_s_dens = kwargs.get('cave_stalactite_density', 1.0)
         c_boulders = kwargs.get('cave_generate_boulders', True)
         c_b_count = kwargs.get('cave_boulder_count', 16)
+        c_moss = kwargs.get('cave_add_moss', True)
+        c_m_amt = kwargs.get('cave_moss_amount', 0.6)
 
         floor_obj, water_obj, ceil_obj, pillar_obj, debris_obj = create_procedural_cave_scene(
             context=context,
@@ -453,6 +457,8 @@ def generate_procedural_prop_mesh(
             stalactite_density=c_s_dens,
             generate_boulders=c_boulders,
             boulder_count=c_b_count,
+            add_moss=c_moss,
+            moss_amount=c_m_amt,
             setup_lights=c_lights,
             light_intensity=c_l_int,
             target_obj=target_obj

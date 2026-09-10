@@ -1144,6 +1144,8 @@ class MESH_OT_regenerate_cave(bpy.types.Operator):
             stalactite_density=props.cave_stalactite_density,
             generate_boulders=props.cave_generate_boulders,
             boulder_count=props.cave_boulder_count,
+            add_moss=props.cave_add_moss,
+            moss_amount=props.cave_moss_amount,
             setup_lights=props.cave_setup_lights,
             light_intensity=props.cave_light_intensity,
             target_obj=target
@@ -1216,6 +1218,8 @@ class MESH_OT_create_cave(bpy.types.Operator):
             stalactite_density=props.cave_stalactite_density,
             generate_boulders=props.cave_generate_boulders,
             boulder_count=props.cave_boulder_count,
+            add_moss=props.cave_add_moss,
+            moss_amount=props.cave_moss_amount,
             setup_lights=props.cave_setup_lights,
             light_intensity=props.cave_light_intensity,
             target_obj=None

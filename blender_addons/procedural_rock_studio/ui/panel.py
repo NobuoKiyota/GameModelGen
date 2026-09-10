@@ -471,10 +471,14 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_cave = layout.box()
                 box_cave.label(text="🪨 洞窟・岩窟ジオラマ (岩棚テラス＆水流トレンチ):", icon='MOD_BUILD')
 
-                                # 0. ルート形状 & 岩肌スタイル
+                # 0. ルート形状 & 岩肌・苔スタイル
                 box_c_style = box_cave.box()
                 box_c_style.prop(props, "cave_path_type", text="ルート形状")
                 box_c_style.prop(props, "cave_rock_style", text="岩肌スタイル")
+                row_moss = box_c_style.row(align=True)
+                row_moss.prop(props, "cave_add_moss", text="🌿 苔を生やす (Moss)", toggle=True)
+                if props.cave_add_moss:
+                    row_moss.prop(props, "cave_moss_amount", text="苔の量", slider=True)
 
                 # 1. 川・水流設定 (チェックボックスでON/OFF可能)
                 box_c_river = box_cave.box()

@@ -1448,5 +1448,16 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default=16, min=0, max=40,
         description="洞窟内に散布する崩落岩の個数"
     )
+    # ── CAVE Step 4: Moss & Vegetation Properties ──
+    cave_add_moss: bpy.props.BoolProperty(
+        name="🌿 苔を生やす (Add Moss)",
+        default=True,
+        description="湿った岩棚や水際、岩柱の根本にベルベット調の深緑の苔をプロシージャル生成"
+    )
+    cave_moss_amount: bpy.props.FloatProperty(
+        name="苔の量 (Moss Amount)",
+        default=0.6, min=0.0, max=1.0,
+        description="岩肌を覆う苔の面積・密度"
+    )
 
 

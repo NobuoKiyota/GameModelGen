@@ -354,8 +354,8 @@ ROCK_PALETTES = {
     }
 }
 
-def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_river=True, rock_style='SLATE'):
-    """Creates procedural PBR material for terraced cave rock with wet shoreline."""
+def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_river=True, rock_style='SLATE', add_moss=True, moss_amount=0.6):
+    """Creates procedural layered sedimentary rock with velvety moss on upward shelves and wetness near river."""
     mat = bpy.data.materials.get(mat_name)
     if mat is None:
         mat = bpy.data.materials.new(name=mat_name)
@@ -376,16 +376,6 @@ def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_riv
     rock_noise.inputs['Roughness'].default_value = 0.65
     links.new(coord.outputs['Object'], rock_noise.inputs['Vector'])
 
-    # 2. Strata / Layering Texture (Wave texture for horizontal rock bands)
-    strata_wave = nodes.new(type='ShaderNodeTexWave')
-    strata_wave.location = (-950, 50)
-    strata_wave.wave_type = 'BANDS'
-    strata_wave.bands_direction = 'Z'
-    strata_wave.inputs['Scale'].default_value = 2.5
-    strata_wave.inputs['Distortion'].default_value = 4.0
-    strata_wave.inputs['Detail'].default_value = 5.0
-    links.new(coord.outputs['Object'], strata_wave.inputs['Vector'])
-
     pal = ROCK_PALETTES.get(rock_style, ROCK_PALETTES['SLATE'])
 
     # Color Ramp for Rock Tone
@@ -399,67 +389,123 @@ def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_riv
 
     # Wetness Mask (Height-based)
     sep_xyz = nodes.new(type='ShaderNodeSeparateXYZ')
-    sep_xyz.location = (-950, -450)
+    sep_xyz.location = (-950, -100)
     links.new(coord.outputs['Object'], sep_xyz.inputs['Vector'])
 
     ramp_wet = nodes.new(type='ShaderNodeValToRGB')
-    ramp_wet.location = (-650, -450)
-    ramp_wet.color_ramp.elements[0].position = 0.25
+    ramp_wet.location = (-650, -100)
+    ramp_wet.color_ramp.elements[0].position = 0.20
     ramp_wet.color_ramp.elements[0].color = (1.0, 1.0, 1.0, 1.0) # Wet
-    ramp_wet.color_ramp.elements[1].position = 0.60
+    ramp_wet.color_ramp.elements[1].position = 0.55
     ramp_wet.color_ramp.elements[1].color = (0.0, 0.0, 0.0, 1.0) # Dry
     links.new(sep_xyz.outputs['Z'], ramp_wet.inputs['Fac'])
 
     # Darker wet color helper
     dark_wet = nodes.new(type='ShaderNodeMix')
-    dark_wet.location = (-450, -100)
+    dark_wet.location = (-450, -50)
     dark_wet.data_type = 'RGBA'
-    # Factor is input 0
     dark_wet.inputs[0].default_value = 0.65
-    # Color A is input 6, Color B is input 7
     links.new(ramp_rock.outputs['Color'], dark_wet.inputs[6])
     dark_wet.inputs[7].default_value = (0.01, 0.015, 0.02, 1.0)
 
-    # Mix Color (Dry vs Wet)
-    mix_color = nodes.new(type='ShaderNodeMix')
-    mix_color.location = (-200, 150)
-    mix_color.data_type = 'RGBA'
+    # Mix Color (Dry vs Wet Rock)
+    mix_rock_wet = nodes.new(type='ShaderNodeMix')
+    mix_rock_wet.location = (-250, 200)
+    mix_rock_wet.data_type = 'RGBA'
     if has_river:
-        links.new(ramp_wet.outputs['Color'], mix_color.inputs[0])
+        links.new(ramp_wet.outputs['Color'], mix_rock_wet.inputs[0])
     else:
-        mix_color.inputs[0].default_value = 0.0
-    links.new(ramp_rock.outputs['Color'], mix_color.inputs[6])
-    # dark_wet output color is output 2
-    links.new(dark_wet.outputs[2], mix_color.inputs[7])
+        mix_rock_wet.inputs[0].default_value = 0.0
+    links.new(ramp_rock.outputs['Color'], mix_rock_wet.inputs[6])
+    links.new(dark_wet.outputs[2], mix_rock_wet.inputs[7])
 
-        # Bump Map
+    # Geometry Normal for Upward Slopes (Moss on terraces)
+    geom = nodes.new(type='ShaderNodeNewGeometry')
+    geom.location = (-1200, -350)
+    sep_norm = nodes.new(type='ShaderNodeSeparateXYZ')
+    sep_norm.location = (-950, -350)
+    links.new(geom.outputs['Normal'], sep_norm.inputs['Vector'])
+
+    ramp_upward = nodes.new(type='ShaderNodeValToRGB')
+    ramp_upward.location = (-700, -350)
+    ramp_upward.color_ramp.elements[0].position = 0.35
+    ramp_upward.color_ramp.elements[1].position = 0.70
+    links.new(sep_norm.outputs['Z'], ramp_upward.inputs['Fac'])
+
+    # Moss Micro Noise & Color
+    moss_noise = nodes.new(type='ShaderNodeTexNoise')
+    moss_noise.location = (-950, -600)
+    moss_noise.inputs['Scale'].default_value = 7.5
+    moss_noise.inputs['Detail'].default_value = 5.0
+    links.new(coord.outputs['Object'], moss_noise.inputs['Vector'])
+
+    ramp_moss_col = nodes.new(type='ShaderNodeValToRGB')
+    ramp_moss_col.location = (-700, -600)
+    ramp_moss_col.color_ramp.elements[0].position = 0.20
+    ramp_moss_col.color_ramp.elements[0].color = (0.04, 0.13, 0.02, 1.0)
+    ramp_moss_col.color_ramp.elements[1].position = 0.80
+    ramp_moss_col.color_ramp.elements[1].color = (0.16, 0.32, 0.08, 1.0)
+    links.new(moss_noise.outputs['Fac'], ramp_moss_col.inputs['Fac'])
+
+    # Moss Factor: upward * noise * moss_amount
+    moss_mult = nodes.new(type='ShaderNodeMath')
+    moss_mult.operation = 'MULTIPLY'
+    moss_mult.location = (-450, -400)
+    links.new(ramp_upward.outputs['Color'], moss_mult.inputs[0])
+    links.new(moss_noise.outputs['Fac'], moss_mult.inputs[1])
+
+    moss_fac = nodes.new(type='ShaderNodeMath')
+    moss_fac.operation = 'MULTIPLY'
+    moss_fac.location = (-250, -400)
+    moss_fac.use_clamp = True
+    links.new(moss_mult.outputs['Value'], moss_fac.inputs[0])
+    moss_fac.inputs[1].default_value = (moss_amount * 1.8) if add_moss else 0.0
+
+    # Final Surface Color: Mix Rock with Moss
+    final_color = nodes.new(type='ShaderNodeMix')
+    final_color.data_type = 'RGBA'
+    final_color.location = (0, 150)
+    links.new(moss_fac.outputs['Value'], final_color.inputs[0])
+    links.new(mix_rock_wet.outputs[2], final_color.inputs[6])
+    links.new(ramp_moss_col.outputs['Color'], final_color.inputs[7])
+
+    # Bump Map
     bump = nodes.new(type='ShaderNodeBump')
-    bump.location = (-200, -250)
+    bump.location = (0, -100)
     bump.inputs['Strength'].default_value = 0.45
     bump.inputs['Distance'].default_value = 0.15
     links.new(rock_noise.outputs['Fac'], bump.inputs['Height'])
 
     # Principled BSDF
     bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
-    bsdf.location = (100, 100)
-    links.new(mix_color.outputs[2], bsdf.inputs['Base Color'])
+    bsdf.location = (250, 100)
+    links.new(final_color.outputs[2], bsdf.inputs['Base Color'])
     links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
 
-    # Roughness
+    # Roughness: blend wet rock / dry rock / velvety moss
+    rough_rock = nodes.new(type='ShaderNodeMix')
+    rough_rock.data_type = 'FLOAT'
+    rough_rock.location = (-50, -250)
     if has_river:
-        rough_mix = nodes.new(type='ShaderNodeMix')
-        rough_mix.location = (-50, -150)
-        rough_mix.data_type = 'FLOAT'
-        links.new(ramp_wet.outputs['Color'], rough_mix.inputs[0])
-        rough_mix.inputs[2].default_value = pal['roughness_dry'] # A (Dry)
-        rough_mix.inputs[3].default_value = 0.10 # B (Wet glossy)
-        links.new(rough_mix.outputs[0], bsdf.inputs['Roughness'])
+        links.new(ramp_wet.outputs['Color'], rough_rock.inputs[0])
+        rough_rock.inputs[2].default_value = pal['roughness_dry']
+        rough_rock.inputs[3].default_value = 0.10
     else:
-        bsdf.inputs['Roughness'].default_value = pal['roughness_dry']
+        rough_rock.inputs[0].default_value = 0.0
+        rough_rock.inputs[2].default_value = pal['roughness_dry']
+        rough_rock.inputs[3].default_value = pal['roughness_dry']
+
+    rough_final = nodes.new(type='ShaderNodeMix')
+    rough_final.data_type = 'FLOAT'
+    rough_final.location = (100, -250)
+    links.new(moss_fac.outputs['Value'], rough_final.inputs[0])
+    links.new(rough_rock.outputs[0], rough_final.inputs[2])
+    rough_final.inputs[3].default_value = 0.92
+    links.new(rough_final.outputs[0], bsdf.inputs['Roughness'])
 
     # Output
     output = nodes.new(type='ShaderNodeOutputMaterial')
-    output.location = (400, 100)
+    output.location = (500, 100)
     links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
 
     return mat
@@ -675,10 +721,10 @@ def build_cliff_ceiling_bmesh(
             # Right wall (u >= 0.75): descends vertically to right floor edge
             
             if u < 0.25:
-                # Left vertical cliff
+                # Left vertical cliff (starts at -1.8m deep below floor to eliminate all seam gaps)
                 t = u / 0.25
                 x_rel = -effective_hx * (1.0 - t * 0.15)
-                z_base = t * (effective_h * 0.55)
+                z_base = -1.8 + t * (effective_h * 0.55 + 1.8)
             elif u < 0.5:
                 # Left ceiling overhang
                 t = (u - 0.25) / 0.25
@@ -695,10 +741,10 @@ def build_cliff_ceiling_bmesh(
                 arch_t = math.cos(t * math.pi * 0.5)
                 z_base = effective_h * (0.55 + arch_t * 0.45)
             else:
-                # Right vertical cliff
+                # Right vertical cliff (penetrates to -1.8m below floor for seamless closure)
                 t = (u - 0.75) / 0.25
                 x_rel = effective_hx * (0.85 + t * 0.15)
-                z_base = (1.0 - t) * (effective_h * 0.55)
+                z_base = -1.8 + (1.0 - t) * (effective_h * 0.55 + 1.8)
 
             # World X position following cave centerline
             x_pos = center_x + x_rel
@@ -753,68 +799,9 @@ def build_cliff_ceiling_bmesh(
     return bm
 
 
-def get_or_create_cave_ceiling_material(mat_name="Cave_Ceiling_Cliff_Mat", rock_style='SLATE'):
-    """Creates procedural PBR material for dry, rough cliff walls and ceiling slabs."""
-    mat = bpy.data.materials.get(mat_name)
-    if mat is None:
-        mat = bpy.data.materials.new(name=mat_name)
-    mat.use_nodes = True
-    tree = mat.node_tree
-    nodes = tree.nodes
-    links = tree.links
-    nodes.clear()
-
-    coord = nodes.new(type='ShaderNodeTexCoord')
-    coord.location = (-1000, 100)
-
-    # Base Rock Noise
-    noise = nodes.new(type='ShaderNodeTexNoise')
-    noise.location = (-750, 200)
-    noise.inputs['Scale'].default_value = 5.5
-    noise.inputs['Detail'].default_value = 9.0
-    noise.inputs['Roughness'].default_value = 0.68
-    links.new(coord.outputs['Object'], noise.inputs['Vector'])
-
-    # Horizontal Strata Banding
-    strata = nodes.new(type='ShaderNodeTexWave')
-    strata.location = (-750, -50)
-    strata.wave_type = 'BANDS'
-    strata.bands_direction = 'Z'
-    strata.inputs['Scale'].default_value = 2.8
-    strata.inputs['Distortion'].default_value = 4.2
-    strata.inputs['Detail'].default_value = 6.0
-    links.new(coord.outputs['Object'], strata.inputs['Vector'])
-
-    pal = ROCK_PALETTES.get(rock_style, ROCK_PALETTES['SLATE'])
-
-    # Color Ramp for Dry Cliff Stone
-    ramp = nodes.new(type='ShaderNodeValToRGB')
-    ramp.location = (-450, 150)
-    ramp.color_ramp.elements[0].position = 0.2
-    ramp.color_ramp.elements[0].color = pal['rock_dark']
-    ramp.color_ramp.elements[1].position = 0.8
-    ramp.color_ramp.elements[1].color = pal['rock_light']
-    links.new(noise.outputs['Fac'], ramp.inputs['Fac'])
-
-    # Bump Map
-    bump = nodes.new(type='ShaderNodeBump')
-    bump.location = (-200, -100)
-    bump.inputs['Strength'].default_value = 0.55
-    bump.inputs['Distance'].default_value = 0.18
-    links.new(noise.outputs['Fac'], bump.inputs['Height'])
-
-    # Principled BSDF
-    bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
-    bsdf.location = (100, 100)
-    bsdf.inputs['Roughness'].default_value = pal['roughness_dry']
-    links.new(ramp.outputs['Color'], bsdf.inputs['Base Color'])
-    links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
-
-    output = nodes.new(type='ShaderNodeOutputMaterial')
-    output.location = (400, 100)
-    links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
-
-    return mat
+def get_or_create_cave_ceiling_material(mat_name="Cave_Ceiling_Cliff_Mat", rock_style='SLATE', add_moss=True, moss_amount=0.6):
+    """Creates procedural PBR material for cliff walls, ceiling, pillars, and debris with moss support."""
+    return get_or_create_cave_floor_material(mat_name=mat_name, has_river=False, rock_style=rock_style, add_moss=add_moss, moss_amount=moss_amount * 0.6)
 
 def get_or_create_cave_water_material(mat_name="Cave_Water_Mat", rock_style='SLATE'):
     """Creates clear, reflective cave river water with subtle caustics/ripples."""
@@ -1144,6 +1131,8 @@ def create_procedural_cave_scene(
     stalactite_density=1.0,
     generate_boulders=True,
     boulder_count=16,
+    add_moss=True,
+    moss_amount=0.6,
     target_obj=None,
     **kwargs
 ):
@@ -1201,7 +1190,7 @@ def create_procedural_cave_scene(
 
     bm_floor.free()
 
-    mat_floor = get_or_create_cave_floor_material(clean_name + "_Floor_Mat", has_river=has_river, rock_style=rock_style)
+    mat_floor = get_or_create_cave_floor_material(clean_name + "_Floor_Mat", has_river=has_river, rock_style=rock_style, add_moss=add_moss, moss_amount=moss_amount)
     if floor_obj.data.materials:
         floor_obj.data.materials[0] = mat_floor
     else:
@@ -1279,7 +1268,7 @@ def create_procedural_cave_scene(
 
         bm_ceiling.free()
 
-        mat_ceiling = get_or_create_cave_ceiling_material(clean_name + "_Ceiling_Mat", rock_style=rock_style)
+        mat_ceiling = get_or_create_cave_ceiling_material(clean_name + "_Ceiling_Mat", rock_style=rock_style, add_moss=add_moss, moss_amount=moss_amount)
         if ceiling_obj.data.materials:
             ceiling_obj.data.materials[0] = mat_ceiling
         else:
@@ -1323,7 +1312,7 @@ def create_procedural_cave_scene(
             col.objects.link(pillar_obj)
         bm_pillars.free()
 
-        mat_rock = get_or_create_cave_ceiling_material(clean_name + "_Rock_Mat", rock_style=rock_style)
+        mat_rock = get_or_create_cave_ceiling_material(clean_name + "_Rock_Mat", rock_style=rock_style, add_moss=add_moss, moss_amount=moss_amount)
         if pillar_obj.data.materials:
             pillar_obj.data.materials[0] = mat_rock
         else:
@@ -1353,7 +1342,7 @@ def create_procedural_cave_scene(
             col.objects.link(debris_obj)
         bm_debris.free()
 
-        mat_rock = get_or_create_cave_ceiling_material(clean_name + "_Rock_Mat", rock_style=rock_style)
+        mat_rock = get_or_create_cave_ceiling_material(clean_name + "_Rock_Mat", rock_style=rock_style, add_moss=add_moss, moss_amount=moss_amount)
         if debris_obj.data.materials:
             debris_obj.data.materials[0] = mat_rock
         else:
