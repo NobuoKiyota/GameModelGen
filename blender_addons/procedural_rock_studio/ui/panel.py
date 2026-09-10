@@ -378,8 +378,10 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 row_ba.prop(props, "biome_include_pebble", text="小石")
 
                 col_b_btn = box_biome.column(align=True)
-                col_b_btn.scale_y = 1.4
-                col_b_btn.operator("mesh.create_biome_scatter", text="🌾 バイオーム自然環境を一撃生成", icon='PARTICLE_POINT')
+                col_b_btn.scale_y = 1.3
+                col_b_btn.operator("mesh.regenerate_biome_scatter", text="🔄 再生成・更新 (選択中を更新)", icon='FILE_REFRESH')
+                col_b_btn.operator("mesh.create_biome_scatter", text="➕ 新規バイオームを生成", icon='ADD')
+                col_b_btn.separator()
                 col_b_btn.operator("mesh.convert_scatter_to_game_mesh", text="🎮 ゲーム用実体メッシュへ変換 (Make Real)", icon='CHECKMARK')
 
                 # 🌟 2. 従来のヘアパーティクル式 草原（サブ設定）

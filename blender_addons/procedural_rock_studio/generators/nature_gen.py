@@ -930,7 +930,13 @@ def create_grass_field_scene(context, name, seed=0,
 
     grass_col_name = name + "_GrassCollection"
     if grass_col_name in bpy.data.collections:
-        bpy.data.collections.remove(bpy.data.collections[grass_col_name])
+        old_col = bpy.data.collections[grass_col_name]
+        for obj in list(old_col.objects):
+            mesh = obj.data if obj.type == 'MESH' else None
+            bpy.data.objects.remove(obj, do_unlink=True)
+            if mesh and mesh.users == 0:
+                bpy.data.meshes.remove(mesh)
+        bpy.data.collections.remove(old_col)
     grass_col = bpy.data.collections.new(grass_col_name)
     context.scene.collection.children.link(grass_col)
 
@@ -1165,7 +1171,13 @@ def create_nature_biome_assets_collection(context, base_name, biome_type="MEADOW
     """バイオーム散布用アセットコレクションの自動生成"""
     col_name = base_name + "_BiomeAssets"
     if col_name in bpy.data.collections:
-        bpy.data.collections.remove(bpy.data.collections[col_name])
+        old_col = bpy.data.collections[col_name]
+        for obj in list(old_col.objects):
+            mesh = obj.data if obj.type == 'MESH' else None
+            bpy.data.objects.remove(obj, do_unlink=True)
+            if mesh and mesh.users == 0:
+                bpy.data.meshes.remove(mesh)
+        bpy.data.collections.remove(old_col)
     biome_col = bpy.data.collections.new(col_name)
     context.scene.collection.children.link(biome_col)
 
@@ -1323,39 +1335,71 @@ def create_nature_scatter_geometry_nodes(node_tree_name, biome_col, seed=0,
 def create_biome_scatter_scene(context, name, seed=0, biome_type="MEADOW",
                                terrain_size_x=10.0, terrain_size_y=10.0,
                                undulation=0.45, density=45.0, min_dist=0.14,
-                               include_fern=True, include_shrub=True, include_pebbles=True):
+                               include_fern=True, include_shrub=True, include_pebbles=True,
+                               target_obj=None):
     """バイオーム自然環境シーン一括生成 (地面テレイン + アセットコレクション + Geometry Nodes)"""
     col = context.collection
 
-    # 1. アセットコレクション生成
+    # 1. アセットコレクション生成（旧コレクションと内包オブジェクトを完全消去）
     biome_col = create_nature_biome_assets_collection(
         context, name, biome_type=biome_type, seed=seed,
         include_fern=include_fern, include_shrub=include_shrub, include_pebbles=include_pebbles
     )
 
-    # 2. 起伏地面メッシュ生成
-    terrain_name = name + "_Terrain"
-    if terrain_name in bpy.data.objects:
-        bpy.data.objects.remove(bpy.data.objects[terrain_name], do_unlink=True)
-
     terrain_style = "ROCKY" if biome_type == "ROCKY_WASTELAND" else "MEADOW"
-    bm_t = bmesh.new()
-    build_grass_terrain_ground(bm_t, terrain_size_x, terrain_size_y,
-                               seed=seed, undulation=undulation, subdivisions=24,
-                               terrain_type=terrain_style)
-    mesh_t = bpy.data.meshes.new(terrain_name)
-    bm_t.to_mesh(mesh_t)
-    bm_t.free()
+    terrain_name = name + "_Terrain"
 
-    terrain_obj = bpy.data.objects.new(terrain_name, mesh_t)
-    col.objects.link(terrain_obj)
+    # target_obj が指定されているか、またはアクティブオブジェクトがバイオームテレインの場合はその場更新
+    if not target_obj:
+        act = context.active_object
+        if act and act.type == 'MESH' and ("BiomeScatter" in act.modifiers or "_Terrain" in act.name):
+            target_obj = act
+
+    if target_obj and target_obj.name in bpy.data.objects:
+        terrain_obj = target_obj
+        # 既存メッシュをクリーンアップして新ジオメトリを反映
+        bm_t = bmesh.new()
+        build_grass_terrain_ground(bm_t, terrain_size_x, terrain_size_y,
+                                   seed=seed, undulation=undulation, subdivisions=24,
+                                   terrain_type=terrain_style)
+        bm_t.to_mesh(terrain_obj.data)
+        bm_t.free()
+        terrain_obj.data.update()
+    else:
+        # 既存の同名オブジェクトがあれば完全消去（堆積防止）
+        if terrain_name in bpy.data.objects:
+            old_t = bpy.data.objects[terrain_name]
+            old_mesh = old_t.data if old_t.type == 'MESH' else None
+            bpy.data.objects.remove(old_t, do_unlink=True)
+            if old_mesh and old_mesh.users == 0:
+                bpy.data.meshes.remove(old_mesh)
+
+        bm_t = bmesh.new()
+        build_grass_terrain_ground(bm_t, terrain_size_x, terrain_size_y,
+                                   seed=seed, undulation=undulation, subdivisions=24,
+                                   terrain_type=terrain_style)
+        mesh_t = bpy.data.meshes.new(terrain_name)
+        bm_t.to_mesh(mesh_t)
+        bm_t.free()
+
+        terrain_obj = bpy.data.objects.new(terrain_name, mesh_t)
+        col.objects.link(terrain_obj)
+
     context.view_layer.objects.active = terrain_obj
+    terrain_obj.select_set(True)
 
+    # マテリアル設定（重複追加を防止）
     ground_mat = create_procedural_ground_terrain_shader(name + "_Ground_Mat", seed=seed, terrain_type=terrain_style)
-    terrain_obj.data.materials.append(ground_mat)
+    if terrain_obj.data.materials:
+        terrain_obj.data.materials[0] = ground_mat
+    else:
+        terrain_obj.data.materials.append(ground_mat)
 
-    # 3. Geometry Nodes モディファイア適用
-    gn_mod = terrain_obj.modifiers.new("BiomeScatter", 'NODES')
+    # 3. Geometry Nodes モディファイア適用（既存なら更新、なければ新規追加）
+    gn_mod = terrain_obj.modifiers.get("BiomeScatter")
+    if not gn_mod or gn_mod.type != 'NODES':
+        gn_mod = terrain_obj.modifiers.new("BiomeScatter", 'NODES')
+
     gn_tree = create_nature_scatter_geometry_nodes(
         name + "_Scatter_GN", biome_col, seed=seed,
         density=density, min_dist=min_dist, slope_min=0.65

@@ -855,15 +855,61 @@ class MESH_OT_apply_fence_colors(bpy.types.Operator):
 # Nature Biome Scatter Operators (Geometry Nodes 自己完結型)
 # ==============================================================================
 
+class MESH_OT_regenerate_biome_scatter(bpy.types.Operator):
+    bl_idname = "mesh.regenerate_biome_scatter"
+    bl_label = "🔄 再生成・更新 (選択中を更新)"
+    bl_description = "選択中のバイオームテレイン（または直前のテレイン）を、現在のパラメータでその場更新・再生成します（重複堆積しません）"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..generators.nature_gen import create_biome_scatter_scene
+
+        active_obj = context.active_object
+        target = None
+        if active_obj and active_obj.type == 'MESH' and ("BiomeScatter" in active_obj.modifiers or "_Terrain" in active_obj.name):
+            target = active_obj
+
+        name = target.name.replace("_Terrain", "") if target else (props.asset_name.strip() or "Nature_Biome")
+
+        terrain_obj, biome_col = create_biome_scatter_scene(
+            context=context,
+            name=name,
+            seed=props.seed,
+            biome_type=props.biome_type,
+            terrain_size_x=props.biome_terrain_size,
+            terrain_size_y=props.biome_terrain_size,
+            undulation=props.biome_undulation,
+            density=props.biome_density,
+            min_dist=props.biome_min_dist,
+            include_fern=props.biome_include_fern,
+            include_shrub=props.biome_include_shrub,
+            include_pebbles=props.biome_include_pebble,
+            target_obj=target
+        )
+
+        context.view_layer.objects.active = terrain_obj
+        terrain_obj.select_set(True)
+        self.report({'INFO'}, f"バイオームを更新しました: {terrain_obj.name}")
+        return {'FINISHED'}
+
+
 class MESH_OT_create_biome_scatter(bpy.types.Operator):
     bl_idname = "mesh.create_biome_scatter"
-    bl_label = "🌾 バイオーム自然環境を一撃生成"
+    bl_label = "➕ 新規バイオームを生成"
     bl_description = "草株・リアルシダ・小低木・クローバー・小石が調和した自然環境をGeometry Nodesで自動生成します"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         props = context.scene.prop_studio_props
-        name = props.asset_name.strip() or "Nature_Biome"
+        base_name = props.asset_name.strip() or "Nature_Biome"
+
+        # 既存オブジェクトとの重複を避けるための連番付与
+        name = base_name
+        counter = 1
+        while (name + "_Terrain") in bpy.data.objects:
+            name = f"{base_name}_{counter:02d}"
+            counter += 1
 
         from ..generators.nature_gen import create_biome_scatter_scene
 
@@ -879,12 +925,13 @@ class MESH_OT_create_biome_scatter(bpy.types.Operator):
             min_dist=props.biome_min_dist,
             include_fern=props.biome_include_fern,
             include_shrub=props.biome_include_shrub,
-            include_pebbles=props.biome_include_pebble
+            include_pebbles=props.biome_include_pebble,
+            target_obj=None
         )
 
         context.view_layer.objects.active = terrain_obj
         terrain_obj.select_set(True)
-        self.report({'INFO'}, f"バイオーム自然環境を生成しました: {terrain_obj.name}")
+        self.report({'INFO'}, f"新規バイオーム自然環境を生成しました: {terrain_obj.name}")
         return {'FINISHED'}
 
 
