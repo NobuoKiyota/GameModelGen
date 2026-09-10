@@ -994,6 +994,8 @@ class MESH_OT_regenerate_castle_wall(bpy.types.Operator):
             density=props.castle_wall_density,
             min_dist=props.castle_wall_min_dist,
             jitter=props.castle_wall_jitter,
+            batter=props.castle_wall_batter,
+            roughness=props.castle_wall_roughness,
             target_obj=target
         )
 
@@ -1034,6 +1036,8 @@ class MESH_OT_create_castle_wall(bpy.types.Operator):
             density=props.castle_wall_density,
             min_dist=props.castle_wall_min_dist,
             jitter=props.castle_wall_jitter,
+            batter=props.castle_wall_batter,
+            roughness=props.castle_wall_roughness,
             target_obj=None
         )
 

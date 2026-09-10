@@ -1270,6 +1270,16 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default=0.04, min=0.0, max=0.15,
         description="手積みによる石材の前後段差・飛び出しの度合い"
     )
+    castle_wall_batter: bpy.props.FloatProperty(
+        name="裾広がり傾斜 (Batter)",
+        default=0.18, min=0.0, max=0.6,
+        description="下部が末広がりになる石垣・城壁特有の傾斜率（台形スロープ）"
+    )
+    castle_wall_roughness: bpy.props.FloatProperty(
+        name="土台のうねり・出っ張り (Roughness)",
+        default=0.14, min=0.0, max=0.45,
+        description="土台メッシュ自体の波打ち・傾き・荒削りな出っ張りの度合い"
+    )
 
 
 

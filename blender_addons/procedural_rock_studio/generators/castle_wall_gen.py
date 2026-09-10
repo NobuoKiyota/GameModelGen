@@ -79,6 +79,81 @@ def build_stone_block_assets(base_name, seed=0, style='ASHLAR', mat_stone=None):
 
     return stone_col
 
+def apply_organic_wall_deformation(bm, length, height, thickness, seed=0, batter=0.18, roughness=0.14):
+    if roughness <= 0.001 and batter <= 0.001:
+        return
+    rng = random.Random(seed)
+
+    freq_x1 = 2.0 * math.pi / max(0.5, length)
+    freq_x2 = 4.5 * math.pi / max(0.5, length)
+    freq_z1 = 2.0 * math.pi / max(0.5, height)
+    freq_z2 = 4.8 * math.pi / max(0.5, height)
+
+    ph_x1 = rng.uniform(0, 10.0)
+    ph_x2 = rng.uniform(0, 10.0)
+    ph_z1 = rng.uniform(0, 10.0)
+    ph_z2 = rng.uniform(0, 10.0)
+
+    # 局所的な大きな出っ張り（石垣のせり出し・ふくらみ）
+    bulge_x1 = rng.uniform(-length * 0.30, length * 0.30)
+    bulge_z1 = rng.uniform(height * 0.2, height * 0.7)
+    bulge_rad1 = rng.uniform(0.9, 1.8)
+    bulge_amp1 = rng.uniform(0.15, 0.35) * max(0.1, roughness) * 2.5
+
+    bulge_x2 = rng.uniform(-length * 0.30, length * 0.30)
+    bulge_z2 = rng.uniform(height * 0.1, height * 0.5)
+    bulge_rad2 = rng.uniform(0.7, 1.5)
+    bulge_amp2 = rng.uniform(0.12, 0.28) * max(0.1, roughness) * 2.5
+
+    for v in bm.verts:
+        z_norm = max(0.0, min(1.3, v.co.z / max(0.1, height)))
+
+        # 1. 裾野の末広がり傾斜 (Batter / Slope): 底面ほど外側に広がる
+        slope_factor = ((1.0 - min(1.0, z_norm)) ** 1.3) * batter * thickness * 1.6
+        if v.co.y > 0.02:
+            v.co.y += slope_factor
+        elif v.co.y < -0.02:
+            v.co.y -= slope_factor
+
+        # 2. 壁面の有機的な波打ち・うねり（Y方向：厚み方向の出っ張り・へこみ）
+        wave_y = (
+            math.sin(v.co.x * freq_x1 + ph_x1) * math.cos(v.co.z * freq_z1 + ph_z1) * 0.65 +
+            math.sin(v.co.x * freq_x2 + ph_x2) * math.sin(v.co.z * freq_z2 + ph_z2) * 0.35
+        ) * roughness * thickness * 1.4
+        v.co.y += wave_y
+
+        # 3. 局所的な大きな出っ張り（せり出し）
+        d1 = math.hypot(v.co.x - bulge_x1, v.co.z - bulge_z1)
+        if d1 < bulge_rad1:
+            factor1 = (math.cos(math.pi * d1 / bulge_rad1) + 1.0) * 0.5
+            if v.co.y > 0.0:
+                v.co.y += factor1 * bulge_amp1
+            elif v.co.y < 0.0:
+                v.co.y -= factor1 * bulge_amp1
+
+        d2 = math.hypot(v.co.x - bulge_x2, v.co.z - bulge_z2)
+        if d2 < bulge_rad2:
+            factor2 = (math.cos(math.pi * d2 / bulge_rad2) + 1.0) * 0.5
+            if v.co.y > 0.0:
+                v.co.y += factor2 * bulge_amp2
+            elif v.co.y < 0.0:
+                v.co.y -= factor2 * bulge_amp2
+
+        # 4. 壁全体の微小な傾き・歪み（X方向の横揺れ・ねじれ）
+        wave_x = math.sin(v.co.z * freq_z1 + ph_z1) * roughness * 0.35 * length * 0.08
+        v.co.x += wave_x
+
+        # 5. 上部稜線や天面の高低差ゆらぎ（Z方向）
+        if v.co.z > 0.1:
+            wave_z = math.cos(v.co.x * freq_x1 + ph_x2) * roughness * 0.30 * height * 0.12
+            v.co.z += wave_z
+
+        # 6. 微小な手削り岩肌凹凸
+        v.co.x += rng.uniform(-roughness * 0.08, roughness * 0.08)
+        v.co.y += rng.uniform(-roughness * 0.12, roughness * 0.12)
+        if v.co.z > 0.1:
+            v.co.z += rng.uniform(-roughness * 0.05, roughness * 0.05)
+
 def build_castle_wall_base_mesh(
     bm,
     shape='STRAIGHT',
@@ -90,7 +165,9 @@ def build_castle_wall_base_mesh(
     crenel_height=0.7,
     crenel_gap=0.6,
     seed=0,
-    mat_mortar_idx=0
+    mat_mortar_idx=0,
+    batter=0.18,
+    roughness=0.14
 ):
     half_l = length * 0.5
     half_t = thickness * 0.5
@@ -144,10 +221,19 @@ def build_castle_wall_base_mesh(
                 bmesh.ops.scale(bm, vec=(crenel_width, crenel_thick, crenel_height), verts=res_c['verts'])
                 bmesh.ops.translate(bm, vec=(cx, front_y, height + crenel_height * 0.5), verts=res_c['verts'])
 
+    # 細分化（グリッド分割）して有機的変形を可能にする
+    subdiv_cuts = 4 if length <= 10.0 else 6
+    bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=subdiv_cuts, use_grid_fill=True)
+    bm.verts.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+
+    # 自然な傾き・裾野の広がり・出っ張り・うねりを付加
+    apply_organic_wall_deformation(bm, length=length, height=height, thickness=thickness,
+                                  seed=seed, batter=batter, roughness=roughness)
+
     for f in bm.faces:
         f.material_index = mat_mortar_idx
         f.smooth = True
-    bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=1, use_grid_fill=True)
     bm.verts.ensure_lookup_table()
     bm.faces.ensure_lookup_table()
     return bm.verts[:]
@@ -319,6 +405,8 @@ def create_castle_wall_scene(
     density=22.0,
     min_dist=0.22,
     jitter=0.04,
+    batter=0.18,
+    roughness=0.14,
     target_obj=None
 ):
     col = context.collection
@@ -338,7 +426,8 @@ def create_castle_wall_scene(
         bm = bmesh.new()
         build_castle_wall_base_mesh(
             bm, shape=wall_shape, length=length, height=height, thickness=thickness,
-            crenels=crenels, seed=seed, mat_mortar_idx=0
+            crenels=crenels, seed=seed, mat_mortar_idx=0,
+            batter=batter, roughness=roughness
         )
         bm.to_mesh(wall_obj.data)
         bm.free()
@@ -354,7 +443,8 @@ def create_castle_wall_scene(
         bm = bmesh.new()
         build_castle_wall_base_mesh(
             bm, shape=wall_shape, length=length, height=height, thickness=thickness,
-            crenels=crenels, seed=seed, mat_mortar_idx=0
+            crenels=crenels, seed=seed, mat_mortar_idx=0,
+            batter=batter, roughness=roughness
         )
         mesh = bpy.data.meshes.new(wall_obj_name)
         bm.to_mesh(mesh)

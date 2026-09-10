@@ -432,6 +432,13 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 if props.castle_wall_shape in ('STRAIGHT', 'BATTLEMENT'):
                     box_cw_dim.prop(props, "castle_wall_has_crenels", text="🛡️ 銃眼胸壁 (Crenels / 狭間) を付ける")
 
+                # 土台メッシュ形状設定（歪み・傾き・出っ張り）
+                box_cw_base = box_cwall.box()
+                box_cw_base.label(text="🏔️ 土台の自然な起伏・歪み設定:", icon='MOD_DISPLACE')
+                row_cwb = box_cw_base.row(align=True)
+                row_cwb.prop(props, "castle_wall_batter", text="裾広がり傾斜 (Batter)", slider=True)
+                row_cwb.prop(props, "castle_wall_roughness", text="出っ張り・うねり", slider=True)
+
                 # 散布設定
                 box_cw_scat = box_cwall.box()
                 box_cw_scat.label(text="🧱 石材散布設定 (Poisson Disk):", icon='MOD_PARTICLES')
