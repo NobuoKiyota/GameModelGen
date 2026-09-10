@@ -242,6 +242,14 @@ def resolve_prop_parameters(props):
         "castle_wall_jitter": props.castle_wall_jitter,
         "castle_wall_batter": props.castle_wall_batter,
         "castle_wall_roughness": props.castle_wall_roughness,
+        # Cave parameters
+        "cave_path_type": random.choice(['STRAIGHT_S', 'CHAMBER_HALL', 'FORK_Y']) if getattr(props, 'cave_randomize_shape', False) else props.cave_path_type,
+        "cave_length": props.cave_length,
+        "cave_width": props.cave_width,
+        "cave_height": props.cave_height,
+        "cave_slope": props.cave_slope,
+        "cave_chamber_scale": props.cave_chamber_scale,
+        "cave_roughness": props.cave_roughness,
     }
 
 
@@ -376,6 +384,32 @@ def generate_procedural_prop_mesh(
             target_obj=target_obj
         )
         return wall_obj
+
+    # 🪨 Cave Preset (洞窟・岩窟ジオラマシステム: 地面/天井分離)
+    if category == "CAVE":
+        from .cave_gen import create_procedural_cave_scene
+        c_path = kwargs.get('cave_path_type', 'STRAIGHT_S')
+        c_len = kwargs.get('cave_length', 25.0)
+        c_w = kwargs.get('cave_width', 6.0)
+        c_h = kwargs.get('cave_height', 4.5)
+        c_slope = kwargs.get('cave_slope', 2.0)
+        c_chamb = kwargs.get('cave_chamber_scale', 2.2)
+        c_rough = kwargs.get('cave_roughness', 0.35)
+
+        floor_obj, ceil_obj = create_procedural_cave_scene(
+            context=context,
+            name=name,
+            seed=seed,
+            path_type=c_path,
+            length=c_len,
+            width=c_w,
+            height=c_h,
+            slope=c_slope,
+            chamber_scale=c_chamb,
+            roughness=c_rough,
+            target_obj=target_obj
+        )
+        return floor_obj
 
     # 🔭 Telescope Preset (天体望遠鏡: 三脚・マウント・鏡筒 独立階層)
     if category == "TELESCOPE":

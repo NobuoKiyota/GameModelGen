@@ -26,6 +26,7 @@ from .fence_gen import build_wooden_fence_mesh
 from .bush_gen import build_bush_mesh, apply_bush_spherical_normals
 from .image_displace_gen import generate_image_displace_asset, finalize_game_ready_displace
 from .castle_wall_gen import create_castle_wall_scene, convert_castle_wall_to_game_mesh
+from .cave_gen import create_procedural_cave_scene
 from .core_orchestrator import generate_procedural_prop_mesh, resolve_prop_parameters, cleanup_old_debris
 
 __all__ = [
@@ -54,6 +55,9 @@ __all__ = [
     'build_wooden_fence_mesh',
     'build_bush_mesh',
     'apply_bush_spherical_normals',
+    'create_castle_wall_scene',
+    'convert_castle_wall_to_game_mesh',
+    'create_procedural_cave_scene',
     'generate_procedural_prop_mesh',
     'resolve_prop_parameters',
     'cleanup_old_debris'

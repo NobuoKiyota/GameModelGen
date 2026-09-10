@@ -466,6 +466,43 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 col_cw_btn.separator()
                 col_cw_btn.operator("mesh.convert_castle_wall_to_game_mesh", text="🎮 ゲーム用実体メッシュへ変換 (Make Real)", icon='CHECKMARK')
 
+            # Cave Preset Specific
+            elif props.prop_category == 'CAVE':
+                box_cave = layout.box()
+                box_cave.label(text="🪨 洞窟・岩窟ジオラマ (Procedural Cave System):", icon='MOD_BUILD')
+                box_cave.prop(props, "cave_path_type", text="ルート形状")
+                box_cave.prop(props, "cave_randomize_shape", text="🎲 Re-Roll時に形状も自動抽選")
+
+                # 寸法・スケール設定
+                box_c_dim = box_cave.box()
+                box_c_dim.label(text="📐 トンネル寸法 & 傾斜設定:", icon='ARROW_LEFTRIGHT')
+                row_cd1 = box_c_dim.row(align=True)
+                row_cd1.prop(props, "cave_length", text="全長 (m)")
+                row_cd1.prop(props, "cave_width", text="通路幅 (m)")
+                row_cd1.prop(props, "cave_height", text="天井高 (m)")
+
+                row_cd2 = box_c_dim.row(align=True)
+                row_cd2.prop(props, "cave_slope", text="高低差・傾斜 (m)")
+                if props.cave_path_type == 'CHAMBER_HALL':
+                    row_cd2.prop(props, "cave_chamber_scale", text="大広間倍率")
+
+                # 岩盤起伏設定
+                box_c_noise = box_cave.box()
+                box_c_noise.label(text="🏔️ 岩盤・鍾乳洞の起伏設定:", icon='MOD_DISPLACE')
+                box_c_noise.prop(props, "cave_roughness", text="起伏・うねり強度 (Roughness)", slider=True)
+
+                # 分離・構造ヒント
+                box_c_hint = box_cave.box()
+                box_c_hint.label(text="💡 地面 (Floor) と天井 (Ceiling) が分離生成されます", icon='INFO')
+                box_c_hint.label(text="   天井を非表示(Hキー)にすると内部が丸見えになります")
+
+                # 操作ボタン
+                col_c_btn = box_cave.column(align=True)
+                col_c_btn.scale_y = 1.3
+                col_c_btn.operator("mesh.reroll_cave", text="🎲 洞窟を再抽選 (Re-Roll All)", icon='FILE_REFRESH')
+                col_c_btn.operator("mesh.regenerate_cave", text="🔄 現在の設定で更新 (その場更新)", icon='FILE_CACHE')
+                col_c_btn.operator("mesh.create_cave", text="➕ 新規洞窟を生成", icon='ADD')
+
             # Dimensions Box
             box_dim = layout.box()
             row_dh = box_dim.row(align=True)
