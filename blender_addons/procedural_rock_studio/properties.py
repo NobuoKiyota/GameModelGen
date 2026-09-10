@@ -1165,6 +1165,53 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         update=update_fence_live_color
     )
 
+    # ── NATURE BIOME SCATTER Properties ──
+    biome_type: bpy.props.EnumProperty(
+        name="バイオーム種別",
+        items=[
+            ('MEADOW', "🌿 なだらかな野原 (Meadow Grassland)", "草株＋クローバー＋シダが広がる明るい草原"),
+            ('FOREST_FLOOR', "🌲 鬱蒼とした森林の地面 (Forest Undergrowth)", "シダ群生＋低木＋苔むした小石が豊かな林床"),
+            ('ROCKY_WASTELAND', "🪨 岩場・荒野 (Rocky Wasteland)", "岩石＋疎らな草株＋小低木が散らばる乾燥地")
+        ],
+        default='MEADOW',
+        description="散布する植物と地面のバイオーム生態系プリセット"
+    )
+    biome_density: bpy.props.FloatProperty(
+        name="散布密度 (Density)",
+        default=45.0, min=5.0, max=150.0,
+        description="地面1平方メートルあたりの散布ポイント密度（Poisson Disk分布）"
+    )
+    biome_min_dist: bpy.props.FloatProperty(
+        name="最小間隔 (Min Distance)",
+        default=0.14, min=0.04, max=0.8,
+        description="植物同士のポリゴン重なりを防止する最小離隔距離"
+    )
+    biome_include_fern: bpy.props.BoolProperty(
+        name="シダ・新芽を含む",
+        default=True,
+        description="羽状複葉とゼンマイ新芽を持つリアルシダ株を混入"
+    )
+    biome_include_shrub: bpy.props.BoolProperty(
+        name="小低木を含む",
+        default=True,
+        description="立体広葉を持つ小低木・藪をアクセントとして混入"
+    )
+    biome_include_pebble: bpy.props.BoolProperty(
+        name="小石を含む",
+        default=True,
+        description="地面に自然なローポリ丸小石を点在"
+    )
+    biome_terrain_size: bpy.props.FloatProperty(
+        name="テレイン規模 (Size)",
+        default=10.0, min=2.0, max=50.0,
+        description="生成する地面テレインの一辺の長さ（メートル）"
+    )
+    biome_undulation: bpy.props.FloatProperty(
+        name="地面の起伏 (Undulation)",
+        default=0.45, min=0.0, max=2.0,
+        description="FBMフラクタルによる地面の高低差・うねりの強さ"
+    )
+
 
 
 

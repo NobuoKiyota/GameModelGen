@@ -354,26 +354,45 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_legacy.prop(props, "fence_decay_jitter", text="経年劣化・歪み", slider=True)
 
 
-            # Grass Specific
+            # Grass & Biome Specific
             elif props.prop_category == 'GRASS':
-                box_gmode = layout.box()
-                box_gmode.label(text="Grass Type (草原タイプ):", icon='OUTLINER_OB_CURVE')
-                box_gmode.prop(props, "grass_mode", text="")
+                # 🌟 1. 内蔵バイオームスキャッター (Geometry Nodes 自己完結型)
+                box_biome = layout.box()
+                box_biome.label(text="🌿 リアル自然・バイオーム散布 (Nature Biome Scatter):", icon='NODETREE')
+                box_biome.prop(props, "biome_type", text="バイオーム")
+
+                box_b_param = box_biome.box()
+                box_b_param.label(text="📐 散布・テレイン設定 (Poisson Disk):", icon='MOD_PARTICLES')
+                row_bp1 = box_b_param.row(align=True)
+                row_bp1.prop(props, "biome_density", text="密度 (Density)")
+                row_bp1.prop(props, "biome_min_dist", text="最小離隔 (m)")
+                row_bp2 = box_b_param.row(align=True)
+                row_bp2.prop(props, "biome_terrain_size", text="規模 (m)")
+                row_bp2.prop(props, "biome_undulation", text="起伏 (Undulation)")
+
+                box_b_assets = box_biome.box()
+                box_b_assets.label(text="🌱 アセット混入設定:", icon='GROUP')
+                row_ba = box_b_assets.row(align=True)
+                row_ba.prop(props, "biome_include_fern", text="シダ・新芽")
+                row_ba.prop(props, "biome_include_shrub", text="小低木")
+                row_ba.prop(props, "biome_include_pebble", text="小石")
+
+                col_b_btn = box_biome.column(align=True)
+                col_b_btn.scale_y = 1.4
+                col_b_btn.operator("mesh.create_biome_scatter", text="🌾 バイオーム自然環境を一撃生成", icon='PARTICLE_POINT')
+                col_b_btn.operator("mesh.convert_scatter_to_game_mesh", text="🎮 ゲーム用実体メッシュへ変換 (Make Real)", icon='CHECKMARK')
+
+                # 🌟 2. 従来のヘアパーティクル式 草原（サブ設定）
+                box_legacy = layout.box()
+                box_legacy.label(text="🌾 クラシック草原パーティクル (Legacy Hair):", icon='OUTLINER_OB_POINTCLOUD')
+                box_legacy.prop(props, "grass_mode", text="草タイプ")
                 if props.grass_mode == 'MOUND':
-                    box_gmode.prop(props, "terrain_type", text="地形")
-                    box_gmode.prop(props, "floor_shape", text="床形状")
-                box_gfield = layout.box()
-                box_gfield.label(text="🌾 Grass Field Studio (草原一括生成):", icon='OUTLINER_OB_POINTCLOUD')
-                row_gf = box_gfield.row(align=True)
-                row_gf.scale_y = 1.5
-                row_gf.operator("mesh.create_grass_field", text="🌾 草原シーンを生成", icon='PARTICLE_POINT')
-                box_gfield.prop(props, "grass_density", text="草の密度 (Hair Count)")
-                box_gfield.prop(props, "grass_undulation", text="地面の起伏 (Undulation)")
-                box_gfield.prop(props, "grass_weight_noise", text="ウェイトノイズ (密度ムラ)")
-                box_gfield.separator()
-                box_gfield.label(text="🎮 Unity / FBX ゲーム用変換:", icon='EXPORT')
-                box_gfield.operator("mesh.convert_grass_to_game_mesh",
-                                    text="🎮 実体化メッシュへ変換 (Make Real)", icon='MESH_DATA')
+                    box_legacy.prop(props, "terrain_type", text="地形")
+                    box_legacy.prop(props, "floor_shape", text="床形状")
+                box_legacy.prop(props, "grass_density", text="草の本数 (Count)")
+                box_legacy.prop(props, "grass_undulation", text="起伏 (Undulation)")
+                box_legacy.operator("mesh.create_grass_field", text="🌾 クラシック草原を生成", icon='PARTICLE_DATA')
+                box_legacy.operator("mesh.convert_grass_to_game_mesh", text="🎮 実体化メッシュへ変換", icon='MESH_DATA')
 
             # Floor Specific
             elif props.prop_category == 'FLOOR':

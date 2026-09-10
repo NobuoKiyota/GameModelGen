@@ -851,4 +851,67 @@ class MESH_OT_apply_fence_colors(bpy.types.Operator):
         return {'FINISHED'}
 
 
+# ==============================================================================
+# Nature Biome Scatter Operators (Geometry Nodes 自己完結型)
+# ==============================================================================
+
+class MESH_OT_create_biome_scatter(bpy.types.Operator):
+    bl_idname = "mesh.create_biome_scatter"
+    bl_label = "🌾 バイオーム自然環境を一撃生成"
+    bl_description = "草株・リアルシダ・小低木・クローバー・小石が調和した自然環境をGeometry Nodesで自動生成します"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        name = props.asset_name.strip() or "Nature_Biome"
+
+        from ..generators.nature_gen import create_biome_scatter_scene
+
+        terrain_obj, biome_col = create_biome_scatter_scene(
+            context=context,
+            name=name,
+            seed=props.seed,
+            biome_type=props.biome_type,
+            terrain_size_x=props.biome_terrain_size,
+            terrain_size_y=props.biome_terrain_size,
+            undulation=props.biome_undulation,
+            density=props.biome_density,
+            min_dist=props.biome_min_dist,
+            include_fern=props.biome_include_fern,
+            include_shrub=props.biome_include_shrub,
+            include_pebbles=props.biome_include_pebble
+        )
+
+        context.view_layer.objects.active = terrain_obj
+        terrain_obj.select_set(True)
+        self.report({'INFO'}, f"バイオーム自然環境を生成しました: {terrain_obj.name}")
+        return {'FINISHED'}
+
+
+class MESH_OT_convert_scatter_to_game_mesh(bpy.types.Operator):
+    bl_idname = "mesh.convert_scatter_to_game_mesh"
+    bl_label = "🎮 ゲーム用実体メッシュへ変換 (Make Real)"
+    bl_description = "選択中テレインのGeometry Nodes散布インスタンスを実体メッシュとして確定し、Unity/UE向けFBX出力可能にします"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        obj = context.active_object
+        if not obj or obj.type != 'MESH':
+            self.report({'WARNING'}, "散布モディファイアを持つ地面テレインを選択してください")
+            return {'CANCELLED'}
+
+        from ..generators.nature_gen import convert_scatter_to_game_mesh
+
+        ok = convert_scatter_to_game_mesh(context, obj)
+        if ok:
+            v_cnt = len(obj.data.vertices)
+            p_cnt = len(obj.data.polygons)
+            self.report({'INFO'}, f"ゲーム用実体メッシュへ変換完了: {obj.name} ({v_cnt}頂点 / {p_cnt}ポリゴン)")
+            return {'FINISHED'}
+        else:
+            self.report({'WARNING'}, "有効な散布 Geometry Nodes モディファイアが見つかりませんでした")
+            return {'CANCELLED'}
+
+
+
 

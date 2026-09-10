@@ -10,8 +10,17 @@ from ..materials.nature_shaders import (
     create_procedural_leaf_material,
     create_procedural_grass_blade_shader,
     create_procedural_ground_terrain_shader,
+    create_procedural_bush_leaf_shader,
     create_procedural_water_shader,
     create_procedural_water_bed_shader
+)
+from .bush_gen import (
+    build_curved_leaf_blade,
+    build_stem_tube,
+    build_fiddlehead,
+    build_fern_frond,
+    build_dense_foliage_clump,
+    apply_bush_spherical_normals
 )
 from ..utils.texture_utils import get_textures_from_folder
 
@@ -999,3 +1008,390 @@ def create_grass_field_scene(context, name, seed=0,
         pass
 
     return terrain_obj, grass_col
+
+
+# ==============================================================================
+# 5. Nature Biome Scatter Engine (Geometry Nodes 自己完結型バイオーム散布)
+# ==============================================================================
+
+def build_grass_tuft_object(name, num_blades=8, height=0.38, spread=0.14, seed=0, mat=None):
+    """自然な放射状の草株 (Grass Tuft)"""
+    rng = random.Random(seed)
+    bm = bmesh.new()
+    uv_l = bm.loops.layers.uv.verify()
+    for i in range(num_blades):
+        angle = (2.0 * math.pi / num_blades) * i + rng.uniform(-0.25, 0.25)
+        dist = rng.uniform(0.02, spread)
+        bx = math.cos(angle) * dist
+        by = math.sin(angle) * dist
+        h = height * rng.uniform(0.75, 1.25)
+        cx = math.cos(angle) * rng.uniform(0.04, 0.12)
+        cy = math.sin(angle) * rng.uniform(0.04, 0.12)
+        build_grass_blade_with_uv(
+            bm, uv_l, height=h, base_width=0.026 * rng.uniform(0.8, 1.2),
+            curve_x=cx, curve_y=cy, seed=seed + i * 7
+        )
+        for v in bm.verts[-5:]:
+            v.co.x += bx
+            v.co.y += by
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    if mat:
+        obj.data.materials.append(mat)
+    return obj
+
+
+def build_mini_fern_object(name, num_fronds=6, height=0.65, seed=0, mat_leaf=None, mat_stem=None):
+    """ゼンマイ芽付きリアル羽状複葉シダ小株"""
+    rng = random.Random(seed)
+    bm = bmesh.new()
+    uv_l = bm.loops.layers.uv.verify()
+    for i in range(num_fronds):
+        ang = i * (2.0 * math.pi / num_fronds) + rng.uniform(-0.15, 0.15)
+        h = height * rng.uniform(0.9, 1.15)
+        build_fern_frond(
+            bm, mathutils.Vector((0, 0, 0.05)),
+            frond_len=h, base_angle=ang,
+            mat_idx=0, stem_mat_idx=1, uv_layer=uv_l,
+            seed=seed + i * 13
+        )
+    for fi in range(2):
+        ang = fi * math.pi + rng.uniform(-0.4, 0.4)
+        h = height * 0.55 * rng.uniform(0.85, 1.1)
+        build_fiddlehead(
+            bm, mathutils.Vector((0, 0, 0.05)),
+            height=h, base_angle=ang,
+            mat_idx=1, seed=seed + fi * 9
+        )
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    if mat_leaf:
+        obj.data.materials.append(mat_leaf)
+    if mat_stem:
+        obj.data.materials.append(mat_stem)
+    apply_bush_spherical_normals(obj, leaf_mat_idx=0, blend_factor=0.65)
+    return obj
+
+
+def build_clover_patch_object(name, num_stems=6, radius=0.22, seed=0, mat_leaf=None, mat_stem=None):
+    """地面を覆うクローバーパッチ"""
+    rng = random.Random(seed)
+    bm = bmesh.new()
+    uv_l = bm.loops.layers.uv.verify()
+    for i in range(num_stems):
+        ang = i * (2.0 * math.pi / num_stems) + rng.uniform(-0.3, 0.3)
+        dist = rng.uniform(0.04, radius)
+        base_p = mathutils.Vector((math.cos(ang) * dist, math.sin(ang) * dist, 0.0))
+        stem_h = rng.uniform(0.06, 0.12)
+        top_p = base_p + mathutils.Vector((rng.uniform(-0.02, 0.02), rng.uniform(-0.02, 0.02), stem_h))
+        build_stem_tube(bm, [base_p, top_p], [0.005, 0.003], segments=4, mat_idx=1, uv_layer=uv_l)
+        for li in range(3):
+            leaf_ang = li * (2.0 * math.pi / 3.0) + rng.uniform(-0.15, 0.15)
+            rot = mathutils.Euler((math.radians(45.0), 0.0, leaf_ang), 'XYZ')
+            build_curved_leaf_blade(
+                bm, top_p,
+                length=rng.uniform(0.05, 0.08),
+                width=rng.uniform(0.04, 0.06),
+                curl=0.2, v_cup=0.4,
+                shape='OVAL',
+                rot_euler=rot,
+                mat_idx=0,
+                uv_layer=uv_l
+            )
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    if mat_leaf:
+        obj.data.materials.append(mat_leaf)
+    if mat_stem:
+        obj.data.materials.append(mat_stem)
+    apply_bush_spherical_normals(obj, leaf_mat_idx=0, blend_factor=0.65)
+    return obj
+
+
+def build_pebble_object(name, size=0.14, seed=0, mat=None):
+    """自然に変形したローポリ小石"""
+    rng = random.Random(seed)
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=1, radius=size * 0.5)
+    scale_x = rng.uniform(0.8, 1.3)
+    scale_y = rng.uniform(0.7, 1.2)
+    scale_z = rng.uniform(0.4, 0.75)
+    for v in bm.verts:
+        v.co.x *= scale_x + rng.uniform(-0.08, 0.08)
+        v.co.y *= scale_y + rng.uniform(-0.08, 0.08)
+        v.co.z *= scale_z + rng.uniform(-0.05, 0.05)
+        if v.co.z < 0:
+            v.co.z *= 0.5
+        v.co.z += size * 0.15
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    if mat:
+        obj.data.materials.append(mat)
+    return obj
+
+
+def build_small_shrub_object(name, size=0.55, seed=0, mat_leaf=None, mat_stem=None):
+    """小低木"""
+    bm = bmesh.new()
+    uv_l = bm.loops.layers.uv.verify()
+    build_dense_foliage_clump(
+        bm, mathutils.Vector((0, 0, 0)),
+        size_x=size, size_y=size, size_z=size * 0.85,
+        layers=3, blades_per_layer=9,
+        seed=seed, mat_idx=0, uv_layer=uv_l
+    )
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    if mat_leaf:
+        obj.data.materials.append(mat_leaf)
+    if mat_stem:
+        obj.data.materials.append(mat_stem)
+    apply_bush_spherical_normals(obj, leaf_mat_idx=0, blend_factor=0.65)
+    return obj
+
+
+def create_nature_biome_assets_collection(context, base_name, biome_type="MEADOW",
+                                         seed=0, include_fern=True, include_shrub=True, include_pebbles=True):
+    """バイオーム散布用アセットコレクションの自動生成"""
+    col_name = base_name + "_BiomeAssets"
+    if col_name in bpy.data.collections:
+        bpy.data.collections.remove(bpy.data.collections[col_name])
+    biome_col = bpy.data.collections.new(col_name)
+    context.scene.collection.children.link(biome_col)
+
+    mat_grass = create_procedural_grass_blade_shader(base_name + "_Grass_Mat", seed=seed)
+    mat_leaf = create_procedural_bush_leaf_shader(base_name + "_Leaf_Mat", seed=seed)
+    mat_bark = create_procedural_bark_material(base_name + "_Bark_Mat", seed=seed)
+    mat_rock = create_procedural_bark_material(base_name + "_Rock_Mat", seed=seed + 77)
+    if "Principled BSDF" in mat_rock.node_tree.nodes:
+        mat_rock.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.95
+
+    assets = []
+
+    if biome_type == "FOREST_FLOOR":
+        if include_fern:
+            assets.append(build_mini_fern_object(base_name + "_Fern_Large", num_fronds=7, height=0.75, seed=seed+1, mat_leaf=mat_leaf, mat_stem=mat_bark))
+            assets.append(build_mini_fern_object(base_name + "_Fern_Mid", num_fronds=6, height=0.62, seed=seed+2, mat_leaf=mat_leaf, mat_stem=mat_bark))
+        if include_shrub:
+            assets.append(build_small_shrub_object(base_name + "_Shrub_A", size=0.60, seed=seed+3, mat_leaf=mat_leaf, mat_stem=mat_bark))
+            assets.append(build_small_shrub_object(base_name + "_Shrub_B", size=0.45, seed=seed+4, mat_leaf=mat_leaf, mat_stem=mat_bark))
+        assets.append(build_grass_tuft_object(base_name + "_Tuft_A", num_blades=8, height=0.36, spread=0.14, seed=seed+5, mat=mat_grass))
+        assets.append(build_grass_tuft_object(base_name + "_Tuft_B", num_blades=6, height=0.26, spread=0.12, seed=seed+6, mat=mat_grass))
+        assets.append(build_clover_patch_object(base_name + "_Clover", num_stems=6, radius=0.22, seed=seed+7, mat_leaf=mat_leaf, mat_stem=mat_bark))
+        if include_pebbles:
+            assets.append(build_pebble_object(base_name + "_Pebble_A", size=0.16, seed=seed+8, mat=mat_rock))
+            assets.append(build_pebble_object(base_name + "_Pebble_B", size=0.10, seed=seed+9, mat=mat_rock))
+
+    elif biome_type == "ROCKY_WASTELAND":
+        assets.append(build_grass_tuft_object(base_name + "_Tuft_Dry_A", num_blades=6, height=0.24, spread=0.12, seed=seed+1, mat=mat_grass))
+        assets.append(build_grass_tuft_object(base_name + "_Tuft_Dry_B", num_blades=5, height=0.18, spread=0.10, seed=seed+2, mat=mat_grass))
+        if include_shrub:
+            assets.append(build_small_shrub_object(base_name + "_Shrub_Stunt", size=0.38, seed=seed+3, mat_leaf=mat_leaf, mat_stem=mat_bark))
+        if include_pebbles:
+            assets.append(build_pebble_object(base_name + "_Rock_Large", size=0.28, seed=seed+4, mat=mat_rock))
+            assets.append(build_pebble_object(base_name + "_Rock_Mid", size=0.18, seed=seed+5, mat=mat_rock))
+            assets.append(build_pebble_object(base_name + "_Rock_Small", size=0.09, seed=seed+6, mat=mat_rock))
+
+    else:  # MEADOW (野原・草地)
+        assets.append(build_grass_tuft_object(base_name + "_Tuft_Tall", num_blades=8, height=0.45, spread=0.14, seed=seed+1, mat=mat_grass))
+        assets.append(build_grass_tuft_object(base_name + "_Tuft_Medium", num_blades=7, height=0.35, spread=0.12, seed=seed+2, mat=mat_grass))
+        assets.append(build_grass_tuft_object(base_name + "_Tuft_Short", num_blades=6, height=0.25, spread=0.10, seed=seed+3, mat=mat_grass))
+        assets.append(build_grass_tuft_object(base_name + "_Tuft_Spread", num_blades=10, height=0.32, spread=0.18, seed=seed+4, mat=mat_grass))
+        assets.append(build_clover_patch_object(base_name + "_Clover_A", num_stems=6, radius=0.22, seed=seed+5, mat_leaf=mat_leaf, mat_stem=mat_bark))
+        assets.append(build_clover_patch_object(base_name + "_Clover_B", num_stems=8, radius=0.26, seed=seed+6, mat_leaf=mat_leaf, mat_stem=mat_bark))
+        if include_fern:
+            assets.append(build_mini_fern_object(base_name + "_Fern", num_fronds=6, height=0.60, seed=seed+7, mat_leaf=mat_leaf, mat_stem=mat_bark))
+        if include_shrub:
+            assets.append(build_small_shrub_object(base_name + "_Small_Shrub", size=0.48, seed=seed+8, mat_leaf=mat_leaf, mat_stem=mat_bark))
+        if include_pebbles:
+            assets.append(build_pebble_object(base_name + "_Pebble_A", size=0.14, seed=seed+9, mat=mat_rock))
+            assets.append(build_pebble_object(base_name + "_Pebble_B", size=0.09, seed=seed+10, mat=mat_rock))
+
+    for a in assets:
+        biome_col.objects.link(a)
+        # 地面下 1000m に配置して作業ビューポートの視覚ノイズを排除
+        a.location = (1000.0, 1000.0, 0.0)
+
+    return biome_col
+
+
+def create_nature_scatter_geometry_nodes(node_tree_name, biome_col, seed=0,
+                                         density=45.0, min_dist=0.14, slope_min=0.65):
+    """Blender 3.6 対応 Geometry Nodes スキャッターツリー構築"""
+    if node_tree_name in bpy.data.node_groups:
+        bpy.data.node_groups.remove(bpy.data.node_groups[node_tree_name])
+
+    tree = bpy.data.node_groups.new(node_tree_name, 'GeometryNodeTree')
+    tree.inputs.new('NodeSocketGeometry', "Geometry")
+    sock_dens = tree.inputs.new('NodeSocketFloat', "Density")
+    sock_dens.default_value = density
+    sock_dens.min_value = 0.0
+    sock_seed = tree.inputs.new('NodeSocketInt', "Seed")
+    sock_seed.default_value = seed
+    sock_dist = tree.inputs.new('NodeSocketFloat', "Min Distance")
+    sock_dist.default_value = min_dist
+    sock_dist.min_value = 0.01
+
+    tree.outputs.new('NodeSocketGeometry', "Geometry")
+
+    n_in = tree.nodes.new('NodeGroupInput')
+    n_out = tree.nodes.new('NodeGroupOutput')
+    n_in.location = (-600, 0)
+    n_out.location = (850, 0)
+
+    # Slope Mask (急斜面除外)
+    n_norm = tree.nodes.new('GeometryNodeInputNormal')
+    n_norm.location = (-600, -200)
+
+    n_sepxyz = tree.nodes.new('ShaderNodeSeparateXYZ')
+    n_sepxyz.location = (-420, -200)
+    tree.links.new(n_norm.outputs['Normal'], n_sepxyz.inputs['Vector'])
+
+    n_map = tree.nodes.new('ShaderNodeMapRange')
+    n_map.location = (-240, -200)
+    n_map.inputs['From Min'].default_value = max(0.0, slope_min - 0.25)
+    n_map.inputs['From Max'].default_value = min(1.0, slope_min + 0.15)
+    n_map.inputs['To Min'].default_value = 0.0
+    n_map.inputs['To Max'].default_value = 1.0
+    tree.links.new(n_sepxyz.outputs['Z'], n_map.inputs['Value'])
+
+    # Distribute Points on Faces (Poisson Disk)
+    n_dist = tree.nodes.new('GeometryNodeDistributePointsOnFaces')
+    n_dist.distribute_method = 'POISSON'
+    n_dist.location = (-50, 100)
+    tree.links.new(n_in.outputs['Geometry'], n_dist.inputs['Mesh'])
+    tree.links.new(n_in.outputs['Density'], n_dist.inputs['Density Max'])
+    tree.links.new(n_in.outputs['Min Distance'], n_dist.inputs['Distance Min'])
+    tree.links.new(n_in.outputs['Seed'], n_dist.inputs['Seed'])
+    tree.links.new(n_map.outputs['Result'], n_dist.inputs['Density Factor'])
+
+    # Collection Info
+    n_col = tree.nodes.new('GeometryNodeCollectionInfo')
+    n_col.location = (150, -200)
+    n_col.inputs['Collection'].default_value = biome_col
+    n_col.inputs['Separate Children'].default_value = True
+    n_col.inputs['Reset Children'].default_value = True
+
+    # Random Scale (0.75 - 1.25)
+    n_rand_scale = tree.nodes.new('FunctionNodeRandomValue')
+    n_rand_scale.data_type = 'FLOAT'
+    n_rand_scale.inputs[2].default_value = 0.75
+    n_rand_scale.inputs[3].default_value = 1.25
+    n_rand_scale.location = (150, -400)
+    tree.links.new(n_in.outputs['Seed'], n_rand_scale.inputs[8])
+
+    # Random Z Rotation (0 - 2pi)
+    n_rand_rot_z = tree.nodes.new('FunctionNodeRandomValue')
+    n_rand_rot_z.data_type = 'FLOAT'
+    n_rand_rot_z.inputs[2].default_value = 0.0
+    n_rand_rot_z.inputs[3].default_value = 2.0 * math.pi
+    n_rand_rot_z.location = (150, -550)
+
+    n_comb_rot = tree.nodes.new('ShaderNodeCombineXYZ')
+    n_comb_rot.location = (320, -550)
+    tree.links.new(n_rand_rot_z.outputs[1], n_comb_rot.inputs['Z'])
+
+    # Instance on Points
+    n_inst = tree.nodes.new('GeometryNodeInstanceOnPoints')
+    n_inst.location = (420, 100)
+    n_inst.inputs['Pick Instance'].default_value = True
+    tree.links.new(n_dist.outputs['Points'], n_inst.inputs['Points'])
+    tree.links.new(n_col.outputs['Instances'], n_inst.inputs['Instance'])
+    tree.links.new(n_rand_scale.outputs[1], n_inst.inputs['Scale'])
+    tree.links.new(n_comb_rot.outputs['Vector'], n_inst.inputs['Rotation'])
+
+    # Join Geometry
+    n_join = tree.nodes.new('GeometryNodeJoinGeometry')
+    n_join.location = (640, 100)
+    tree.links.new(n_in.outputs['Geometry'], n_join.inputs['Geometry'])
+    tree.links.new(n_inst.outputs['Instances'], n_join.inputs['Geometry'])
+
+    tree.links.new(n_join.outputs['Geometry'], n_out.inputs['Geometry'])
+    return tree
+
+
+def create_biome_scatter_scene(context, name, seed=0, biome_type="MEADOW",
+                               terrain_size_x=10.0, terrain_size_y=10.0,
+                               undulation=0.45, density=45.0, min_dist=0.14,
+                               include_fern=True, include_shrub=True, include_pebbles=True):
+    """バイオーム自然環境シーン一括生成 (地面テレイン + アセットコレクション + Geometry Nodes)"""
+    col = context.collection
+
+    # 1. アセットコレクション生成
+    biome_col = create_nature_biome_assets_collection(
+        context, name, biome_type=biome_type, seed=seed,
+        include_fern=include_fern, include_shrub=include_shrub, include_pebbles=include_pebbles
+    )
+
+    # 2. 起伏地面メッシュ生成
+    terrain_name = name + "_Terrain"
+    if terrain_name in bpy.data.objects:
+        bpy.data.objects.remove(bpy.data.objects[terrain_name], do_unlink=True)
+
+    terrain_style = "ROCKY" if biome_type == "ROCKY_WASTELAND" else "MEADOW"
+    bm_t = bmesh.new()
+    build_grass_terrain_ground(bm_t, terrain_size_x, terrain_size_y,
+                               seed=seed, undulation=undulation, subdivisions=24,
+                               terrain_type=terrain_style)
+    mesh_t = bpy.data.meshes.new(terrain_name)
+    bm_t.to_mesh(mesh_t)
+    bm_t.free()
+
+    terrain_obj = bpy.data.objects.new(terrain_name, mesh_t)
+    col.objects.link(terrain_obj)
+    context.view_layer.objects.active = terrain_obj
+
+    ground_mat = create_procedural_ground_terrain_shader(name + "_Ground_Mat", seed=seed, terrain_type=terrain_style)
+    terrain_obj.data.materials.append(ground_mat)
+
+    # 3. Geometry Nodes モディファイア適用
+    gn_mod = terrain_obj.modifiers.new("BiomeScatter", 'NODES')
+    gn_tree = create_nature_scatter_geometry_nodes(
+        name + "_Scatter_GN", biome_col, seed=seed,
+        density=density, min_dist=min_dist, slope_min=0.65
+    )
+    gn_mod.node_group = gn_tree
+
+    return terrain_obj, biome_col
+
+
+def convert_scatter_to_game_mesh(context, terrain_obj):
+    """Geometry Nodes のインスタンスを実体メッシュ（Realize Instances）に変換してモディファイアを適用"""
+    if not terrain_obj or terrain_obj.type != 'MESH':
+        return False
+
+    gn_mod = None
+    for m in terrain_obj.modifiers:
+        if m.type == 'NODES' and m.node_group:
+            gn_mod = m
+            break
+
+    if not gn_mod:
+        return False
+
+    tree = gn_mod.node_group
+
+    # Realize Instances ノードをツリー内に挿入
+    n_real = tree.nodes.new('GeometryNodeRealizeInstances')
+    n_join = tree.nodes.get("Join Geometry")
+    n_out = tree.nodes.get("Group Output")
+
+    if n_join and n_out:
+        tree.links.new(n_join.outputs['Geometry'], n_real.inputs['Geometry'])
+        tree.links.new(n_real.outputs['Geometry'], n_out.inputs['Geometry'])
+
+    # モディファイアを適用して実体メッシュ化
+    context.view_layer.objects.active = terrain_obj
+    bpy.ops.object.modifier_apply(modifier=gn_mod.name)
+    return True
+

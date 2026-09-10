@@ -396,11 +396,11 @@ def create_procedural_grass_blade_shader(mat_name, seed=0):
     # ── Translucent BSDF ──────────────────────────────────
     node_trans = nodes.new('ShaderNodeBsdfTranslucent'); node_trans.location = (580, -200)
     node_trans.inputs['Color'].default_value = (
-        0.12 + hue * 0.3, 0.70 + hue, 0.05, 1.0)
+        max(0.02, 0.08 + hue * 0.2), min(1.0, 0.42 + hue), 0.04, 1.0)
 
     # ── Mix Shader (Principled + Translucent) ─────────────
     node_mix_shader = nodes.new('ShaderNodeMixShader'); node_mix_shader.location = (760, 0)
-    node_mix_shader.inputs['Fac'].default_value = 0.20   # 20% 透過
+    node_mix_shader.inputs['Fac'].default_value = 0.15   # 15% 透過
     links.new(node_bsdf.outputs['BSDF'],   node_mix_shader.inputs[1])
     links.new(node_trans.outputs['BSDF'],  node_mix_shader.inputs[2])
     links.new(node_mix_shader.outputs['Shader'], node_out.inputs['Surface'])
@@ -430,9 +430,9 @@ def create_procedural_grass_blade_shader(mat_name, seed=0):
     # ── ColorRamp: 色（根元濃緑〜先端鮮緑）──────────────
     node_ramp_col = nodes.new('ShaderNodeValToRGB'); node_ramp_col.location = (-180, 120)
     node_ramp_col.color_ramp.elements[0].position = 0.05
-    node_ramp_col.color_ramp.elements[0].color    = (0.02, 0.22 + hue, 0.02, 1.0)   # 根元 深いフォレストグリーン
+    node_ramp_col.color_ramp.elements[0].color    = (0.02, max(0.05, 0.14 + hue), 0.015, 1.0) # 根元 深いフォレストグリーン
     node_ramp_col.color_ramp.elements[1].position = 0.90
-    node_ramp_col.color_ramp.elements[1].color    = (0.18, 0.75 + hue, 0.06, 1.0)   # 先端 鮮やかライムグリーン
+    node_ramp_col.color_ramp.elements[1].color    = (0.12, min(0.9, 0.52 + hue), 0.05, 1.0)   # 先端 鮮やかライムグリーン
     links.new(get_mix_output(node_mix_fac), node_ramp_col.inputs['Fac'])
     links.new(node_ramp_col.outputs['Color'], node_bsdf.inputs['Base Color'])
 
