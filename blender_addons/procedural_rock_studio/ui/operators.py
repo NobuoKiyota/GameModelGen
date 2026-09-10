@@ -710,3 +710,76 @@ class MESH_OT_regenerate_speaker(bpy.types.Operator):
         )
         self.report({'INFO'}, f"スピーカーを更新しました: {obj_cabinet.name}")
         return {'FINISHED'}
+
+
+class MESH_OT_generate_fence_preset(bpy.types.Operator):
+    bl_idname = "mesh.generate_fence_preset"
+    bl_label = "➕ 実用フェンスを生成"
+    bl_description = "十字の鉄線、X字の鉄線、木板打ち付け(横/縦)の実用フェンスを一発出力"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..generators.fence_gen import generate_fence_preset_asset
+
+        name_map = {
+            'WIRE_CROSS': "Fence_WireCross",
+            'WIRE_X': "Fence_WireX",
+            'WOOD_HORIZ': "Fence_WoodHoriz",
+            'WOOD_VERT': "Fence_WoodVert"
+        }
+        name = name_map.get(props.fence_preset_type, "Fence_Asset")
+
+        obj_fence = generate_fence_preset_asset(
+            context=context,
+            name=name,
+            preset_type=props.fence_preset_type,
+            length=props.fence_length,
+            height=props.fence_height,
+            post_spacing=props.fence_post_spacing,
+            slat_gap=props.fence_slat_gap,
+            scale=props.fence_scale,
+            target_obj=None
+        )
+        self.report({'INFO'}, f"新規フェンスを生成しました: {obj_fence.name}")
+        return {'FINISHED'}
+
+
+class MESH_OT_regenerate_fence_preset(bpy.types.Operator):
+    bl_idname = "mesh.regenerate_fence_preset"
+    bl_label = "🔄 フェンスを再生成・更新"
+    bl_description = "選択中のフェンスのトランスフォーム・位置を保ったままスタイルや寸法を再構築"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        from ..generators.fence_gen import generate_fence_preset_asset, find_fence_root
+
+        active_obj = context.active_object
+        target = find_fence_root(active_obj)
+        if not target:
+            # 何も選択されていない、またはフェンス以外の場合は新規生成へ
+            return bpy.ops.mesh.generate_fence_preset()
+
+        name_map = {
+            'WIRE_CROSS': "Fence_WireCross",
+            'WIRE_X': "Fence_WireX",
+            'WOOD_HORIZ': "Fence_WoodHoriz",
+            'WOOD_VERT': "Fence_WoodVert"
+        }
+        name = name_map.get(props.fence_preset_type, target.name)
+
+        obj_fence = generate_fence_preset_asset(
+            context=context,
+            name=name,
+            preset_type=props.fence_preset_type,
+            length=props.fence_length,
+            height=props.fence_height,
+            post_spacing=props.fence_post_spacing,
+            slat_gap=props.fence_slat_gap,
+            scale=props.fence_scale,
+            target_obj=target
+        )
+        self.report({'INFO'}, f"フェンスを更新しました: {obj_fence.name}")
+        return {'FINISHED'}
+

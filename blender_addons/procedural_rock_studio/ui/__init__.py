@@ -20,8 +20,11 @@ from .operators import (
     MESH_OT_generate_wall_clock,
     MESH_OT_regenerate_wall_clock,
     MESH_OT_generate_speaker,
-    MESH_OT_regenerate_speaker
+    MESH_OT_regenerate_speaker,
+    MESH_OT_generate_fence_preset,
+    MESH_OT_regenerate_fence_preset
 )
+
 from .panel import VIEW3D_PT_prop_studio_panel
 
 classes = (
@@ -47,8 +50,11 @@ classes = (
     MESH_OT_regenerate_wall_clock,
     MESH_OT_generate_speaker,
     MESH_OT_regenerate_speaker,
+    MESH_OT_generate_fence_preset,
+    MESH_OT_regenerate_fence_preset,
     VIEW3D_PT_prop_studio_panel,
 )
+
 
 __all__ = [
     'classes',

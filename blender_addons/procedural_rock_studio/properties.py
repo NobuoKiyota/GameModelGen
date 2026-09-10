@@ -986,6 +986,39 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         description="スピーカー全体のサイズ倍率"
     )
 
+    # ── PRACTICAL FENCE PRESET Properties ──
+    fence_preset_type: bpy.props.EnumProperty(
+        name="フェンス様式",
+        items=[
+            ('WIRE_CROSS', "➕ 十字の鉄線 (Grid Wire)", "公園・空港・高速沿いの直交ワイヤー格子フェンス（画像1準拠）"),
+            ('WIRE_X', "❌ X字の鉄線 (Chain-Link)", "グラウンド・立ち入り禁止区域の45度斜め金網フェンス（画像3準拠）"),
+            ('WOOD_HORIZ', "🪵 木板打ち付け・横 (Horizontal Slat)", "横方向にスリットを空けて打ち付けた目隠しウッドフェンス（画像2準拠）"),
+            ('WOOD_VERT', "🪵 木板打ち付け・縦 (Vertical Picket)", "縦方向に整然と並べたウッドフェンス")
+        ],
+        default='WIRE_CROSS'
+    )
+    fence_length: bpy.props.FloatProperty(
+        name="全長 (Length)", default=4.0, min=1.0, max=50.0,
+        description="フェンスの全長 (m)"
+    )
+    fence_height: bpy.props.FloatProperty(
+        name="高さ (Height)", default=1.5, min=0.5, max=5.0,
+        description="フェンスの全高 (m)"
+    )
+    fence_post_spacing: bpy.props.FloatProperty(
+        name="支柱スパン (Span)", default=2.0, min=0.8, max=5.0,
+        description="支柱と支柱の間隔 (m)"
+    )
+    fence_slat_gap: bpy.props.FloatProperty(
+        name="木板の隙間 (Gap)", default=0.015, min=0.005, max=0.10,
+        description="木板同士のスリット隙間 (m)"
+    )
+    fence_scale: bpy.props.FloatProperty(
+        name="スケール (Scale)", default=1.0, min=0.2, max=5.0,
+        description="全体のサイズ倍率"
+    )
+
+
 
 
 

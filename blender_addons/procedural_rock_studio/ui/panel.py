@@ -291,12 +291,34 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
             # Fence Specific
             elif props.prop_category == 'FENCE':
                 box_fence = layout.box()
-                box_fence.label(text="Fence Architecture (柵・防壁タイプ):", icon='SNAP_INCREMENT')
-                box_fence.prop(props, "fence_type", text="")
+                box_fence.label(text="🚧 実用フェンス・金網プリセット (Modern & Wood):", icon='SNAP_INCREMENT')
+                box_fence.prop(props, "fence_preset_type", text="様式")
+
+                # 寸法・形状パラメータ
+                box_dim = box_fence.box()
+                box_dim.label(text="📐 フェンス寸法 & スパン設定:", icon='ARROW_LEFTRIGHT')
+                box_dim.prop(props, "fence_length", text="全長 (m)")
+                box_dim.prop(props, "fence_height", text="高さ (m)")
+                box_dim.prop(props, "fence_post_spacing", text="支柱スパン (m)")
+                if props.fence_preset_type in ('WOOD_HORIZ', 'WOOD_VERT'):
+                    box_dim.prop(props, "fence_slat_gap", text="木板の隙間 (m)")
+                box_dim.prop(props, "fence_scale", text="スケール")
+
+                # 一発生成 & 再生成ボタン（その場更新）
+                col_btn = box_fence.column(align=True)
+                col_btn.scale_y = 1.3
+                col_btn.operator("mesh.regenerate_fence_preset", text="🔄 再生成・更新 (選択中を更新)", icon='FILE_REFRESH')
+                col_btn.operator("mesh.generate_fence_preset", text="➕ 新規フェンスを生成", icon='ADD')
+
+                # 従来のクラシック木製柵（サブ設定）
+                box_legacy = box_fence.box()
+                box_legacy.label(text="🪵 クラシック牧場柵・防壁 (Legacy):", icon='DECORATE')
+                box_legacy.prop(props, "fence_type", text="様式")
                 if props.fence_type == 'POST_AND_RAIL':
-                    box_fence.prop(props, "fence_rails_count", text="横木の段数 (Rails)")
-                box_fence.prop(props, "fence_post_spacing", text="支柱の間隔 (Spacing)")
-                box_fence.prop(props, "fence_decay_jitter", text="経年劣化・歪み (Jitter)", slider=True)
+                    box_legacy.prop(props, "fence_rails_count", text="横木の段数")
+                box_legacy.prop(props, "fence_post_spacing", text="支柱の間隔")
+                box_legacy.prop(props, "fence_decay_jitter", text="経年劣化・歪み", slider=True)
+
 
             # Grass Specific
             elif props.prop_category == 'GRASS':
