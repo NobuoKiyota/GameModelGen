@@ -1092,14 +1092,14 @@ class MESH_OT_convert_castle_wall_to_game_mesh(bpy.types.Operator):
 
 
 # ==============================================================================
-# 🪨 Cave Operators (洞窟・岩窟ジオラマシステム)
+# 🪨 Cave Operators (新・岩棚テラス＆水流トレンチ洞窟フロア基盤)
 # ==============================================================================
 
 class MESH_OT_regenerate_cave(bpy.types.Operator):
     """Regenerate currently active Cave in-place without object accumulation"""
     bl_idname = "mesh.regenerate_cave"
-    bl_label = "🔄 洞窟を更新・再生成"
-    bl_description = "現在のパラメータで洞窟の地面・天井をその場更新します（重複堆積しません）"
+    bl_label = "🔄 洞窟フロアを更新・再生成"
+    bl_description = "現在のパラメータで洞窟の岩棚床面・水流をその場更新します（重複堆積しません）"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -1108,51 +1108,54 @@ class MESH_OT_regenerate_cave(bpy.types.Operator):
 
         active_obj = context.active_object
         target = None
-        if active_obj and active_obj.type == 'MESH' and ("_Floor" in active_obj.name or "_Ceiling" in active_obj.name):
+        if active_obj and active_obj.type == 'MESH' and ("_Floor" in active_obj.name or "_Water" in active_obj.name):
             target = active_obj
 
-        name = target.name.replace("_Floor", "").replace("_Ceiling", "") if target else (props.asset_name.strip() or "Cave")
+        name = target.name.replace("_Floor", "").replace("_Water", "") if target else (props.asset_name.strip() or "Cave")
 
-        floor_obj, ceil_obj = create_procedural_cave_scene(
+        floor_obj, water_obj = create_procedural_cave_scene(
             context=context,
             name=name,
             seed=props.seed,
-            path_type=props.cave_path_type,
-            length=props.cave_length,
-            width=props.cave_width,
-            height=props.cave_height,
-            slope=props.cave_slope,
-            chamber_scale=props.cave_chamber_scale,
+            has_river=props.cave_has_river,
+            floor_width=props.cave_floor_width,
+            floor_length=props.cave_floor_length,
+            river_width=props.cave_river_width,
+            river_depth=props.cave_river_depth,
+            terrace_steps=props.cave_terrace_steps,
             roughness=props.cave_roughness,
             target_obj=target
         )
 
         context.view_layer.objects.active = floor_obj
         floor_obj.select_set(True)
-        self.report({'INFO'}, f"洞窟を更新しました: {name} (地面 & 天井)")
+        w_msg = f" ＆ 水面: {water_obj.name}" if water_obj else " (川なし)"
+        self.report({'INFO'}, f"洞窟フロアを更新しました: {name} (床面: {floor_obj.name}{w_msg})")
         return {'FINISHED'}
 
 
 class MESH_OT_reroll_cave(bpy.types.Operator):
-    """Re-roll cave shape, chamber, slope, and rough surfaces with a new random seed"""
+    """Re-roll cave terrace, river path, and rock roughness with a new random seed"""
     bl_idname = "mesh.reroll_cave"
-    bl_label = "🎲 洞窟を再抽選 (Re-Roll)"
-    bl_description = "洞窟の蛇行カーブ・傾斜・大空洞・岩肌の起伏を新しいシードで完全再抽選します"
+    bl_label = "🎲 洞窟フロアを再抽選 (Re-Roll)"
+    bl_description = "水流の蛇行・岩棚の段差・ボロノイ断層を新しいシードで完全再抽選します"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         props = context.scene.prop_studio_props
         props.seed = random.randint(1, 999999)
         if getattr(props, 'cave_randomize_shape', False):
-            props.cave_path_type = random.choice(['STRAIGHT_S', 'CHAMBER_HALL', 'FORK_Y'])
+            props.cave_river_width = round(random.uniform(3.0, 6.0), 1)
+            props.cave_river_depth = round(random.uniform(0.9, 1.8), 2)
+            props.cave_terrace_steps = random.randint(3, 6)
         return bpy.ops.mesh.regenerate_cave()
 
 
 class MESH_OT_create_cave(bpy.types.Operator):
-    """Create a new procedural cave dungeon system with separate floor and ceiling"""
+    """Create a new procedural cave floor with terraced rock cliffs and optional river"""
     bl_idname = "mesh.create_cave"
-    bl_label = "➕ 新規洞窟を生成"
-    bl_description = "一本道・S字・Y字分岐・大空洞を持つリアルな洞窟システム（地面と天井の2パーツ分離）を新規生成します"
+    bl_label = "➕ 新規洞窟フロアを生成"
+    bl_description = "切り立った岩棚テラスと蛇行水流トレンチを持つリアルな洞窟フロア基盤を新規生成します"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -1167,23 +1170,24 @@ class MESH_OT_create_cave(bpy.types.Operator):
 
         from ..generators.cave_gen import create_procedural_cave_scene
 
-        floor_obj, ceil_obj = create_procedural_cave_scene(
+        floor_obj, water_obj = create_procedural_cave_scene(
             context=context,
             name=name,
             seed=props.seed,
-            path_type=props.cave_path_type,
-            length=props.cave_length,
-            width=props.cave_width,
-            height=props.cave_height,
-            slope=props.cave_slope,
-            chamber_scale=props.cave_chamber_scale,
+            has_river=props.cave_has_river,
+            floor_width=props.cave_floor_width,
+            floor_length=props.cave_floor_length,
+            river_width=props.cave_river_width,
+            river_depth=props.cave_river_depth,
+            terrace_steps=props.cave_terrace_steps,
             roughness=props.cave_roughness,
             target_obj=None
         )
 
         context.view_layer.objects.active = floor_obj
         floor_obj.select_set(True)
-        self.report({'INFO'}, f"新規洞窟を生成しました: {name} (地面: {floor_obj.name}, 天井: {ceil_obj.name})")
+        w_msg = f", 水面: {water_obj.name}" if water_obj else ""
+        self.report({'INFO'}, f"新規洞窟フロアを生成しました: {name} (床面: {floor_obj.name}{w_msg})")
         return {'FINISHED'}
 
 

@@ -1315,55 +1315,43 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     )
 
     # ── CAVE (Dungeon / Cave System) Properties ──
-    cave_path_type: bpy.props.EnumProperty(
-        name="洞窟ルート形状",
-        items=[
-            ('STRAIGHT_S', "〰️ S字一本道 (S-Curve Tunnel)", "緩やかな蛇行カーブと高低差を持つ一本道トンネル"),
-            ('CHAMBER_HALL', "🏛️ 大空洞・広間 (Chamber Dome)", "狭い坑道から巨大なドーム状大広間に広がる大空洞"),
-            ('FORK_Y', "🌿 Y字分岐 (Forked Y-Junction)", "途中で2つのルートに枝分かれする分岐トンネル")
-        ],
-        default='STRAIGHT_S',
-        description="洞窟全体の骨格パス・ルート構造"
+    cave_has_river: bpy.props.BoolProperty(
+        name="🌊 川・水流を生成 (Has River)",
+        default=True,
+        description="洞窟の中央を蛇行して流れる水流トレンチ（川床）と水面メッシュを生成"
     )
-    cave_length: bpy.props.FloatProperty(
-        name="全長 (Length)",
-        default=25.0, min=8.0, max=120.0,
-        description="洞窟トンネルの全長（メートル）"
+    cave_river_width: bpy.props.FloatProperty(
+        name="川幅 (River Width)",
+        default=4.5, min=1.5, max=20.0,
+        description="中央の水流（川床）の横幅（メートル）"
     )
-    cave_width: bpy.props.FloatProperty(
-        name="通路幅 (Width)",
-        default=6.0, min=2.5, max=30.0,
-        description="洞窟通路の標準的な横幅（メートル）"
+    cave_river_depth: bpy.props.FloatProperty(
+        name="水流の谷の深さ (River Depth)",
+        default=1.3, min=0.3, max=6.0,
+        description="川底が岩盤から掘り下げられる深さ（メートル）"
     )
-    cave_height: bpy.props.FloatProperty(
-        name="天井高 (Height)",
-        default=4.5, min=2.0, max=25.0,
-        description="洞窟通路の標準的な天井の高さ（メートル）"
+    cave_terrace_steps: bpy.props.IntProperty(
+        name="岩棚の段数 (Terrace Steps)",
+        default=4, min=1, max=10,
+        description="両岸の歩行可能な平坦岩棚・階段状テラスの段数"
     )
-    cave_slope: bpy.props.FloatProperty(
-        name="高低差・傾斜 (Slope)",
-        default=2.0, min=-20.0, max=20.0,
-        description="入口から奥への立体的な上り・下り傾斜（メートル）"
+    cave_floor_width: bpy.props.FloatProperty(
+        name="洞窟床の全幅 (Floor Width)",
+        default=18.0, min=6.0, max=60.0,
+        description="洞窟全体の左右の広がり幅（メートル）"
     )
-    cave_chamber_scale: bpy.props.FloatProperty(
-        name="大空洞倍率 (Chamber Scale)",
-        default=2.2, min=1.2, max=4.5,
-        description="大広間（Chamber）部分の横幅・天井高の広がり倍率"
+    cave_floor_length: bpy.props.FloatProperty(
+        name="洞窟の全長 (Length)",
+        default=35.0, min=10.0, max=120.0,
+        description="洞窟フロアの奥行き・全長（メートル）"
     )
     cave_roughness: bpy.props.FloatProperty(
-        name="岩肌の起伏・うねり (Roughness)",
-        default=0.35, min=0.05, max=0.80,
-        description="洞窟内壁・地面のゴツゴツした岩盤ノイズ・棚状起伏の強さ"
+        name="岩盤の起伏・断層 (Roughness)",
+        default=0.8, min=0.1, max=2.0,
+        description="ボロノイ断層・岩肌のゴツゴツしたスラブ感の強さ"
     )
     cave_randomize_shape: bpy.props.BoolProperty(
-        name="Re-Roll時にルート形状も自動抽選",
+        name="Re-Roll時に幅・段差も自動抽選",
         default=False,
-        description="再抽選時にS字・大空洞・Y字分岐をランダムに自動選択"
+        description="再抽選時に川幅や岩棚の段数・起伏もランダムに自動変化"
     )
-
-
-
-
-
-
-

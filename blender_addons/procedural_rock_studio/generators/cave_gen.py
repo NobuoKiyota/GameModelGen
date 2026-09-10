@@ -6,331 +6,463 @@ from mathutils import Vector, Matrix, Euler
 import random
 
 # ==============================================================================
-# 1. Cave Path Waypoints Generator (洞窟骨格パス生成)
+# 1. Procedural Noise & Voronoi Helpers (岩石断層・ファセット計算)
 # ==============================================================================
 
-def generate_cave_path_waypoints(path_type='STRAIGHT_S', length=25.0, slope=2.0,
-                                 chamber_scale=2.2, num_steps=32, seed=0):
+def pseudo_noise_3d(x, y, z, seed=0):
+    """Simple procedural pseudo-noise using trigonometric frequencies."""
+    v = (
+        math.sin(x * 0.45 + seed * 1.31) * math.cos(y * 0.38 + seed * 2.17) +
+        math.sin(y * 0.85 + z * 0.73 + seed * 0.53) * 0.5 +
+        math.cos(x * 1.73 + y * 1.61 + z * 1.22 + seed * 3.41) * 0.25 +
+        math.sin(x * 3.81 - y * 3.19 + z * 2.71 + seed * 4.97) * 0.125
+    )
+    return v
+
+def voronoi_cell_noise(x, y, cell_size=3.0, seed=0):
+    """Grid-based 2D Voronoi F1 / F2 distance for sharp rock fissures and plateaus."""
+    gx = x / cell_size
+    gy = y / cell_size
+    ix = math.floor(gx)
+    iy = math.floor(gy)
+    
+    d1 = 999.0
+    d2 = 999.0
+    cell_id = 0.0
+
+    for ox in (-1, 0, 1):
+        for oy in (-1, 0, 1):
+            cx = ix + ox
+            cy = iy + oy
+            # Pseudo-random point in cell
+            h = math.sin(cx * 127.1 + cy * 311.7 + seed * 53.1) * 43758.5453
+            h = h - math.floor(h)
+            h2 = math.sin(cx * 269.5 + cy * 183.3 + seed * 19.7) * 43758.5453
+            h2 = h2 - math.floor(h2)
+            
+            px = cx + h
+            py = cy + h2
+            dist = math.sqrt((gx - px)**2 + (gy - py)**2)
+            
+            if dist < d1:
+                d2 = d1
+                d1 = dist
+                cell_id = h
+            elif dist < d2:
+                d2 = dist
+
+    # Sharp ledge feature (F2 - F1)
+    fissure = d2 - d1
+    return d1, fissure, cell_id
+
+
+# ==============================================================================
+# 2. Cave Centerline / River Path (蛇行曲線パス)
+# ==============================================================================
+
+def get_cave_center_x(y, length=35.0, seed=0):
+    """Calculates the S-curve horizontal deviation at coordinate y."""
     rng = random.Random(seed)
-    waypoints = []
-
-    freq1 = 2.5 * math.pi / max(5.0, length)
-    freq2 = 5.0 * math.pi / max(5.0, length)
-    ph_x1 = rng.uniform(0, 10.0)
-    ph_x2 = rng.uniform(0, 10.0)
-
-    for i in range(num_steps):
-        t = i / float(num_steps - 1)  # 0.0 to 1.0
-        y_pos = (t - 0.5) * length
-
-        # 基本のS字カーブ横揺れ
-        curve_x = (
-            math.sin(y_pos * freq1 + ph_x1) * 3.5 +
-            math.sin(y_pos * freq2 + ph_x2) * 1.5
-        )
-
-        # 立体的な傾斜（上り/下り坂）
-        curve_z = t * slope + math.cos(y_pos * freq1 + ph_x2) * 1.0
-
-        rad_scale = 1.0
-
-        if path_type == 'CHAMBER_HALL':
-            # 中央（t=0.35〜0.65）で大空洞（Chamber）に広がる
-            dist_from_center = abs(t - 0.5)
-            if dist_from_center < 0.25:
-                w = math.cos(dist_from_center / 0.25 * math.pi * 0.5)
-                rad_scale = 1.0 + (chamber_scale - 1.0) * w
-                curve_z += (rad_scale - 1.0) * 1.2
-        elif path_type == 'FORK_Y':
-            # Y字分岐（幹から途中で枝分かれするカーブ）
-            if t > 0.4:
-                branch_factor = (t - 0.4) / 0.6
-                curve_x += math.sin(branch_factor * math.pi * 0.5) * 6.0
-                rad_scale = 1.0 + math.sin(branch_factor * math.pi) * 0.35
-
-        pt = Vector((curve_x, y_pos, curve_z))
-        waypoints.append((pt, rad_scale))
-
-    return waypoints
+    ph1 = rng.uniform(0, 6.28)
+    ph2 = rng.uniform(0, 6.28)
+    freq1 = 2.2 * math.pi / max(10.0, length)
+    freq2 = 4.5 * math.pi / max(10.0, length)
+    
+    x = math.sin(y * freq1 + ph1) * 3.5 + math.sin(y * freq2 + ph2) * 1.2
+    return x
 
 
 # ==============================================================================
-# 2. Cave Tube Mesh Extrusion (チューブ押し出し & 空洞構築)
+# 3. Terraced Cave Floor BMesh Builder (新・岩棚テラス＆水流トレンチ床面)
 # ==============================================================================
 
-def build_cave_tube_bmesh(waypoints, base_width=6.0, base_height=4.5,
-                          cross_segments=20, seed=0):
-    rng = random.Random(seed)
+def build_terraced_cave_floor_bmesh(
+    width=18.0,
+    length=35.0,
+    has_river=True,
+    river_width=4.0,
+    river_depth=1.4,
+    terrace_steps=4,
+    step_height=0.6,
+    roughness=0.8,
+    seed=0,
+    subdivisions_x=64,
+    subdivisions_y=80
+):
+    """
+    Creates a realistic natural cave floor featuring:
+    - Central meandering river gorge (if has_river=True)
+    - Terraced rock ledges (walkable flat plateaus with sharp cliff edges)
+    - Voronoi fractured slabs and faceted rock strata
+    """
     bm = bmesh.new()
 
-    rings = []
-    num_wp = len(waypoints)
+    hx = width * 0.5
+    hy = length * 0.5
+    
+    dx = width / float(subdivisions_x)
+    dy = length / float(subdivisions_y)
 
-    for i in range(num_wp):
-        pt, rad_scale = waypoints[i]
+    grid_verts = []
 
-        # 進行方向（接線ベクトル）の計算
-        if i == 0:
-            tangent = (waypoints[1][0] - pt).normalized()
-        elif i == num_wp - 1:
-            tangent = (pt - waypoints[i - 1][0]).normalized()
-        else:
-            tangent = (waypoints[i + 1][0] - waypoints[i - 1][0]).normalized()
+    # 1. Create Grid Vertices with Procedural Heights
+    for iy in range(subdivisions_y + 1):
+        y_pos = -hy + iy * dy
+        center_x = get_cave_center_x(y_pos, length=length, seed=seed)
+        row = []
 
-        up_approx = Vector((0, 0, 1))
-        right = tangent.cross(up_approx)
-        if right.length < 0.001:
-            right = Vector((1, 0, 0))
-        else:
-            right.normalize()
-        up = right.cross(tangent).normalized()
+        for ix in range(subdivisions_x + 1):
+            x_pos = -hx + ix * dx
+            
+            # Distance from cave/river center
+            dist_to_center = abs(x_pos - center_x)
+            norm_dist = dist_to_center / (hx * 0.85)
+            
+            # Base canyon slope: sides rise up towards cave walls
+            base_z = (norm_dist ** 1.8) * (terrace_steps * step_height)
 
-        rx = (base_width * 0.5) * rad_scale * rng.uniform(0.92, 1.08)
-        rz = (base_height * 0.5) * rad_scale * rng.uniform(0.92, 1.08)
+            # River trench (carve valley at the center)
+            in_river = False
+            river_factor = 0.0
+            if has_river:
+                half_rw = river_width * 0.5
+                if dist_to_center < half_rw:
+                    in_river = True
+                    # Smooth valley profile (quadratic bowl with flat riverbed)
+                    t = dist_to_center / half_rw
+                    # Trench profile: deep at center, steep banks
+                    depth_curve = math.cos(t * math.pi * 0.5) ** 1.5
+                    base_z -= river_depth * depth_curve
+                    river_factor = 1.0 - t
+                elif dist_to_center < half_rw + 1.2:
+                    # Steep bank transition
+                    t_bank = (dist_to_center - half_rw) / 1.2
+                    base_z -= river_depth * (1.0 - t_bank) * 0.25
 
-        ring_verts = []
-        for s in range(cross_segments):
-            angle = 2.0 * math.pi * (s / float(cross_segments))
-            cos_a = math.cos(angle)
-            sin_a = math.sin(angle)
+            # 2. Rock Terraces (Step quantization for flat walkable ledges)
+            if not in_river:
+                # Quantize height into discrete terraces
+                step_val = base_z / step_height
+                stepped_z = math.floor(step_val) * step_height
+                frac = step_val - math.floor(step_val)
+                # S-curve smoothstep for vertical cliff edges between terraces
+                cliff_blend = frac ** 3 * (frac * (frac * 6 - 15) + 10)
+                terrace_z = stepped_z + cliff_blend * step_height
+                # Blend with base to preserve organic slope
+                z_final = terrace_z * 0.7 + base_z * 0.3
+            else:
+                z_final = base_z
 
-            # 底面（sin_a < 0）は平らに潰して歩ける床にする
-            local_z = sin_a * rz
-            if sin_a < 0:
-                local_z *= 0.55
+            # 3. Voronoi Rock Fissures & Faceting (Sharp rock slabs)
+            d1, fissure, cell_id = voronoi_cell_noise(x_pos, y_pos, cell_size=2.8, seed=seed)
+            slab_offset = (cell_id - 0.5) * 0.45 * roughness
+            crack_indent = (1.0 - min(1.0, fissure * 3.5)) * -0.35 * roughness
 
-            local_x = cos_a * rx
+            # 4. Multi-frequency Micro Roughness
+            micro_noise = pseudo_noise_3d(x_pos * 0.8, y_pos * 0.8, z_final, seed=seed) * 0.3 * roughness
 
-            v_pos = pt + right * local_x + up * local_z
-            v = bm.verts.new(v_pos)
-            ring_verts.append(v)
+            # Combine all height layers
+            z_total = z_final + slab_offset + crack_indent + micro_noise
 
-        rings.append(ring_verts)
+            # Slight horizontal jitter for non-grid natural rock feel
+            jx = (math.sin(x_pos * 1.7 + y_pos * 2.3 + seed) * 0.15) * roughness
+            jy = (math.cos(x_pos * 2.1 - y_pos * 1.8 + seed) * 0.15) * roughness
+
+            vert = bm.verts.new((x_pos + jx, y_pos + jy, z_total))
+            row.append((vert, river_factor))
+
+        grid_verts.append(row)
 
     bm.verts.ensure_lookup_table()
 
-    # フェイス作成時に床属性 (is_floor) を整然とタグ付け
-    floor_layer = bm.faces.layers.int.new("is_floor")
-
-    for i in range(num_wp - 1):
-        r0 = rings[i]
-        r1 = rings[i + 1]
-        for s in range(cross_segments):
-            s_next = (s + 1) % cross_segments
-            v0 = r0[s]
-            v1 = r0[s_next]
-            v2 = r1[s_next]
-            v3 = r1[s]
-            f = bm.faces.new((v0, v3, v2, v1))
-
-            # 底面 (s / cross_segments ~= 0.75) を中心とした下半周を床とする
-            norm_s = (s + 0.5) / float(cross_segments)
-            dist_to_bottom = abs(norm_s - 0.75)
-            if dist_to_bottom > 0.5:
-                dist_to_bottom = abs(dist_to_bottom - 1.0)
-
-            # 底面を中心とした円周の55%を下部床面（Floor）、上部45%を天井（Ceiling）に綺麗に二分
-            f[floor_layer] = 1 if dist_to_bottom <= 0.28 else 0
+    # 2. Create Faces
+    for iy in range(subdivisions_y):
+        for ix in range(subdivisions_x):
+            v1 = grid_verts[iy][ix][0]
+            v2 = grid_verts[iy][ix + 1][0]
+            v3 = grid_verts[iy + 1][ix + 1][0]
+            v4 = grid_verts[iy + 1][ix][0]
+            try:
+                bm.faces.new((v1, v2, v3, v4))
+            except ValueError:
+                pass
 
     bm.faces.ensure_lookup_table()
+    bm.normal_update()
+
+    # Smooth shading
+    for f in bm.faces:
+        f.smooth = True
+
     return bm
 
 
 # ==============================================================================
-# 3. Organic Cave Deformation (岩肌凹凸・うねり・棚状段差)
+# 4. Cave River Water Strip Builder (水面メッシュ生成)
 # ==============================================================================
 
-def apply_organic_cave_noise(bm, roughness=0.35, seed=0):
-    if roughness <= 0.001:
-        return
+def build_cave_water_bmesh(
+    length=35.0,
+    river_width=4.0,
+    water_level=-0.35,
+    seed=0,
+    segments_y=60,
+    segments_x=8
+):
+    """Creates a flowing river water surface mesh embedded in the cave trench."""
+    bm = bmesh.new()
 
-    rng = random.Random(seed)
-    ph1 = rng.uniform(0, 20.0)
-    ph2 = rng.uniform(0, 20.0)
-    ph3 = rng.uniform(0, 20.0)
+    hy = length * 0.5
+    dy = length / float(segments_y)
+    # Expand slightly wider than riverbed so edges intersect rock banks cleanly
+    w_effective = river_width * 1.15
+    dx = w_effective / float(segments_x)
 
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    water_verts = []
 
-    for v in bm.verts:
-        # 低周波ノイズ（大きな岩盤のうねり・棚）
-        f1 = 0.25
-        wave1 = (
-            math.sin(v.co.x * f1 + ph1) * math.cos(v.co.y * f1 + ph2) +
-            math.sin(v.co.z * f1 * 1.5 + ph3) * 0.5
-        ) * roughness * 1.4
+    for iy in range(segments_y + 1):
+        y_pos = -hy + iy * dy
+        center_x = get_cave_center_x(y_pos, length=length, seed=seed)
+        row = []
 
-        # 中周波ノイズ（角張った岩の割れ目・ゴツゴツ）
-        f2 = 0.75
-        wave2 = (
-            math.sin(v.co.x * f2 + ph2) * math.sin(v.co.z * f2 + ph1)
-        ) * roughness * 0.6
+        for ix in range(segments_x + 1):
+            offset_x = (-w_effective * 0.5) + ix * dx
+            x_pos = center_x + offset_x
+            
+            # Subtle gentle water ripple displacement
+            wave = (
+                math.sin(y_pos * 1.5 + x_pos * 0.8) * 0.02 +
+                math.cos(y_pos * 3.2 - x_pos * 1.4) * 0.01
+            )
+            z_pos = water_level + wave
 
-        # 高周波微細凹凸（岩肌チッピング）
-        micro_noise = rng.uniform(-0.04, 0.04) * roughness * 2.0
-
-        disp = wave1 + wave2 + micro_noise
-        v.co += v.normal * disp
+            v = bm.verts.new((x_pos, y_pos, z_pos))
+            row.append(v)
+        water_verts.append(row)
 
     bm.verts.ensure_lookup_table()
+
+    for iy in range(segments_y):
+        for ix in range(segments_x):
+            v1 = water_verts[iy][ix]
+            v2 = water_verts[iy][ix + 1]
+            v3 = water_verts[iy + 1][ix + 1]
+            v4 = water_verts[iy + 1][ix]
+            try:
+                bm.faces.new((v1, v2, v3, v4))
+            except ValueError:
+                pass
+
     bm.faces.ensure_lookup_table()
-
-
-# ==============================================================================
-# 4. Floor & Ceiling Separation (地面と天井・壁の自動分離)
-# ==============================================================================
-
-def separate_cave_floor_and_ceiling(bm_cave, floor_normal_threshold=0.25):
-    bm_floor = bmesh.new()
-    bm_ceiling = bmesh.new()
-
-    floor_layer = bm_cave.faces.layers.int.get("is_floor")
-    floor_faces = []
-    ceiling_faces = []
-
-    for f in bm_cave.faces:
-        if floor_layer and f[floor_layer] == 1:
-            floor_faces.append(f)
-        else:
-            ceiling_faces.append(f)
-
-    vert_map_floor = {}
-    for f in floor_faces:
-        face_verts = []
-        for v in f.verts:
-            if v not in vert_map_floor:
-                vert_map_floor[v] = bm_floor.verts.new(v.co)
-            face_verts.append(vert_map_floor[v])
-        try:
-            bm_floor.faces.new(face_verts)
-        except Exception:
-            pass
-
-    vert_map_ceil = {}
-    for f in ceiling_faces:
-        face_verts = []
-        for v in f.verts:
-            if v not in vert_map_ceil:
-                vert_map_ceil[v] = bm_ceiling.verts.new(v.co)
-            face_verts.append(vert_map_ceil[v])
-        try:
-            bm_ceiling.faces.new(face_verts)
-        except Exception:
-            pass
-
-    bm_floor.verts.ensure_lookup_table()
-    bm_floor.faces.ensure_lookup_table()
-    bm_ceiling.verts.ensure_lookup_table()
-    bm_ceiling.faces.ensure_lookup_table()
-
-    for f in bm_floor.faces:
-        f.smooth = True
-    for f in bm_ceiling.faces:
+    bm.normal_update()
+    for f in bm.faces:
         f.smooth = True
 
-    return bm_floor, bm_ceiling
+    return bm
 
 
 # ==============================================================================
-# 5. Materials (仮の暗色岩石マテリアル)
+# 5. PBR Materials (濡れ岩・地層スラブ・クリア流水マテリアル)
 # ==============================================================================
 
-def get_or_create_cave_material(mat_name, is_floor=False):
+def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_river=True):
+    """Creates procedural PBR material for terraced cave rock with wet shoreline."""
     mat = bpy.data.materials.get(mat_name)
-    if mat and mat.node_tree:
-        return mat
-    if not mat:
+    if mat is None:
         mat = bpy.data.materials.new(name=mat_name)
     mat.use_nodes = True
     tree = mat.node_tree
-    tree.nodes.clear()
+    nodes = tree.nodes
+    links = tree.links
+    nodes.clear()
 
-    n_out = tree.nodes.new('ShaderNodeOutputMaterial')
-    n_out.location = (400, 0)
-    n_bsdf = tree.nodes.new('ShaderNodeBsdfPrincipled')
-    n_bsdf.location = (100, 0)
-    tree.links.new(n_bsdf.outputs['BSDF'], n_out.inputs['Surface'])
+    coord = nodes.new(type='ShaderNodeTexCoord')
+    coord.location = (-1200, 200)
 
-    n_coord = tree.nodes.new('ShaderNodeTexCoord')
-    n_coord.location = (-700, 0)
-    n_noise = tree.nodes.new('ShaderNodeTexNoise')
-    n_noise.location = (-500, 0)
-    n_noise.inputs['Scale'].default_value = 5.0
-    n_noise.inputs['Detail'].default_value = 4.0
-    n_noise.inputs['Roughness'].default_value = 0.7
-    tree.links.new(n_coord.outputs['Object'], n_noise.inputs['Vector'])
+    # 1. Base Rock Texture (Noise)
+    rock_noise = nodes.new(type='ShaderNodeTexNoise')
+    rock_noise.location = (-950, 300)
+    rock_noise.inputs['Scale'].default_value = 5.0
+    rock_noise.inputs['Detail'].default_value = 8.0
+    rock_noise.inputs['Roughness'].default_value = 0.65
+    links.new(coord.outputs['Object'], rock_noise.inputs['Vector'])
 
-    n_ramp = tree.nodes.new('ShaderNodeValToRGB')
-    n_ramp.location = (-250, 100)
-    if is_floor:
-        n_ramp.color_ramp.elements[0].color = (0.12, 0.11, 0.10, 1.0)
-        n_ramp.color_ramp.elements[1].color = (0.28, 0.25, 0.22, 1.0)
-        n_bsdf.inputs['Roughness'].default_value = 0.70
+    # 2. Strata / Layering Texture (Wave texture for horizontal rock bands)
+    strata_wave = nodes.new(type='ShaderNodeTexWave')
+    strata_wave.location = (-950, 50)
+    strata_wave.wave_type = 'BANDS'
+    strata_wave.bands_direction = 'Z'
+    strata_wave.inputs['Scale'].default_value = 2.5
+    strata_wave.inputs['Distortion'].default_value = 4.0
+    strata_wave.inputs['Detail'].default_value = 5.0
+    links.new(coord.outputs['Object'], strata_wave.inputs['Vector'])
+
+    # Color Ramp for Rock Tone
+    ramp_rock = nodes.new(type='ShaderNodeValToRGB')
+    ramp_rock.location = (-650, 250)
+    ramp_rock.color_ramp.elements[0].position = 0.15
+    ramp_rock.color_ramp.elements[0].color = (0.04, 0.04, 0.045, 1.0)
+    ramp_rock.color_ramp.elements[1].position = 0.85
+    ramp_rock.color_ramp.elements[1].color = (0.16, 0.14, 0.12, 1.0)
+    links.new(rock_noise.outputs['Fac'], ramp_rock.inputs['Fac'])
+
+    # Wetness Mask (Height-based)
+    sep_xyz = nodes.new(type='ShaderNodeSeparateXYZ')
+    sep_xyz.location = (-950, -450)
+    links.new(coord.outputs['Object'], sep_xyz.inputs['Vector'])
+
+    ramp_wet = nodes.new(type='ShaderNodeValToRGB')
+    ramp_wet.location = (-650, -450)
+    ramp_wet.color_ramp.elements[0].position = 0.25
+    ramp_wet.color_ramp.elements[0].color = (1.0, 1.0, 1.0, 1.0) # Wet
+    ramp_wet.color_ramp.elements[1].position = 0.60
+    ramp_wet.color_ramp.elements[1].color = (0.0, 0.0, 0.0, 1.0) # Dry
+    links.new(sep_xyz.outputs['Z'], ramp_wet.inputs['Fac'])
+
+    # Darker wet color helper
+    dark_wet = nodes.new(type='ShaderNodeMix')
+    dark_wet.location = (-450, -100)
+    dark_wet.data_type = 'RGBA'
+    # Factor is input 0
+    dark_wet.inputs[0].default_value = 0.65
+    # Color A is input 6, Color B is input 7
+    links.new(ramp_rock.outputs['Color'], dark_wet.inputs[6])
+    dark_wet.inputs[7].default_value = (0.01, 0.015, 0.02, 1.0)
+
+    # Mix Color (Dry vs Wet)
+    mix_color = nodes.new(type='ShaderNodeMix')
+    mix_color.location = (-200, 150)
+    mix_color.data_type = 'RGBA'
+    if has_river:
+        links.new(ramp_wet.outputs['Color'], mix_color.inputs[0])
     else:
-        n_ramp.color_ramp.elements[0].color = (0.15, 0.15, 0.16, 1.0)
-        n_ramp.color_ramp.elements[1].color = (0.32, 0.31, 0.30, 1.0)
-        n_bsdf.inputs['Roughness'].default_value = 0.88
+        mix_color.inputs[0].default_value = 0.0
+    links.new(ramp_rock.outputs['Color'], mix_color.inputs[6])
+    # dark_wet output color is output 2
+    links.new(dark_wet.outputs[2], mix_color.inputs[7])
 
-    tree.links.new(n_noise.outputs['Fac'], n_ramp.inputs['Fac'])
-    tree.links.new(n_ramp.outputs['Color'], n_bsdf.inputs['Base Color'])
+    # Bump Map
+    bump = nodes.new(type='ShaderNodeBump')
+    bump.location = (-200, -250)
+    bump.inputs['Strength'].default_value = 0.45
+    bump.inputs['Distance'].default_value = 0.15
+    links.new(rock_noise.outputs['Fac'], bump.inputs['Height'])
 
-    n_bump = tree.nodes.new('ShaderNodeBump')
-    n_bump.location = (-100, -150)
-    n_bump.inputs['Strength'].default_value = 0.35
-    n_bump.inputs['Distance'].default_value = 0.05
-    tree.links.new(n_noise.outputs['Fac'], n_bump.inputs['Height'])
-    tree.links.new(n_bump.outputs['Normal'], n_bsdf.inputs['Normal'])
+    # Principled BSDF
+    bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    bsdf.location = (100, 100)
+    links.new(mix_color.outputs[2], bsdf.inputs['Base Color'])
+    links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+
+    # Roughness
+    if has_river:
+        rough_mix = nodes.new(type='ShaderNodeMix')
+        rough_mix.location = (-50, -150)
+        rough_mix.data_type = 'FLOAT'
+        links.new(ramp_wet.outputs['Color'], rough_mix.inputs[0])
+        rough_mix.inputs[2].default_value = 0.82 # A (Dry)
+        rough_mix.inputs[3].default_value = 0.12 # B (Wet glossy)
+        links.new(rough_mix.outputs[0], bsdf.inputs['Roughness'])
+    else:
+        bsdf.inputs['Roughness'].default_value = 0.85
+
+    # Output
+    output = nodes.new(type='ShaderNodeOutputMaterial')
+    output.location = (400, 100)
+    links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+    return mat
+
+
+def get_or_create_cave_water_material(mat_name="Cave_Water_Mat"):
+    """Creates clear, reflective cave river water with subtle caustics/ripples."""
+    mat = bpy.data.materials.get(mat_name)
+    if mat is None:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    tree = mat.node_tree
+    nodes = tree.nodes
+    links = tree.links
+    nodes.clear()
+
+    coord = nodes.new(type='ShaderNodeTexCoord')
+    coord.location = (-800, 100)
+
+    # Wave texture for water ripples
+    wave = nodes.new(type='ShaderNodeTexWave')
+    wave.location = (-550, 100)
+    wave.wave_type = 'RINGS'
+    wave.inputs['Scale'].default_value = 4.0
+    wave.inputs['Distortion'].default_value = 8.0
+    wave.inputs['Detail'].default_value = 4.0
+    links.new(coord.outputs['Object'], wave.inputs['Vector'])
+
+    bump = nodes.new(type='ShaderNodeBump')
+    bump.location = (-250, 0)
+    bump.inputs['Strength'].default_value = 0.08
+    bump.inputs['Distance'].default_value = 0.05
+    links.new(wave.outputs['Fac'], bump.inputs['Height'])
+
+    bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    bsdf.location = (0, 100)
+    # Deep clear turquoise tint
+    bsdf.inputs['Base Color'].default_value = (0.02, 0.12, 0.15, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.03
+    bsdf.inputs['IOR'].default_value = 1.333
+    bsdf.inputs['Transmission'].default_value = 0.95
+    links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+
+    output = nodes.new(type='ShaderNodeOutputMaterial')
+    output.location = (250, 100)
+    links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+    # EEVEE settings for refraction/transparency
+    mat.blend_method = 'BLEND'
+    mat.shadow_method = 'HASHED'
 
     return mat
 
 
 # ==============================================================================
-# 6. Main Cave Scene Builder (シーン配置 & 堆積防止)
+# 6. Main Procedural Cave Scene Builder (Step 1 統合)
 # ==============================================================================
 
 def create_procedural_cave_scene(
     context,
     name="Cave",
     seed=0,
-    path_type='STRAIGHT_S',
-    length=25.0,
-    width=6.0,
-    height=4.5,
-    slope=2.0,
-    chamber_scale=2.2,
-    roughness=0.35,
-    separate_ceiling=True,
-    target_obj=None
+    has_river=True,
+    floor_width=18.0,
+    floor_length=35.0,
+    river_width=4.5,
+    river_depth=1.3,
+    terrace_steps=4,
+    step_height=0.6,
+    roughness=0.8,
+    target_obj=None,
+    **kwargs
 ):
+    """
+    Main entry point for New Cave Step 1.
+    Builds the terraced cliff cave floor and optional river trench water mesh.
+    Supports in-place updates to avoid object piling.
+    """
     col = context.collection
 
-    waypoints = generate_cave_path_waypoints(
-        path_type=path_type,
-        length=length,
-        slope=slope,
-        chamber_scale=chamber_scale,
-        num_steps=32,
+    # 1. Build Floor BMesh
+    bm_floor = build_terraced_cave_floor_bmesh(
+        width=floor_width,
+        length=floor_length,
+        has_river=has_river,
+        river_width=river_width,
+        river_depth=river_depth,
+        terrace_steps=terrace_steps,
+        step_height=step_height,
+        roughness=roughness,
         seed=seed
     )
-
-    bm_cave = build_cave_tube_bmesh(
-        waypoints=waypoints,
-        base_width=width,
-        base_height=height,
-        cross_segments=20,
-        seed=seed
-    )
-
-    apply_organic_cave_noise(bm_cave, roughness=roughness, seed=seed)
-
-    bm_floor, bm_ceiling = separate_cave_floor_and_ceiling(bm_cave, floor_normal_threshold=0.25)
-    bm_cave.free()
-
-    mat_floor = get_or_create_cave_material(name + "_Floor_Mat", is_floor=True)
-    mat_ceiling = get_or_create_cave_material(name + "_Ceiling_Mat", is_floor=False)
 
     floor_obj_name = name + "_Floor"
-    ceiling_obj_name = name + "_Ceiling"
-
     floor_obj = bpy.data.objects.get(floor_obj_name)
     if floor_obj and floor_obj.type == 'MESH':
         bm_floor.to_mesh(floor_obj.data)
@@ -341,31 +473,50 @@ def create_procedural_cave_scene(
         floor_obj = bpy.data.objects.new(floor_obj_name, mesh_floor)
         col.objects.link(floor_obj)
 
-    ceiling_obj = bpy.data.objects.get(ceiling_obj_name)
-    if ceiling_obj and ceiling_obj.type == 'MESH':
-        bm_ceiling.to_mesh(ceiling_obj.data)
-        ceiling_obj.data.update()
-    else:
-        mesh_ceiling = bpy.data.meshes.new(ceiling_obj_name)
-        bm_ceiling.to_mesh(mesh_ceiling)
-        ceiling_obj = bpy.data.objects.new(ceiling_obj_name, mesh_ceiling)
-        col.objects.link(ceiling_obj)
-
     bm_floor.free()
-    bm_ceiling.free()
 
+    mat_floor = get_or_create_cave_floor_material(name + "_Floor_Mat", has_river=has_river)
     if floor_obj.data.materials:
         floor_obj.data.materials[0] = mat_floor
     else:
         floor_obj.data.materials.append(mat_floor)
 
-    if ceiling_obj.data.materials:
-        ceiling_obj.data.materials[0] = mat_ceiling
+    # 2. Handle River Water Mesh
+    water_obj_name = name + "_Water"
+    water_obj = bpy.data.objects.get(water_obj_name)
+
+    if has_river:
+        bm_water = build_cave_water_bmesh(
+            length=floor_length,
+            river_width=river_width,
+            water_level=-river_depth * 0.45,
+            seed=seed
+        )
+        if water_obj and water_obj.type == 'MESH':
+            bm_water.to_mesh(water_obj.data)
+            water_obj.data.update()
+            water_obj.hide_viewport = False
+            water_obj.hide_render = False
+        else:
+            mesh_water = bpy.data.meshes.new(water_obj_name)
+            bm_water.to_mesh(mesh_water)
+            water_obj = bpy.data.objects.new(water_obj_name, mesh_water)
+            col.objects.link(water_obj)
+
+        bm_water.free()
+
+        mat_water = get_or_create_cave_water_material(name + "_Water_Mat")
+        if water_obj.data.materials:
+            water_obj.data.materials[0] = mat_water
+        else:
+            water_obj.data.materials.append(mat_water)
     else:
-        ceiling_obj.data.materials.append(mat_ceiling)
+        # If river is disabled and water object exists, remove or hide it
+        if water_obj:
+            bpy.data.objects.remove(water_obj, do_unlink=True)
+            water_obj = None
 
     context.view_layer.objects.active = floor_obj
     floor_obj.select_set(True)
-    ceiling_obj.select_set(False)
 
-    return floor_obj, ceiling_obj
+    return floor_obj, water_obj

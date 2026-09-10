@@ -469,39 +469,41 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
             # Cave Preset Specific
             elif props.prop_category == 'CAVE':
                 box_cave = layout.box()
-                box_cave.label(text="🪨 洞窟・岩窟ジオラマ (Procedural Cave System):", icon='MOD_BUILD')
-                box_cave.prop(props, "cave_path_type", text="ルート形状")
-                box_cave.prop(props, "cave_randomize_shape", text="🎲 Re-Roll時に形状も自動抽選")
+                box_cave.label(text="🪨 洞窟・岩窟ジオラマ (岩棚テラス＆水流トレンチ):", icon='MOD_BUILD')
 
-                # 寸法・スケール設定
+                # 1. 川・水流設定 (チェックボックスでON/OFF可能)
+                box_c_river = box_cave.box()
+                row_cr = box_c_river.row(align=True)
+                row_cr.prop(props, "cave_has_river", text="🌊 川・水流を生成 (Has River)", toggle=True)
+                if props.cave_has_river:
+                    row_cr_params = box_c_river.row(align=True)
+                    row_cr_params.prop(props, "cave_river_width", text="川幅 (m)")
+                    row_cr_params.prop(props, "cave_river_depth", text="谷の深さ (m)")
+
+                # 2. 岩棚（テラス）＆フロア寸法設定
                 box_c_dim = box_cave.box()
-                box_c_dim.label(text="📐 トンネル寸法 & 傾斜設定:", icon='ARROW_LEFTRIGHT')
+                box_c_dim.label(text="📐 岩棚テラス & フロア寸法:", icon='ARROW_LEFTRIGHT')
                 row_cd1 = box_c_dim.row(align=True)
-                row_cd1.prop(props, "cave_length", text="全長 (m)")
-                row_cd1.prop(props, "cave_width", text="通路幅 (m)")
-                row_cd1.prop(props, "cave_height", text="天井高 (m)")
+                row_cd1.prop(props, "cave_floor_width", text="全幅 (m)")
+                row_cd1.prop(props, "cave_floor_length", text="全長 (m)")
 
                 row_cd2 = box_c_dim.row(align=True)
-                row_cd2.prop(props, "cave_slope", text="高低差・傾斜 (m)")
-                if props.cave_path_type == 'CHAMBER_HALL':
-                    row_cd2.prop(props, "cave_chamber_scale", text="大広間倍率")
+                row_cd2.prop(props, "cave_terrace_steps", text="岩棚段数")
+                row_cd2.prop(props, "cave_roughness", text="断層起伏 (Roughness)", slider=True)
 
-                # 岩盤起伏設定
-                box_c_noise = box_cave.box()
-                box_c_noise.label(text="🏔️ 岩盤・鍾乳洞の起伏設定:", icon='MOD_DISPLACE')
-                box_c_noise.prop(props, "cave_roughness", text="起伏・うねり強度 (Roughness)", slider=True)
+                box_cave.prop(props, "cave_randomize_shape", text="🎲 Re-Roll時に幅・段差も自動抽選")
 
-                # 分離・構造ヒント
+                # 構造ヒント
                 box_c_hint = box_cave.box()
-                box_c_hint.label(text="💡 地面 (Floor) と天井 (Ceiling) が分離生成されます", icon='INFO')
-                box_c_hint.label(text="   天井を非表示(Hキー)にすると内部が丸見えになります")
+                box_c_hint.label(text="💡 床面 (Floor) と水面 (Water) が独立生成されます", icon='INFO')
+                box_c_hint.label(text="   ボロノイ断層により角張った平坦な岩盤スラブが形成されます")
 
                 # 操作ボタン
                 col_c_btn = box_cave.column(align=True)
                 col_c_btn.scale_y = 1.3
-                col_c_btn.operator("mesh.reroll_cave", text="🎲 洞窟を再抽選 (Re-Roll All)", icon='FILE_REFRESH')
+                col_c_btn.operator("mesh.reroll_cave", text="🎲 洞窟フロアを再抽選 (Re-Roll All)", icon='FILE_REFRESH')
                 col_c_btn.operator("mesh.regenerate_cave", text="🔄 現在の設定で更新 (その場更新)", icon='FILE_CACHE')
-                col_c_btn.operator("mesh.create_cave", text="➕ 新規洞窟を生成", icon='ADD')
+                col_c_btn.operator("mesh.create_cave", text="➕ 新規洞窟フロアを生成", icon='ADD')
 
             # Dimensions Box
             box_dim = layout.box()

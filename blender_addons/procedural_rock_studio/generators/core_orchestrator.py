@@ -243,12 +243,12 @@ def resolve_prop_parameters(props):
         "castle_wall_batter": props.castle_wall_batter,
         "castle_wall_roughness": props.castle_wall_roughness,
         # Cave parameters
-        "cave_path_type": random.choice(['STRAIGHT_S', 'CHAMBER_HALL', 'FORK_Y']) if getattr(props, 'cave_randomize_shape', False) else props.cave_path_type,
-        "cave_length": props.cave_length,
-        "cave_width": props.cave_width,
-        "cave_height": props.cave_height,
-        "cave_slope": props.cave_slope,
-        "cave_chamber_scale": props.cave_chamber_scale,
+        "cave_has_river": props.cave_has_river,
+        "cave_river_width": round(random.uniform(3.0, 6.0), 1) if getattr(props, 'cave_randomize_shape', False) else props.cave_river_width,
+        "cave_river_depth": round(random.uniform(0.9, 1.8), 2) if getattr(props, 'cave_randomize_shape', False) else props.cave_river_depth,
+        "cave_terrace_steps": random.randint(3, 6) if getattr(props, 'cave_randomize_shape', False) else props.cave_terrace_steps,
+        "cave_floor_width": props.cave_floor_width,
+        "cave_floor_length": props.cave_floor_length,
         "cave_roughness": props.cave_roughness,
     }
 
@@ -385,27 +385,27 @@ def generate_procedural_prop_mesh(
         )
         return wall_obj
 
-    # 🪨 Cave Preset (洞窟・岩窟ジオラマシステム: 地面/天井分離)
+    # 🪨 Cave Preset (新・岩棚テラス＆水流トレンチ洞窟フロア基盤)
     if category == "CAVE":
         from .cave_gen import create_procedural_cave_scene
-        c_path = kwargs.get('cave_path_type', 'STRAIGHT_S')
-        c_len = kwargs.get('cave_length', 25.0)
-        c_w = kwargs.get('cave_width', 6.0)
-        c_h = kwargs.get('cave_height', 4.5)
-        c_slope = kwargs.get('cave_slope', 2.0)
-        c_chamb = kwargs.get('cave_chamber_scale', 2.2)
-        c_rough = kwargs.get('cave_roughness', 0.35)
+        c_river = kwargs.get('cave_has_river', True)
+        c_r_w = kwargs.get('cave_river_width', 4.5)
+        c_r_d = kwargs.get('cave_river_depth', 1.3)
+        c_steps = kwargs.get('cave_terrace_steps', 4)
+        c_f_w = kwargs.get('cave_floor_width', 18.0)
+        c_f_l = kwargs.get('cave_floor_length', 35.0)
+        c_rough = kwargs.get('cave_roughness', 0.8)
 
-        floor_obj, ceil_obj = create_procedural_cave_scene(
+        floor_obj, water_obj = create_procedural_cave_scene(
             context=context,
             name=name,
             seed=seed,
-            path_type=c_path,
-            length=c_len,
-            width=c_w,
-            height=c_h,
-            slope=c_slope,
-            chamber_scale=c_chamb,
+            has_river=c_river,
+            floor_width=c_f_w,
+            floor_length=c_f_l,
+            river_width=c_r_w,
+            river_depth=c_r_d,
+            terrace_steps=c_steps,
             roughness=c_rough,
             target_obj=target_obj
         )
