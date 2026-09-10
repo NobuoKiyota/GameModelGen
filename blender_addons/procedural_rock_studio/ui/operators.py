@@ -719,6 +719,12 @@ class MESH_OT_generate_fence_preset(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        if context.mode != 'OBJECT':
+            try:
+                bpy.ops.object.mode_set(mode='OBJECT')
+            except Exception:
+                pass
+
         props = context.scene.prop_studio_props
         from ..generators.fence_gen import generate_fence_preset_asset
 
@@ -739,6 +745,10 @@ class MESH_OT_generate_fence_preset(bpy.types.Operator):
             post_spacing=props.fence_post_spacing,
             slat_gap=props.fence_slat_gap,
             scale=props.fence_scale,
+            frame_color=props.fence_frame_color,
+            body_color=props.fence_body_color,
+            metallic=props.fence_metallic,
+            roughness=props.fence_roughness,
             target_obj=None
         )
         self.report({'INFO'}, f"新規フェンスを生成しました: {obj_fence.name}")
@@ -752,6 +762,12 @@ class MESH_OT_regenerate_fence_preset(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        if context.mode != 'OBJECT':
+            try:
+                bpy.ops.object.mode_set(mode='OBJECT')
+            except Exception:
+                pass
+
         props = context.scene.prop_studio_props
         from ..generators.fence_gen import generate_fence_preset_asset, find_fence_root
 
@@ -778,8 +794,38 @@ class MESH_OT_regenerate_fence_preset(bpy.types.Operator):
             post_spacing=props.fence_post_spacing,
             slat_gap=props.fence_slat_gap,
             scale=props.fence_scale,
+            frame_color=props.fence_frame_color,
+            body_color=props.fence_body_color,
+            metallic=props.fence_metallic,
+            roughness=props.fence_roughness,
             target_obj=target
         )
         self.report({'INFO'}, f"フェンスを更新しました: {obj_fence.name}")
         return {'FINISHED'}
+
+
+class MESH_OT_apply_fence_colors(bpy.types.Operator):
+    bl_idname = "mesh.apply_fence_colors"
+    bl_label = "🎨 カラーを即時反映"
+    bl_description = "メッシュを再構築せず、現在選択中のフェンスのマテリアル色・質感を瞬時に塗り替えます"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        active_obj = context.active_object
+        from ..generators.fence_gen import apply_fence_material_colors
+
+        ok = apply_fence_material_colors(
+            active_obj,
+            frame_color=props.fence_frame_color,
+            body_color=props.fence_body_color,
+            metallic=props.fence_metallic,
+            roughness=props.fence_roughness
+        )
+        if ok:
+            self.report({'INFO'}, "選択中フェンスのマテリアル色を更新しました")
+        else:
+            self.report({'WARNING'}, "フェンスオブジェクトが選択されていません")
+        return {'FINISHED'}
+
 

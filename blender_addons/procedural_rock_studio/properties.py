@@ -234,7 +234,72 @@ def update_solidify_realtime(self, context):
     setup_or_update_solidify_modifier(obj, thickness=self.img_disp_solidify_thickness, style=self.img_disp_block_style)
 
 
+def update_fence_live_color(self, context):
+    """選択中フェンスのマテリアル色・質感をリアルタイム反映"""
+    active_obj = context.active_object
+    if active_obj:
+        from .generators.fence_gen import apply_fence_material_colors
+        apply_fence_material_colors(
+            active_obj,
+            frame_color=self.fence_frame_color,
+            body_color=self.fence_body_color,
+            metallic=self.fence_metallic,
+            roughness=self.fence_roughness
+        )
+
+
+def update_fence_color_preset(self, context):
+    """フェンスカラープリセットの切り替え"""
+    cp = self.fence_color_preset
+    ptype = self.fence_preset_type
+
+    if cp == 'PRESET_DEFAULT':
+        if ptype == 'WIRE_CROSS':
+            self.fence_frame_color = (0.05, 0.05, 0.05, 1.0)
+            self.fence_body_color  = (0.06, 0.06, 0.06, 1.0)
+            self.fence_metallic = 0.25
+            self.fence_roughness = 0.35
+        elif ptype == 'WIRE_X':
+            self.fence_frame_color = (0.08, 0.38, 0.22, 1.0)
+            self.fence_body_color  = (0.08, 0.42, 0.24, 1.0)
+            self.fence_metallic = 0.15
+            self.fence_roughness = 0.40
+        else: # WOOD
+            self.fence_frame_color = (0.18, 0.12, 0.08, 1.0)
+            self.fence_body_color  = (0.42, 0.25, 0.15, 1.0)
+            self.fence_metallic = 0.0
+            self.fence_roughness = 0.60
+    elif cp == 'SILVER':
+        self.fence_frame_color = (0.65, 0.67, 0.70, 1.0)
+        self.fence_body_color  = (0.75, 0.77, 0.80, 1.0)
+        self.fence_metallic = 0.85
+        self.fence_roughness = 0.25
+    elif cp == 'BLACK':
+        self.fence_frame_color = (0.03, 0.03, 0.03, 1.0)
+        self.fence_body_color  = (0.05, 0.05, 0.05, 1.0)
+        self.fence_metallic = 0.20
+        self.fence_roughness = 0.35
+    elif cp == 'WHITE':
+        self.fence_frame_color = (0.88, 0.89, 0.90, 1.0)
+        self.fence_body_color  = (0.92, 0.92, 0.93, 1.0)
+        self.fence_metallic = 0.10
+        self.fence_roughness = 0.30
+    elif cp == 'GREEN':
+        self.fence_frame_color = (0.08, 0.38, 0.22, 1.0)
+        self.fence_body_color  = (0.08, 0.42, 0.24, 1.0)
+        self.fence_metallic = 0.10
+        self.fence_roughness = 0.40
+    elif cp == 'WOOD_BROWN':
+        self.fence_frame_color = (0.16, 0.10, 0.06, 1.0)
+        self.fence_body_color  = (0.40, 0.23, 0.13, 1.0)
+        self.fence_metallic = 0.0
+        self.fence_roughness = 0.65
+
+    update_fence_live_color(self, context)
+
+
 class PropStudioProperties(bpy.types.PropertyGroup):
+
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
@@ -1017,6 +1082,53 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="スケール (Scale)", default=1.0, min=0.2, max=5.0,
         description="全体のサイズ倍率"
     )
+
+    # ── FENCE COLOR & MATERIAL Properties ──
+    fence_color_preset: bpy.props.EnumProperty(
+        name="カラーパレット",
+        items=[
+            ('PRESET_DEFAULT', "🎨 スタイル推奨色", "各フェンス様式の標準カラー（黒/緑/木）"),
+            ('SILVER', "⚪ 亜鉛メッキシルバー", "スチール製・金属感のある銀色パイプ＆ワイヤー"),
+            ('BLACK', "⚫ パウダーコート黒", "シックで高級感のあるマットブラック"),
+            ('WHITE', "🤍 安全ホワイト", "公園・学校・住宅街の白塗装"),
+            ('GREEN', "🟢 ビニール被覆グリーン", "グラウンド・テニスコート用防錆緑"),
+            ('WOOD_BROWN', "🪵 ウォールナット木目", "落ち着いた深みのあるダークブラウン"),
+            ('CUSTOM', "🛠️ カスタム色指定", "支柱と鉄線/木板の色を個別に自由に調整")
+        ],
+        default='PRESET_DEFAULT',
+        update=update_fence_color_preset
+    )
+    fence_frame_color: bpy.props.FloatVectorProperty(
+        name="支柱・フレーム色",
+        subtype='COLOR',
+        size=4,
+        default=(0.05, 0.05, 0.05, 1.0),
+        min=0.0, max=1.0,
+        description="支柱パイプおよび外枠レールの色",
+        update=update_fence_live_color
+    )
+    fence_body_color: bpy.props.FloatVectorProperty(
+        name="鉄線・金網・木板色",
+        subtype='COLOR',
+        size=4,
+        default=(0.06, 0.06, 0.06, 1.0),
+        min=0.0, max=1.0,
+        description="鉄線格子、チェーンリンク金網、または木板スラットの色",
+        update=update_fence_live_color
+    )
+    fence_metallic: bpy.props.FloatProperty(
+        name="金属感 (Metallic)",
+        default=0.25, min=0.0, max=1.0,
+        description="マテリアルの金属反射度",
+        update=update_fence_live_color
+    )
+    fence_roughness: bpy.props.FloatProperty(
+        name="粗さ (Roughness)",
+        default=0.35, min=0.0, max=1.0,
+        description="マテリアル表面の微細な粗さ・ツヤ",
+        update=update_fence_live_color
+    )
+
 
 
 

@@ -543,44 +543,92 @@ def build_wood_vertical_fence(bm, length=4.0, height=1.6, post_spacing=1.8, slat
         add_box(bm, c_slat, (slat_w, slat_thick, slat_len), mat_idx=1)
 
 
-def create_fence_materials(name_prefix, preset_type="WIRE_CROSS"):
-    """各プリセットに最適化されたPBRマテリアルを構築"""
-    # フレーム用マテリアル (mat_0)
-    m0 = bpy.data.materials.new(f"{name_prefix}_Frame")
+def get_or_create_material(mat_name):
+    """マテリアルを取得、なければ新規作成"""
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(mat_name)
+        mat.use_nodes = True
+    return mat
+
+
+def create_fence_materials(
+    name_prefix,
+    preset_type="WIRE_CROSS",
+    frame_color=None,
+    body_color=None,
+    metallic=None,
+    roughness=None
+):
+    """各プリセットに最適化されたPBRマテリアルを構築・色反映"""
+    m0 = get_or_create_material(f"{name_prefix}_Frame")
     m0.use_nodes = True
     b0 = m0.node_tree.nodes.get("Principled BSDF")
 
-    # メッシュ/板用マテリアル (mat_1)
-    m1 = bpy.data.materials.new(f"{name_prefix}_Body")
+    m1 = get_or_create_material(f"{name_prefix}_Body")
     m1.use_nodes = True
     b1 = m1.node_tree.nodes.get("Principled BSDF")
 
+    # デフォルト値決定
     if preset_type == "WIRE_CROSS":
-        # パウダーコートブラックメタリック (画像1)
-        b0.inputs['Base Color'].default_value = (0.05, 0.05, 0.05, 1.0)
-        b0.inputs['Roughness'].default_value = 0.35
-        b0.inputs['Metallic'].default_value = 0.20
-        b1.inputs['Base Color'].default_value = (0.06, 0.06, 0.06, 1.0)
-        b1.inputs['Roughness'].default_value = 0.30
-        b1.inputs['Metallic'].default_value = 0.30
-
+        def_frame = (0.05, 0.05, 0.05, 1.0)
+        def_body  = (0.06, 0.06, 0.06, 1.0)
+        def_met   = 0.25
+        def_rough = 0.35
     elif preset_type == "WIRE_X":
-        # グラウンドグリーン / 亜鉛メッキ (画像3)
-        b0.inputs['Base Color'].default_value = (0.08, 0.38, 0.22, 1.0) # グリーン支柱
-        b0.inputs['Roughness'].default_value = 0.35
-        b1.inputs['Base Color'].default_value = (0.08, 0.42, 0.24, 1.0) # グリーン金網
-        b1.inputs['Roughness'].default_value = 0.40
+        def_frame = (0.08, 0.38, 0.22, 1.0)
+        def_body  = (0.08, 0.42, 0.24, 1.0)
+        def_met   = 0.15
+        def_rough = 0.40
+    else: # WOOD
+        def_frame = (0.18, 0.12, 0.08, 1.0)
+        def_body  = (0.42, 0.25, 0.15, 1.0)
+        def_met   = 0.0
+        def_rough = 0.60
 
-    else:
-        # ウッドフェンス (画像2)
-        # 支柱: ダークブロンズ/アルミ
-        b0.inputs['Base Color'].default_value = (0.18, 0.12, 0.08, 1.0)
-        b0.inputs['Roughness'].default_value = 0.45
-        # 木板: ウォールナット/チーク調木目
-        b1.inputs['Base Color'].default_value = (0.42, 0.25, 0.15, 1.0)
-        b1.inputs['Roughness'].default_value = 0.55
+    f_col = frame_color if frame_color is not None else def_frame
+    b_col = body_color if body_color is not None else def_body
+    met   = metallic if metallic is not None else def_met
+    rgh   = roughness if roughness is not None else def_rough
+
+    if b0:
+        b0.inputs['Base Color'].default_value = f_col
+        b0.inputs['Metallic'].default_value = met
+        b0.inputs['Roughness'].default_value = rgh
+
+    if b1:
+        b1.inputs['Base Color'].default_value = b_col
+        b1.inputs['Metallic'].default_value = met
+        b1.inputs['Roughness'].default_value = rgh
 
     return m0, m1
+
+
+def apply_fence_material_colors(obj, frame_color, body_color, metallic=0.2, roughness=0.4):
+    """選択中フェンスのマテリアル色・質感をメッシュ再構築なしで即座に塗り替え"""
+    if not obj:
+        return False
+    root = find_fence_root(obj)
+    target = root if root else obj
+    if not target or target.type != 'MESH':
+        return False
+
+    mats = target.data.materials
+    # Slot 0: Frame (支柱)
+    if len(mats) > 0 and mats[0] and mats[0].use_nodes:
+        bsdf0 = mats[0].node_tree.nodes.get("Principled BSDF")
+        if bsdf0:
+            bsdf0.inputs['Base Color'].default_value = frame_color
+            bsdf0.inputs['Metallic'].default_value = metallic
+            bsdf0.inputs['Roughness'].default_value = roughness
+    # Slot 1: Body (鉄線 / 板)
+    if len(mats) > 1 and mats[1] and mats[1].use_nodes:
+        bsdf1 = mats[1].node_tree.nodes.get("Principled BSDF")
+        if bsdf1:
+            bsdf1.inputs['Base Color'].default_value = body_color
+            bsdf1.inputs['Metallic'].default_value = metallic
+            bsdf1.inputs['Roughness'].default_value = roughness
+    return True
 
 
 def generate_fence_preset_asset(
@@ -592,20 +640,32 @@ def generate_fence_preset_asset(
     post_spacing=2.0,
     slat_gap=0.015,
     scale=1.0,
+    frame_color=None,
+    body_color=None,
+    metallic=None,
+    roughness=None,
     target_obj=None
 ):
     """
     実用フェンス4大プリセットをプロシージャル一発生成・再構築
     target_obj が渡された場合はその場でトランスフォームを維持して置換
     """
+    # 🌟 Editモードの場合は安全にObjectモードに切り替え
+    if context.mode != 'OBJECT':
+        try:
+            bpy.ops.object.mode_set(mode='OBJECT')
+        except Exception:
+            pass
+
     root_fence = None
     if target_obj:
         root_fence = find_fence_root(target_obj)
 
-    if root_fence:
+    if root_fence and root_fence.type == 'MESH':
         obj_fence = root_fence
         remove_fence_children(obj_fence)
         mesh_fence = obj_fence.data
+        mesh_fence.clear_geometry()
         bm = bmesh.new()
     else:
         mesh_fence = bpy.data.meshes.new(f"{name}_Mesh")
@@ -633,7 +693,14 @@ def generate_fence_preset_asset(
     bm.free()
 
     # マテリアル適用
-    m0, m1 = create_fence_materials(name, preset_type=preset_type)
+    m0, m1 = create_fence_materials(
+        name_prefix=name,
+        preset_type=preset_type,
+        frame_color=frame_color,
+        body_color=body_color,
+        metallic=metallic,
+        roughness=roughness
+    )
     obj_fence.data.materials.clear()
     obj_fence.data.materials.append(m0)
     obj_fence.data.materials.append(m1)
@@ -642,3 +709,4 @@ def generate_fence_preset_asset(
     obj_fence.select_set(True)
 
     return obj_fence
+

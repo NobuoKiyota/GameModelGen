@@ -304,11 +304,24 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                     box_dim.prop(props, "fence_slat_gap", text="木板の隙間 (m)")
                 box_dim.prop(props, "fence_scale", text="スケール")
 
+                # 🎨 カラー・質感設定 (支柱・鉄線・板の色分け)
+                box_color = box_fence.box()
+                box_color.label(text="🎨 カラー & 質感設定 (支柱・鉄線・木板):", icon='COLOR')
+                box_color.prop(props, "fence_color_preset", text="パレット")
+                row_col = box_color.row(align=True)
+                row_col.prop(props, "fence_frame_color", text="支柱色")
+                row_col.prop(props, "fence_body_color", text="鉄線/板色")
+                row_mat = box_color.row(align=True)
+                row_mat.prop(props, "fence_metallic", text="金属感", slider=True)
+                row_mat.prop(props, "fence_roughness", text="粗さ", slider=True)
+                box_color.operator("mesh.apply_fence_colors", text="🎨 選択中フェンスに色を即時反映", icon='RESTRICT_COLOR_ON')
+
                 # 一発生成 & 再生成ボタン（その場更新）
                 col_btn = box_fence.column(align=True)
                 col_btn.scale_y = 1.3
                 col_btn.operator("mesh.regenerate_fence_preset", text="🔄 再生成・更新 (選択中を更新)", icon='FILE_REFRESH')
                 col_btn.operator("mesh.generate_fence_preset", text="➕ 新規フェンスを生成", icon='ADD')
+
 
                 # 従来のクラシック木製柵（サブ設定）
                 box_legacy = box_fence.box()

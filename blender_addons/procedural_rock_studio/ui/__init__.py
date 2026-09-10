@@ -22,8 +22,10 @@ from .operators import (
     MESH_OT_generate_speaker,
     MESH_OT_regenerate_speaker,
     MESH_OT_generate_fence_preset,
-    MESH_OT_regenerate_fence_preset
+    MESH_OT_regenerate_fence_preset,
+    MESH_OT_apply_fence_colors
 )
+
 
 from .panel import VIEW3D_PT_prop_studio_panel
 
@@ -52,8 +54,10 @@ classes = (
     MESH_OT_regenerate_speaker,
     MESH_OT_generate_fence_preset,
     MESH_OT_regenerate_fence_preset,
+    MESH_OT_apply_fence_colors,
     VIEW3D_PT_prop_studio_panel,
 )
+
 
 
 __all__ = [
