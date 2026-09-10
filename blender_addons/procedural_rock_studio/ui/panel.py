@@ -471,6 +471,11 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_cave = layout.box()
                 box_cave.label(text="🪨 洞窟・岩窟ジオラマ (岩棚テラス＆水流トレンチ):", icon='MOD_BUILD')
 
+                                # 0. ルート形状 & 岩肌スタイル
+                box_c_style = box_cave.box()
+                box_c_style.prop(props, "cave_path_type", text="ルート形状")
+                box_c_style.prop(props, "cave_rock_style", text="岩肌スタイル")
+
                 # 1. 川・水流設定 (チェックボックスでON/OFF可能)
                 box_c_river = box_cave.box()
                 row_cr = box_c_river.row(align=True)

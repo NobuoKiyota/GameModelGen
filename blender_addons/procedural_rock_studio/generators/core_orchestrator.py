@@ -243,6 +243,8 @@ def resolve_prop_parameters(props):
         "castle_wall_batter": props.castle_wall_batter,
         "castle_wall_roughness": props.castle_wall_roughness,
         # Cave parameters
+        "cave_path_type": random.choice(['S_CURVE', 'STRAIGHT', 'Z_CRANK', 'CHAMBER_HALL']) if props.cave_path_type == 'RANDOM' else props.cave_path_type,
+        "cave_rock_style": props.cave_rock_style,
         "cave_has_river": props.cave_has_river,
         "cave_river_width": round(random.uniform(3.0, 6.0), 1) if getattr(props, 'cave_randomize_shape', False) else props.cave_river_width,
         "cave_river_depth": round(random.uniform(0.9, 1.8), 2) if getattr(props, 'cave_randomize_shape', False) else props.cave_river_depth,
@@ -398,6 +400,8 @@ def generate_procedural_prop_mesh(
         import re
         # Strip any existing suffixes to strictly prevent object duplication
         cave_clean_name = re.sub(r'(_Floor|_Water|_Ceiling)+$', '', name).strip() or "Cave_Dungeon"
+        c_path = kwargs.get('cave_path_type', 'S_CURVE')
+        c_style = kwargs.get('cave_rock_style', 'SLATE')
         c_river = kwargs.get('cave_has_river', True)
         c_r_w = kwargs.get('cave_river_width', 4.5)
         c_r_d = kwargs.get('cave_river_depth', 1.3)
@@ -417,6 +421,8 @@ def generate_procedural_prop_mesh(
             context=context,
             name=cave_clean_name,
             seed=seed,
+            path_type=c_path,
+            rock_style=c_style,
             has_river=c_river,
             floor_width=c_f_w,
             floor_length=c_f_l,

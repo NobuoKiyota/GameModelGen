@@ -1315,6 +1315,31 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     )
 
     # ── CAVE (Dungeon / Cave System) Properties ──
+    # ── CAVE Path & Rock Style Properties ──
+    cave_path_type: bpy.props.EnumProperty(
+        name="洞窟ルート形状",
+        items=[
+            ('S_CURVE', "〰️ S字蛇行 (S-Curve)", "自然な蛇行カーブと起伏を持つ洞窟ルート"),
+            ('STRAIGHT', "➖ 直線・見通し坑道 (Straight)", "奥行きを見通せる直進トンネル（微細な岩盤の歪み付き）"),
+            ('Z_CRANK', "⚡ クランク折れ曲がり (Z-Crank)", "急角度で折れ曲がる防衛要塞・断層クレバス型ルート"),
+            ('CHAMBER_HALL', "🏛️ 大空洞・ドーム広間 (Chamber Hall)", "入口が狭く中央が巨大な円形ドームに広がる大空間"),
+            ('RANDOM', "🎲 ランダム抽選 (Random Route)", "Re-Roll時にルート形状を自動抽選")
+        ],
+        default='S_CURVE',
+        description="洞窟全体の骨格ルート・形状"
+    )
+    cave_rock_style: bpy.props.EnumProperty(
+        name="岩肌スタイル",
+        items=[
+            ('SLATE', "🪨 暗黒泥岩・スレート (Dark Slate)", "濡れた漆黒〜暗灰色の板状岩盤（地下水路・ダンジョン）"),
+            ('LIMESTONE', "🏛️ 石灰岩・カルスト (Limestone Karst)", "白〜淡黄色の溶食岩肌＆エメラルド水面（鍾乳洞・地底湖）"),
+            ('SANDSTONE', "🏜️ 赤色砂岩・キャニオン (Red Sandstone)", "赤褐色〜オレンジの鮮やかな水平地層バンド（渓谷洞窟）"),
+            ('BASALT', "🌋 玄武岩・火山岩 (Basalt Volcanic)", "漆黒・黒曜石のような角張った荒削り火山岩盤")
+        ],
+        default='SLATE',
+        description="洞窟全体の岩質・色調・シェーダー質感"
+    )
+
     cave_has_river: bpy.props.BoolProperty(
         name="🌊 川・水流を生成 (Has River)",
         default=True,

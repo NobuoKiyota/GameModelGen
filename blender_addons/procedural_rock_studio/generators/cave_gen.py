@@ -60,16 +60,67 @@ def voronoi_cell_noise(x, y, cell_size=3.0, seed=0):
 # 2. Cave Centerline / River Path (蛇行曲線パス)
 # ==============================================================================
 
-def get_cave_center_x(y, length=35.0, seed=0):
-    """Calculates the S-curve horizontal deviation at coordinate y."""
+def get_cave_profile_at_y(y, length=35.0, path_type='S_CURVE', seed=0):
+    """
+    Calculates dynamic horizontal deviation (center_x), width scale (width_mult),
+    and ceiling height scale (height_mult) at longitudinal coordinate y.
+    Prevents repetitive worm-like identical widths.
+    """
     rng = random.Random(seed)
     ph1 = rng.uniform(0, 6.28)
     ph2 = rng.uniform(0, 6.28)
-    freq1 = 2.2 * math.pi / max(10.0, length)
-    freq2 = 4.5 * math.pi / max(10.0, length)
     
-    x = math.sin(y * freq1 + ph1) * 3.5 + math.sin(y * freq2 + ph2) * 1.2
-    return x
+    t = (y / (length * 0.5)) * 0.5  # -0.5 to +0.5
+    dist_from_center = abs(t) # 0.0 at center, 0.5 at ends
+
+    # 1. Path Horizontal Deviation
+    if path_type == 'STRAIGHT':
+        # Mostly straight with subtle natural rock meandering
+        center_x = math.sin(y * 0.15 + ph1) * 0.8 + math.sin(y * 0.4 + ph2) * 0.4
+    elif path_type == 'Z_CRANK':
+        # Sharp angular turns like a defensive gorge or tectonic fracture
+        k = math.tanh(t * 6.0) # Sharp S transition
+        center_x = k * 7.5 + math.sin(y * 0.3 + ph1) * 1.0
+    elif path_type == 'CHAMBER_HALL':
+        # Gentle curve entering a grand central cavern
+        center_x = math.sin(t * math.pi) * 3.0 + math.sin(y * 0.3 + ph1) * 0.8
+    else: # S_CURVE or default
+        freq1 = 2.2 * math.pi / max(10.0, length)
+        freq2 = 4.5 * math.pi / max(10.0, length)
+        center_x = math.sin(y * freq1 + ph1) * 4.0 + math.sin(y * freq2 + ph2) * 1.5
+
+    # 2. Dynamic Width Modulation (Pinching bottlenecks vs Grand expansions)
+    # Natural breathing variation:
+    natural_pinch = 1.0 + math.sin(y * 0.35 + ph1) * 0.25 + math.cos(y * 0.7 + ph2) * 0.15
+    
+    if path_type == 'CHAMBER_HALL':
+        # Central cavern expands up to 2.2x wide, with narrow entrance/exit (0.7x)
+        if dist_from_center < 0.35:
+            chamber_bell = math.cos((dist_from_center / 0.35) * math.pi * 0.5) ** 1.5
+            width_mult = (0.75 + chamber_bell * 1.35) * natural_pinch
+            height_mult = 1.0 + chamber_bell * 0.85 # Ceiling arches up in the dome
+        else:
+            width_mult = 0.75 * natural_pinch
+            height_mult = 0.9
+    elif path_type == 'Z_CRANK':
+        # Narrow choke points at the corners, wider in between
+        width_mult = natural_pinch * (0.85 + math.cos(t * math.pi * 2.0) * 0.3)
+        height_mult = 1.0 + math.sin(y * 0.2 + ph1) * 0.2
+    else:
+        width_mult = natural_pinch
+        height_mult = 1.0 + math.sin(y * 0.2 + ph1) * 0.15
+
+    # Clamp safety
+    width_mult = max(0.45, min(2.5, width_mult))
+    height_mult = max(0.65, min(2.2, height_mult))
+
+    return center_x, width_mult, height_mult
+
+def get_cave_center_x(y, length=35.0, seed=0):
+    """Backward-compatible helper returning center_x."""
+    cx, _, _ = get_cave_profile_at_y(y, length=length, path_type='S_CURVE', seed=seed)
+    return cx
+
 
 
 # ==============================================================================
@@ -79,6 +130,7 @@ def get_cave_center_x(y, length=35.0, seed=0):
 def build_terraced_cave_floor_bmesh(
     width=18.0,
     length=35.0,
+    path_type='S_CURVE',
     has_river=True,
     river_width=4.0,
     river_depth=1.4,
@@ -108,15 +160,18 @@ def build_terraced_cave_floor_bmesh(
     # 1. Create Grid Vertices with Procedural Heights
     for iy in range(subdivisions_y + 1):
         y_pos = -hy + iy * dy
-        center_x = get_cave_center_x(y_pos, length=length, seed=seed)
+        center_x, w_mult, h_mult = get_cave_profile_at_y(y_pos, length=length, path_type=path_type, seed=seed)
+        effective_hx = hx * w_mult
+        effective_dx = (effective_hx * 2.0) / float(subdivisions_x)
+        effective_rw = river_width * (0.65 + w_mult * 0.35) # river widens in chambers
         row = []
 
         for ix in range(subdivisions_x + 1):
-            x_pos = -hx + ix * dx
+            x_pos = -effective_hx + ix * effective_dx
             
             # Distance from cave/river center
             dist_to_center = abs(x_pos - center_x)
-            norm_dist = dist_to_center / (hx * 0.85)
+            norm_dist = dist_to_center / max(1.0, effective_hx * 0.85)
             
             # Base canyon slope: sides rise up towards cave walls
             base_z = (norm_dist ** 1.8) * (terrace_steps * step_height)
@@ -125,7 +180,7 @@ def build_terraced_cave_floor_bmesh(
             in_river = False
             river_factor = 0.0
             if has_river:
-                half_rw = river_width * 0.5
+                half_rw = effective_rw * 0.5
                 if dist_to_center < half_rw:
                     in_river = True
                     # Smooth valley profile (quadratic bowl with flat riverbed)
@@ -204,6 +259,7 @@ def build_terraced_cave_floor_bmesh(
 def build_cave_water_bmesh(
     length=35.0,
     river_width=4.0,
+    path_type='S_CURVE',
     water_level=-0.35,
     seed=0,
     segments_y=60,
@@ -222,11 +278,14 @@ def build_cave_water_bmesh(
 
     for iy in range(segments_y + 1):
         y_pos = -hy + iy * dy
-        center_x = get_cave_center_x(y_pos, length=length, seed=seed)
+        center_x, w_mult, _ = get_cave_profile_at_y(y_pos, length=length, path_type=path_type, seed=seed)
+        effective_rw = river_width * (0.65 + w_mult * 0.35)
+        curr_w_effective = effective_rw * 1.15
+        curr_dx = curr_w_effective / float(segments_x)
         row = []
 
         for ix in range(segments_x + 1):
-            offset_x = (-w_effective * 0.5) + ix * dx
+            offset_x = (-curr_w_effective * 0.5) + ix * curr_dx
             x_pos = center_x + offset_x
             
             # Subtle gentle water ripple displacement
@@ -265,7 +324,35 @@ def build_cave_water_bmesh(
 # 5. PBR Materials (濡れ岩・地層スラブ・クリア流水マテリアル)
 # ==============================================================================
 
-def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_river=True):
+
+ROCK_PALETTES = {
+    'SLATE': {
+        'rock_dark': (0.04, 0.04, 0.045, 1.0),
+        'rock_light': (0.16, 0.14, 0.12, 1.0),
+        'roughness_dry': 0.84,
+        'water_color': (0.02, 0.12, 0.15, 1.0)
+    },
+    'LIMESTONE': {
+        'rock_dark': (0.32, 0.29, 0.24, 1.0),
+        'rock_light': (0.58, 0.54, 0.46, 1.0),
+        'roughness_dry': 0.72,
+        'water_color': (0.03, 0.26, 0.22, 1.0)
+    },
+    'SANDSTONE': {
+        'rock_dark': (0.42, 0.18, 0.09, 1.0),
+        'rock_light': (0.68, 0.42, 0.24, 1.0),
+        'roughness_dry': 0.92,
+        'water_color': (0.04, 0.18, 0.14, 1.0)
+    },
+    'BASALT': {
+        'rock_dark': (0.02, 0.022, 0.028, 1.0),
+        'rock_light': (0.09, 0.10, 0.12, 1.0),
+        'roughness_dry': 0.80,
+        'water_color': (0.015, 0.06, 0.14, 1.0)
+    }
+}
+
+def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_river=True, rock_style='SLATE'):
     """Creates procedural PBR material for terraced cave rock with wet shoreline."""
     mat = bpy.data.materials.get(mat_name)
     if mat is None:
@@ -297,13 +384,15 @@ def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_riv
     strata_wave.inputs['Detail'].default_value = 5.0
     links.new(coord.outputs['Object'], strata_wave.inputs['Vector'])
 
+    pal = ROCK_PALETTES.get(rock_style, ROCK_PALETTES['SLATE'])
+
     # Color Ramp for Rock Tone
     ramp_rock = nodes.new(type='ShaderNodeValToRGB')
     ramp_rock.location = (-650, 250)
     ramp_rock.color_ramp.elements[0].position = 0.15
-    ramp_rock.color_ramp.elements[0].color = (0.04, 0.04, 0.045, 1.0)
+    ramp_rock.color_ramp.elements[0].color = pal['rock_dark']
     ramp_rock.color_ramp.elements[1].position = 0.85
-    ramp_rock.color_ramp.elements[1].color = (0.16, 0.14, 0.12, 1.0)
+    ramp_rock.color_ramp.elements[1].color = pal['rock_light']
     links.new(rock_noise.outputs['Fac'], ramp_rock.inputs['Fac'])
 
     # Wetness Mask (Height-based)
@@ -341,7 +430,7 @@ def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_riv
     # dark_wet output color is output 2
     links.new(dark_wet.outputs[2], mix_color.inputs[7])
 
-    # Bump Map
+        # Bump Map
     bump = nodes.new(type='ShaderNodeBump')
     bump.location = (-200, -250)
     bump.inputs['Strength'].default_value = 0.45
@@ -360,11 +449,11 @@ def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_riv
         rough_mix.location = (-50, -150)
         rough_mix.data_type = 'FLOAT'
         links.new(ramp_wet.outputs['Color'], rough_mix.inputs[0])
-        rough_mix.inputs[2].default_value = 0.82 # A (Dry)
-        rough_mix.inputs[3].default_value = 0.12 # B (Wet glossy)
+        rough_mix.inputs[2].default_value = pal['roughness_dry'] # A (Dry)
+        rough_mix.inputs[3].default_value = 0.10 # B (Wet glossy)
         links.new(rough_mix.outputs[0], bsdf.inputs['Roughness'])
     else:
-        bsdf.inputs['Roughness'].default_value = 0.85
+        bsdf.inputs['Roughness'].default_value = pal['roughness_dry']
 
     # Output
     output = nodes.new(type='ShaderNodeOutputMaterial')
@@ -374,7 +463,7 @@ def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_riv
     return mat
 
 
-def get_or_create_cave_water_material(mat_name="Cave_Water_Mat"):
+def get_or_create_cave_water_material(mat_name="Cave_Water_Mat", rock_style='SLATE'):
     """Creates clear, reflective cave river water with subtle caustics/ripples."""
     mat = bpy.data.materials.get(mat_name)
     if mat is None:
@@ -403,10 +492,10 @@ def get_or_create_cave_water_material(mat_name="Cave_Water_Mat"):
     bump.inputs['Distance'].default_value = 0.05
     links.new(wave.outputs['Fac'], bump.inputs['Height'])
 
+    pal = ROCK_PALETTES.get(rock_style, ROCK_PALETTES['SLATE'])
     bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
     bsdf.location = (0, 100)
-    # Deep clear turquoise tint
-    bsdf.inputs['Base Color'].default_value = (0.02, 0.12, 0.15, 1.0)
+    bsdf.inputs['Base Color'].default_value = pal['water_color']
     bsdf.inputs['Roughness'].default_value = 0.03
     bsdf.inputs['IOR'].default_value = 1.333
     bsdf.inputs['Transmission'].default_value = 0.95
@@ -421,7 +510,6 @@ def get_or_create_cave_water_material(mat_name="Cave_Water_Mat"):
     mat.shadow_method = 'HASHED'
 
     return mat
-
 
 
 # ==============================================================================
@@ -537,6 +625,7 @@ def setup_cave_interior_lights(
 def build_cliff_ceiling_bmesh(
     width=18.0,
     length=35.0,
+    path_type='S_CURVE',
     ceiling_height=6.5,
     overhang=0.85,
     fissure_width=0.3,
@@ -568,7 +657,10 @@ def build_cliff_ceiling_bmesh(
 
     for iy in range(subdivisions_y + 1):
         y_pos = -hy + iy * dy
-        center_x = get_cave_center_x(y_pos, length=length, seed=seed)
+        center_x, w_mult, h_mult = get_cave_profile_at_y(y_pos, length=length, path_type=path_type, seed=seed)
+        effective_hx = hx * w_mult
+        effective_h = ceiling_height * h_mult
+        effective_fissure = fissure_width * w_mult
         row = []
 
         for iu in range(subdivisions_arc + 1):
@@ -583,28 +675,28 @@ def build_cliff_ceiling_bmesh(
             if u < 0.25:
                 # Left vertical cliff
                 t = u / 0.25
-                x_rel = -hx * (1.0 - t * 0.15)
-                z_base = t * (ceiling_height * 0.55)
+                x_rel = -effective_hx * (1.0 - t * 0.15)
+                z_base = t * (effective_h * 0.55)
             elif u < 0.5:
                 # Left ceiling overhang
                 t = (u - 0.25) / 0.25
                 # Inward overhang
-                x_rel = -hx * 0.85 + t * (hx * 0.85 - fissure_width * 0.5) * overhang
+                x_rel = -effective_hx * 0.85 + t * (effective_hx * 0.85 - effective_fissure * 0.5) * overhang
                 # Arch up to ceiling height
                 arch_t = math.sin(t * math.pi * 0.5)
-                z_base = ceiling_height * (0.55 + arch_t * 0.45)
+                z_base = effective_h * (0.55 + arch_t * 0.45)
             elif u < 0.75:
                 # Right ceiling overhang
                 t = (u - 0.5) / 0.25
-                x_rel = (fissure_width * 0.5) + t * (hx * 0.85 - fissure_width * 0.5) * overhang
+                x_rel = (effective_fissure * 0.5) + t * (effective_hx * 0.85 - effective_fissure * 0.5) * overhang
                 # Arch down from ceiling height
                 arch_t = math.cos(t * math.pi * 0.5)
-                z_base = ceiling_height * (0.55 + arch_t * 0.45)
+                z_base = effective_h * (0.55 + arch_t * 0.45)
             else:
                 # Right vertical cliff
                 t = (u - 0.75) / 0.25
-                x_rel = hx * (0.85 + t * 0.15)
-                z_base = (1.0 - t) * (ceiling_height * 0.55)
+                x_rel = effective_hx * (0.85 + t * 0.15)
+                z_base = (1.0 - t) * (effective_h * 0.55)
 
             # World X position following cave centerline
             x_pos = center_x + x_rel
@@ -659,7 +751,7 @@ def build_cliff_ceiling_bmesh(
     return bm
 
 
-def get_or_create_cave_ceiling_material(mat_name="Cave_Ceiling_Cliff_Mat"):
+def get_or_create_cave_ceiling_material(mat_name="Cave_Ceiling_Cliff_Mat", rock_style='SLATE'):
     """Creates procedural PBR material for dry, rough cliff walls and ceiling slabs."""
     mat = bpy.data.materials.get(mat_name)
     if mat is None:
@@ -691,13 +783,15 @@ def get_or_create_cave_ceiling_material(mat_name="Cave_Ceiling_Cliff_Mat"):
     strata.inputs['Detail'].default_value = 6.0
     links.new(coord.outputs['Object'], strata.inputs['Vector'])
 
+    pal = ROCK_PALETTES.get(rock_style, ROCK_PALETTES['SLATE'])
+
     # Color Ramp for Dry Cliff Stone
     ramp = nodes.new(type='ShaderNodeValToRGB')
     ramp.location = (-450, 150)
     ramp.color_ramp.elements[0].position = 0.2
-    ramp.color_ramp.elements[0].color = (0.05, 0.05, 0.055, 1.0)
+    ramp.color_ramp.elements[0].color = pal['rock_dark']
     ramp.color_ramp.elements[1].position = 0.8
-    ramp.color_ramp.elements[1].color = (0.18, 0.16, 0.14, 1.0)
+    ramp.color_ramp.elements[1].color = pal['rock_light']
     links.new(noise.outputs['Fac'], ramp.inputs['Fac'])
 
     # Bump Map
@@ -710,7 +804,7 @@ def get_or_create_cave_ceiling_material(mat_name="Cave_Ceiling_Cliff_Mat"):
     # Principled BSDF
     bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
     bsdf.location = (100, 100)
-    bsdf.inputs['Roughness'].default_value = 0.86
+    bsdf.inputs['Roughness'].default_value = pal['roughness_dry']
     links.new(ramp.outputs['Color'], bsdf.inputs['Base Color'])
     links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
 
@@ -720,11 +814,61 @@ def get_or_create_cave_ceiling_material(mat_name="Cave_Ceiling_Cliff_Mat"):
 
     return mat
 
+def get_or_create_cave_water_material(mat_name="Cave_Water_Mat", rock_style='SLATE'):
+    """Creates clear, reflective cave river water with subtle caustics/ripples."""
+    mat = bpy.data.materials.get(mat_name)
+    if mat is None:
+        mat = bpy.data.materials.new(name=mat_name)
+    mat.use_nodes = True
+    tree = mat.node_tree
+    nodes = tree.nodes
+    links = tree.links
+    nodes.clear()
+
+    coord = nodes.new(type='ShaderNodeTexCoord')
+    coord.location = (-800, 100)
+
+    # Wave texture for water ripples
+    wave = nodes.new(type='ShaderNodeTexWave')
+    wave.location = (-550, 100)
+    wave.wave_type = 'RINGS'
+    wave.inputs['Scale'].default_value = 4.0
+    wave.inputs['Distortion'].default_value = 8.0
+    wave.inputs['Detail'].default_value = 4.0
+    links.new(coord.outputs['Object'], wave.inputs['Vector'])
+
+    bump = nodes.new(type='ShaderNodeBump')
+    bump.location = (-250, 0)
+    bump.inputs['Strength'].default_value = 0.08
+    bump.inputs['Distance'].default_value = 0.05
+    links.new(wave.outputs['Fac'], bump.inputs['Height'])
+
+    pal = ROCK_PALETTES.get(rock_style, ROCK_PALETTES['SLATE'])
+    bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    bsdf.location = (0, 100)
+    bsdf.inputs['Base Color'].default_value = pal['water_color']
+    bsdf.inputs['Roughness'].default_value = 0.03
+    bsdf.inputs['IOR'].default_value = 1.333
+    bsdf.inputs['Transmission'].default_value = 0.95
+    links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+
+    output = nodes.new(type='ShaderNodeOutputMaterial')
+    output.location = (250, 100)
+    links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+    # EEVEE settings for refraction/transparency
+    mat.blend_method = 'BLEND'
+    mat.shadow_method = 'HASHED'
+
+    return mat
+
 
 def create_procedural_cave_scene(
     context,
     name="Cave",
     seed=0,
+    path_type='S_CURVE',
+    rock_style='SLATE',
     has_river=True,
     floor_width=18.0,
     floor_length=35.0,
@@ -762,6 +906,7 @@ def create_procedural_cave_scene(
     bm_floor = build_terraced_cave_floor_bmesh(
         width=floor_width,
         length=floor_length,
+        path_type=path_type,
         has_river=has_river,
         river_width=river_width,
         river_depth=river_depth,
@@ -782,7 +927,7 @@ def create_procedural_cave_scene(
 
     bm_floor.free()
 
-    mat_floor = get_or_create_cave_floor_material(clean_name + "_Floor_Mat", has_river=has_river)
+    mat_floor = get_or_create_cave_floor_material(clean_name + "_Floor_Mat", has_river=has_river, rock_style=rock_style)
     if floor_obj.data.materials:
         floor_obj.data.materials[0] = mat_floor
     else:
@@ -796,6 +941,7 @@ def create_procedural_cave_scene(
         bm_water = build_cave_water_bmesh(
             length=floor_length,
             river_width=river_width,
+            path_type=path_type,
             water_level=-river_depth * 0.45,
             seed=seed
         )
@@ -812,7 +958,7 @@ def create_procedural_cave_scene(
 
         bm_water.free()
 
-        mat_water = get_or_create_cave_water_material(clean_name + "_Water_Mat")
+        mat_water = get_or_create_cave_water_material(clean_name + "_Water_Mat", rock_style=rock_style)
         if water_obj.data.materials:
             water_obj.data.materials[0] = mat_water
         else:
@@ -830,6 +976,7 @@ def create_procedural_cave_scene(
         bm_ceiling = build_cliff_ceiling_bmesh(
             width=floor_width,
             length=floor_length,
+            path_type=path_type,
             ceiling_height=ceiling_height,
             overhang=ceiling_overhang,
             fissure_width=ceiling_fissure,
@@ -847,7 +994,7 @@ def create_procedural_cave_scene(
 
         bm_ceiling.free()
 
-        mat_ceiling = get_or_create_cave_ceiling_material(clean_name + "_Ceiling_Mat")
+        mat_ceiling = get_or_create_cave_ceiling_material(clean_name + "_Ceiling_Mat", rock_style=rock_style)
         if ceiling_obj.data.materials:
             ceiling_obj.data.materials[0] = mat_ceiling
         else:
