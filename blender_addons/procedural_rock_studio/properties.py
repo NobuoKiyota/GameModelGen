@@ -1381,4 +1381,16 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default=0.9, min=0.1, max=2.0,
         description="天井・断崖岩壁のボロノイ断層・ゴツゴツしたスラブ感の強さ"
     )
+    # ── CAVE Lighting Properties ──
+    cave_setup_lights: bpy.props.BoolProperty(
+        name="💡 洞窟ライトを自動配置 (Auto Lights)",
+        default=True,
+        description="洞窟内部が見えやすくなるよう、たいまつ風ポイントライト群と天窓光を自動配置・追従"
+    )
+    cave_light_intensity: bpy.props.FloatProperty(
+        name="ライト明るさ倍率 (Light Intensity)",
+        default=1.0, min=0.1, max=5.0,
+        description="洞窟ライト群の光量・エネルギー倍率"
+    )
+
 

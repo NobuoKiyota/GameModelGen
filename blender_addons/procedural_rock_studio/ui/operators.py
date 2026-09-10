@@ -1135,6 +1135,8 @@ class MESH_OT_regenerate_cave(bpy.types.Operator):
             ceiling_fissure=props.cave_ceiling_fissure,
             ceiling_roughness=props.cave_ceiling_roughness,
             generate_ceiling=props.cave_generate_ceiling,
+            setup_lights=props.cave_setup_lights,
+            light_intensity=props.cave_light_intensity,
             target_obj=target
         )
 
@@ -1197,6 +1199,8 @@ class MESH_OT_create_cave(bpy.types.Operator):
             ceiling_fissure=props.cave_ceiling_fissure,
             ceiling_roughness=props.cave_ceiling_roughness,
             generate_ceiling=props.cave_generate_ceiling,
+            setup_lights=props.cave_setup_lights,
+            light_intensity=props.cave_light_intensity,
             target_obj=None
         )
 

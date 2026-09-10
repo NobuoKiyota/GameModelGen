@@ -423,6 +423,108 @@ def get_or_create_cave_water_material(mat_name="Cave_Water_Mat"):
     return mat
 
 
+
+# ==============================================================================
+# 6. Procedural Cave Interior Lighting Rig (洞窟内部ライティング自動配置)
+# ==============================================================================
+
+def setup_cave_interior_lights(
+    context,
+    base_name="Cave_Dungeon",
+    length=35.0,
+    ceiling_height=6.5,
+    seed=0,
+    intensity_mult=1.0,
+    enable_lights=True
+):
+    """
+    Sets up or updates dedicated cinematic lighting inside the cave so the user
+    can clearly see the floor, cliffs, water, and ceiling immediately upon generation.
+    Supports in-place updates (Zero accumulation).
+    """
+    col = context.collection
+
+    light_configs = [
+        {
+            "suffix": "_Light_Front",
+            "type": 'POINT',
+            "y_rel": -0.32,
+            "x_offset": -3.5,
+            "z_offset": 2.2,
+            "color": (1.0, 0.72, 0.42),
+            "energy": 3500.0 * intensity_mult,
+            "radius": 0.8
+        },
+        {
+            "suffix": "_Light_Mid",
+            "type": 'POINT',
+            "y_rel": 0.02,
+            "x_offset": 3.2,
+            "z_offset": 2.0,
+            "color": (1.0, 0.65, 0.35),
+            "energy": 3000.0 * intensity_mult,
+            "radius": 0.8
+        },
+        {
+            "suffix": "_Light_Back",
+            "type": 'POINT',
+            "y_rel": 0.34,
+            "x_offset": -1.8,
+            "z_offset": 2.4,
+            "color": (0.35, 0.75, 1.0), # Deep cavern bioluminescent / cyan rim
+            "energy": 2800.0 * intensity_mult,
+            "radius": 1.0
+        },
+        {
+            "suffix": "_Light_SkySun",
+            "type": 'SUN',
+            "y_rel": 0.0,
+            "x_offset": 0.0,
+            "z_offset": ceiling_height + 2.0,
+            "color": (0.6, 0.78, 1.0), # Cool skylight through ceiling fissure
+            "energy": 2.2 * intensity_mult,
+            "rotation": (0.35, -0.22, 0.4)
+        }
+    ]
+
+    created_lights = []
+
+    for cfg in light_configs:
+        obj_name = base_name + cfg["suffix"]
+        light_obj = bpy.data.objects.get(obj_name)
+
+        if not enable_lights:
+            if light_obj:
+                bpy.data.objects.remove(light_obj, do_unlink=True)
+            continue
+
+        # Calculate position following cave centerline
+        y_pos = length * cfg["y_rel"]
+        cx = get_cave_center_x(y_pos, length=length, seed=seed)
+        x_pos = cx + cfg["x_offset"]
+        z_pos = cfg["z_offset"]
+
+        if light_obj and light_obj.type == 'LIGHT':
+            light_data = light_obj.data
+            light_obj.location = (x_pos, y_pos, z_pos)
+        else:
+            light_data = bpy.data.lights.new(name=obj_name, type=cfg["type"])
+            light_obj = bpy.data.objects.new(name=obj_name, object_data=light_data)
+            col.objects.link(light_obj)
+            light_obj.location = (x_pos, y_pos, z_pos)
+
+        light_data.color = cfg["color"]
+        light_data.energy = cfg["energy"]
+        if cfg["type"] == 'POINT':
+            light_data.shadow_soft_size = cfg["radius"]
+        elif cfg["type"] == 'SUN' and "rotation" in cfg:
+            light_obj.rotation_euler = cfg["rotation"]
+
+        created_lights.append(light_obj)
+
+    return created_lights
+
+
 # ==============================================================================
 # 6. Main Procedural Cave Scene Builder (Step 1 統合)
 # ==============================================================================
@@ -754,6 +856,19 @@ def create_procedural_cave_scene(
         if ceiling_obj:
             bpy.data.objects.remove(ceiling_obj, do_unlink=True)
             ceiling_obj = None
+
+    # 4. Handle Cave Interior Lights (見えやすくするための自動ライティング)
+    enable_lights = kwargs.get('setup_lights', True)
+    light_intensity = kwargs.get('light_intensity', 1.0)
+    setup_cave_interior_lights(
+        context=context,
+        base_name=clean_name,
+        length=floor_length,
+        ceiling_height=ceiling_height,
+        seed=seed,
+        intensity_mult=light_intensity,
+        enable_lights=enable_lights
+    )
 
     context.view_layer.objects.active = floor_obj
     floor_obj.select_set(True)

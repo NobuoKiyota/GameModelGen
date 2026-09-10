@@ -504,6 +504,13 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                     row_cc2.prop(props, "cave_ceiling_fissure", text="天窓亀裂 (m)")
                     row_cc2.prop(props, "cave_ceiling_roughness", text="天井起伏", slider=True)
 
+                                # 4. 洞窟内部ライティング設定
+                box_c_light = box_cave.box()
+                row_cl = box_c_light.row(align=True)
+                row_cl.prop(props, "cave_setup_lights", text="💡 洞窟ライトを自動配置 (Auto Lights)", toggle=True)
+                if props.cave_setup_lights:
+                    box_c_light.prop(props, "cave_light_intensity", text="明るさ倍率", slider=True)
+
                 box_cave.prop(props, "cave_randomize_shape", text="🎲 Re-Roll時に幅・段差も自動抽選")
 
                 # 構造ヒント

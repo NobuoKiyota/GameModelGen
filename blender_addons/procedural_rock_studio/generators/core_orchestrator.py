@@ -255,6 +255,8 @@ def resolve_prop_parameters(props):
         "cave_ceiling_overhang": props.cave_ceiling_overhang,
         "cave_ceiling_fissure": props.cave_ceiling_fissure,
         "cave_ceiling_roughness": props.cave_ceiling_roughness,
+        "cave_setup_lights": props.cave_setup_lights,
+        "cave_light_intensity": props.cave_light_intensity,
     }
 
 
@@ -408,6 +410,8 @@ def generate_procedural_prop_mesh(
         c_c_o = kwargs.get('cave_ceiling_overhang', 0.85)
         c_c_f = kwargs.get('cave_ceiling_fissure', 0.3)
         c_c_r = kwargs.get('cave_ceiling_roughness', 0.9)
+        c_lights = kwargs.get('cave_setup_lights', True)
+        c_l_int = kwargs.get('cave_light_intensity', 1.0)
 
         floor_obj, water_obj, ceil_obj = create_procedural_cave_scene(
             context=context,
@@ -425,6 +429,8 @@ def generate_procedural_prop_mesh(
             ceiling_fissure=c_c_f,
             ceiling_roughness=c_c_r,
             generate_ceiling=c_ceil,
+            setup_lights=c_lights,
+            light_intensity=c_l_int,
             target_obj=target_obj
         )
         return floor_obj
