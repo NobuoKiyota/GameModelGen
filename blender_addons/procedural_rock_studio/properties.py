@@ -1340,10 +1340,31 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         description="洞窟全体の岩質・色調・シェーダー質感"
     )
 
+    cave_water_type: bpy.props.EnumProperty(
+        name="水面タイプ (Water Mode)",
+        items=[
+            ('PUDDLES', "💧 点在する水たまり・湧水池 (Puddles & Pools)", "床の窪みや岩棚に点在するリアルな水たまり・湧水池を生成"),
+            ('RIVER', "🌊 地下水脈・河川 (Subterranean River)", "洞窟中央を貫通する一本の地下河川を生成"),
+            ('BOTH', "🌊💧 河川 ＋ 水たまり (River + Puddles)", "中央の河川と、高台テラスに点在する水たまりの両方を生成"),
+            ('NONE', "🏜️ 完全乾燥 (Dry Cave)", "水面を一切生成しない乾燥した洞窟")
+        ],
+        default='PUDDLES',
+        description="洞窟内に配置する水の形態"
+    )
+    cave_puddle_count: bpy.props.IntProperty(
+        name="水たまり数 (Puddle Count)",
+        default=6, min=1, max=24,
+        description="洞窟の床面テラスに点在する水たまりの個数"
+    )
+    cave_puddle_scale: bpy.props.FloatProperty(
+        name="水たまり規模 (Puddle Scale)",
+        default=2.4, min=0.5, max=10.0,
+        description="点在する水たまりの標準直径（メートル）"
+    )
     cave_has_river: bpy.props.BoolProperty(
         name="🌊 川・水流を生成 (Has River)",
         default=True,
-        description="洞窟の中央を蛇行して流れる水流トレンチ（川床）と水面メッシュを生成"
+        description="後方互換用プロパティ"
     )
     cave_river_width: bpy.props.FloatProperty(
         name="川幅 (River Width)",

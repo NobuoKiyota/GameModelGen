@@ -480,14 +480,17 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 if props.cave_add_moss:
                     row_moss.prop(props, "cave_moss_amount", text="苔の量", slider=True)
 
-                # 1. 川・水流設定 (チェックボックスでON/OFF可能)
+                # 1. 水面設定 (水たまり・河川・併用・なし)
                 box_c_river = box_cave.box()
-                row_cr = box_c_river.row(align=True)
-                row_cr.prop(props, "cave_has_river", text="🌊 川・水流を生成 (Has River)", toggle=True)
-                if props.cave_has_river:
+                box_c_river.prop(props, "cave_water_type", text="水面タイプ")
+                if props.cave_water_type in ('RIVER', 'BOTH'):
                     row_cr_params = box_c_river.row(align=True)
                     row_cr_params.prop(props, "cave_river_width", text="川幅 (m)")
                     row_cr_params.prop(props, "cave_river_depth", text="谷の深さ (m)")
+                if props.cave_water_type in ('PUDDLES', 'BOTH'):
+                    row_cp_params = box_c_river.row(align=True)
+                    row_cp_params.prop(props, "cave_puddle_count", text="水たまり数")
+                    row_cp_params.prop(props, "cave_puddle_scale", text="規模 (m)")
 
                 # 2. 岩棚（テラス）＆フロア寸法設定
                 box_c_dim = box_cave.box()

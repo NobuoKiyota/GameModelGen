@@ -322,6 +322,116 @@ def build_cave_water_bmesh(
     return bm
 
 
+def build_cave_puddles_bmesh(
+    width=18.0,
+    length=35.0,
+    path_type='S_CURVE',
+    terrace_steps=4,
+    step_height=0.6,
+    puddle_count=6,
+    puddle_scale=2.4,
+    seed=0
+):
+    """
+    Creates scattered, organic shallow water puddles/pools on cave floor terraces and hollows.
+    Each puddle has natural noisy edges and sits horizontally in rock depressions with subtle ripples.
+    """
+    bm = bmesh.new()
+    if puddle_count <= 0:
+        return bm
+
+    rng = random.Random(seed + 9999)
+    y_range = length * 0.76
+    y_start = -y_range * 0.5
+    y_step = y_range / float(max(1, puddle_count))
+
+    for i in range(puddle_count):
+        py = y_start + (i + 0.5) * y_step + rng.uniform(-length * 0.05, length * 0.05)
+        cx, wm, _ = get_cave_profile_at_y(py, length=length, path_type=path_type, seed=seed)
+        eff_hx = (width * 0.5) * wm
+
+        # Alternate left, right, and near-center ledges
+        side = 1.0 if (i % 2 == 0) else -1.0
+        offset_x = side * rng.uniform(eff_hx * 0.12, eff_hx * 0.62)
+        px = cx + offset_x
+        dist_to_center = abs(offset_x)
+        norm_dist = min(1.3, dist_to_center / max(1.0, eff_hx * 0.85))
+        base_z = (norm_dist ** 1.8) * (terrace_steps * step_height)
+        step_val = base_z / step_height
+        stepped_z = math.floor(step_val) * step_height
+        # Water sits naturally in the terrace basin hollow
+        puddle_z = stepped_z + 0.08 + rng.uniform(-0.02, 0.05)
+
+        p_rad = puddle_scale * rng.uniform(0.65, 1.35)
+        aspect = rng.uniform(0.72, 1.38) # slight elliptical shape
+        rot = rng.uniform(0, math.pi * 2.0)
+        p_seed = seed + i * 43
+
+        segments = 20
+        rings = 3
+
+        # Build concentric mesh disk for puddle
+        ring_verts = []
+        center_v = bm.verts.new((px, py, puddle_z))
+
+        for r in range(1, rings + 1):
+            t_r = r / float(rings)
+            current_verts = []
+            for s in range(segments):
+                ang = s * (2.0 * math.pi / segments)
+                # Elliptical and organic distortion
+                local_x = math.cos(ang) * p_rad * t_r
+                local_y = math.sin(ang) * p_rad * t_r * aspect
+                # Rotate
+                rx = local_x * math.cos(rot) - local_y * math.sin(rot)
+                ry = local_x * math.sin(rot) + local_y * math.cos(rot)
+
+                # Boundary jitter for outer rings
+                jitter = 1.0
+                if r == rings:
+                    n_edge = pseudo_noise_3d(px + rx * 1.5, py + ry * 1.5, puddle_z, p_seed)
+                    jitter = 1.0 + n_edge * 0.24
+
+                # Water surface ripple
+                wave = (
+                    math.sin((px + rx) * 2.5 + (py + ry) * 1.8) * 0.008 +
+                    math.cos((px + rx) * 4.2 - (py + ry) * 3.1) * 0.004
+                )
+
+                vx = px + rx * jitter
+                vy = py + ry * jitter
+                vz = puddle_z + wave
+                current_verts.append(bm.verts.new((vx, vy, vz)))
+            ring_verts.append(current_verts)
+
+        # Center fan faces
+        for s in range(segments):
+            s_next = (s + 1) % segments
+            try:
+                bm.faces.new((center_v, ring_verts[0][s], ring_verts[0][s_next]))
+            except ValueError:
+                pass
+
+        # Ring quads
+        for r in range(rings - 1):
+            r1 = ring_verts[r]
+            r2 = ring_verts[r + 1]
+            for s in range(segments):
+                s_next = (s + 1) % segments
+                try:
+                    bm.faces.new((r1[s], r2[s], r2[s_next], r1[s_next]))
+                except ValueError:
+                    pass
+
+    bm.verts.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+    bm.normal_update()
+    for f in bm.faces:
+        f.smooth = True
+
+    return bm
+
+
 # ==============================================================================
 # 5. PBR Materials (濡れ岩・地層スラブ・クリア流水マテリアル)
 # ==============================================================================
@@ -368,95 +478,148 @@ def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_riv
     coord = nodes.new(type='ShaderNodeTexCoord')
     coord.location = (-1200, 200)
 
-    # 1. Base Rock Texture (Noise)
+    # 1. Base Multi-Scale Rock Textures
+    # 1A. Macro Voronoi Fissures / Cracks
+    voro_crack = nodes.new(type='ShaderNodeTexVoronoi')
+    voro_crack.location = (-1000, 500)
+    voro_crack.feature = 'DISTANCE_TO_EDGE'
+    voro_crack.inputs['Scale'].default_value = 1.2
+    links.new(coord.outputs['Object'], voro_crack.inputs['Vector'])
+
+    ramp_crack = nodes.new(type='ShaderNodeValToRGB')
+    ramp_crack.location = (-750, 500)
+    ramp_crack.color_ramp.elements[0].position = 0.05
+    ramp_crack.color_ramp.elements[0].color = (0.0, 0.0, 0.0, 1.0)
+    ramp_crack.color_ramp.elements[1].position = 0.35
+    ramp_crack.color_ramp.elements[1].color = (1.0, 1.0, 1.0, 1.0)
+    links.new(voro_crack.outputs['Distance'], ramp_crack.inputs['Fac'])
+
+    # 1B. Layered Sedimentary Strata (Wave)
+    wave_strata = nodes.new(type='ShaderNodeTexWave')
+    wave_strata.location = (-1000, 250)
+    wave_strata.wave_type = 'BANDS'
+    wave_strata.inputs['Scale'].default_value = 0.55
+    wave_strata.inputs['Distortion'].default_value = 6.5
+    wave_strata.inputs['Detail'].default_value = 5.0
+    wave_strata.inputs['Detail Roughness'].default_value = 0.65
+    links.new(coord.outputs['Object'], wave_strata.inputs['Vector'])
+
+    # 1C. Medium Rock Noise
     rock_noise = nodes.new(type='ShaderNodeTexNoise')
-    rock_noise.location = (-950, 300)
-    rock_noise.inputs['Scale'].default_value = 5.0
+    rock_noise.location = (-1000, 0)
+    rock_noise.inputs['Scale'].default_value = 6.0
     rock_noise.inputs['Detail'].default_value = 8.0
     rock_noise.inputs['Roughness'].default_value = 0.65
     links.new(coord.outputs['Object'], rock_noise.inputs['Vector'])
+
+    # 1D. Micro Mineral Grain
+    micro_noise = nodes.new(type='ShaderNodeTexNoise')
+    micro_noise.location = (-1000, -250)
+    micro_noise.inputs['Scale'].default_value = 32.0
+    micro_noise.inputs['Detail'].default_value = 12.0
+    micro_noise.inputs['Roughness'].default_value = 0.75
+    links.new(coord.outputs['Object'], micro_noise.inputs['Vector'])
 
     pal = ROCK_PALETTES.get(rock_style, ROCK_PALETTES['SLATE'])
 
     # Color Ramp for Rock Tone
     ramp_rock = nodes.new(type='ShaderNodeValToRGB')
-    ramp_rock.location = (-650, 250)
+    ramp_rock.location = (-750, 0)
     ramp_rock.color_ramp.elements[0].position = 0.15
     ramp_rock.color_ramp.elements[0].color = pal['rock_dark']
     ramp_rock.color_ramp.elements[1].position = 0.85
     ramp_rock.color_ramp.elements[1].color = pal['rock_light']
     links.new(rock_noise.outputs['Fac'], ramp_rock.inputs['Fac'])
 
-    # Wetness Mask (Height-based)
+    # Mix Strata banding into Rock Color
+    mix_strata = nodes.new(type='ShaderNodeMix')
+    mix_strata.data_type = 'RGBA'
+    mix_strata.location = (-520, 150)
+    mix_strata.blend_type = 'OVERLAY'
+    mix_strata.inputs[0].default_value = 0.38
+    links.new(ramp_rock.outputs['Color'], mix_strata.inputs[6])
+    links.new(wave_strata.outputs['Color'], mix_strata.inputs[7])
+
+    # Darken Cracks / Crevices
+    mix_cracked_rock = nodes.new(type='ShaderNodeMix')
+    mix_cracked_rock.data_type = 'RGBA'
+    mix_cracked_rock.location = (-320, 150)
+    mix_cracked_rock.blend_type = 'MULTIPLY'
+    mix_cracked_rock.inputs[0].default_value = 0.70
+    links.new(mix_strata.outputs[2], mix_cracked_rock.inputs[6])
+    links.new(ramp_crack.outputs['Color'], mix_cracked_rock.inputs[7])
+
+    # Wetness Mask (Height-based & Basin detection)
     sep_xyz = nodes.new(type='ShaderNodeSeparateXYZ')
-    sep_xyz.location = (-950, -100)
+    sep_xyz.location = (-950, -450)
     links.new(coord.outputs['Object'], sep_xyz.inputs['Vector'])
 
     ramp_wet = nodes.new(type='ShaderNodeValToRGB')
-    ramp_wet.location = (-650, -100)
-    ramp_wet.color_ramp.elements[0].position = 0.20
+    ramp_wet.location = (-650, -450)
+    ramp_wet.color_ramp.elements[0].position = 0.18
     ramp_wet.color_ramp.elements[0].color = (1.0, 1.0, 1.0, 1.0) # Wet
-    ramp_wet.color_ramp.elements[1].position = 0.55
+    ramp_wet.color_ramp.elements[1].position = 0.58
     ramp_wet.color_ramp.elements[1].color = (0.0, 0.0, 0.0, 1.0) # Dry
     links.new(sep_xyz.outputs['Z'], ramp_wet.inputs['Fac'])
 
     # Darker wet color helper
     dark_wet = nodes.new(type='ShaderNodeMix')
-    dark_wet.location = (-450, -50)
+    dark_wet.location = (-450, -300)
     dark_wet.data_type = 'RGBA'
-    dark_wet.inputs[0].default_value = 0.65
-    links.new(ramp_rock.outputs['Color'], dark_wet.inputs[6])
+    dark_wet.inputs[0].default_value = 0.72
+    links.new(mix_cracked_rock.outputs[2], dark_wet.inputs[6])
     dark_wet.inputs[7].default_value = (0.01, 0.015, 0.02, 1.0)
 
     # Mix Color (Dry vs Wet Rock)
     mix_rock_wet = nodes.new(type='ShaderNodeMix')
-    mix_rock_wet.location = (-250, 200)
+    mix_rock_wet.location = (-150, 150)
     mix_rock_wet.data_type = 'RGBA'
     if has_river:
         links.new(ramp_wet.outputs['Color'], mix_rock_wet.inputs[0])
     else:
-        mix_rock_wet.inputs[0].default_value = 0.0
-    links.new(ramp_rock.outputs['Color'], mix_rock_wet.inputs[6])
+        # Subtle ambient wetness in low recesses
+        mix_rock_wet.inputs[0].default_value = 0.25
+        links.new(ramp_wet.outputs['Color'], mix_rock_wet.inputs[0])
+    links.new(mix_cracked_rock.outputs[2], mix_rock_wet.inputs[6])
     links.new(dark_wet.outputs[2], mix_rock_wet.inputs[7])
 
     # Geometry Normal for Upward Slopes (Moss on terraces)
     geom = nodes.new(type='ShaderNodeNewGeometry')
-    geom.location = (-1200, -350)
+    geom.location = (-1200, -700)
     sep_norm = nodes.new(type='ShaderNodeSeparateXYZ')
-    sep_norm.location = (-950, -350)
+    sep_norm.location = (-950, -700)
     links.new(geom.outputs['Normal'], sep_norm.inputs['Vector'])
 
     ramp_upward = nodes.new(type='ShaderNodeValToRGB')
-    ramp_upward.location = (-700, -350)
+    ramp_upward.location = (-700, -700)
     ramp_upward.color_ramp.elements[0].position = 0.35
     ramp_upward.color_ramp.elements[1].position = 0.70
     links.new(sep_norm.outputs['Z'], ramp_upward.inputs['Fac'])
 
     # Moss Micro Noise & Color
     moss_noise = nodes.new(type='ShaderNodeTexNoise')
-    moss_noise.location = (-950, -600)
+    moss_noise.location = (-950, -900)
     moss_noise.inputs['Scale'].default_value = 7.5
     moss_noise.inputs['Detail'].default_value = 5.0
     links.new(coord.outputs['Object'], moss_noise.inputs['Vector'])
 
     ramp_moss_col = nodes.new(type='ShaderNodeValToRGB')
-    ramp_moss_col.location = (-700, -600)
+    ramp_moss_col.location = (-700, -900)
     ramp_moss_col.color_ramp.elements[0].position = 0.20
     ramp_moss_col.color_ramp.elements[0].color = (0.04, 0.13, 0.02, 1.0)
     ramp_moss_col.color_ramp.elements[1].position = 0.80
     ramp_moss_col.color_ramp.elements[1].color = (0.16, 0.32, 0.08, 1.0)
     links.new(moss_noise.outputs['Fac'], ramp_moss_col.inputs['Fac'])
 
-    # Moss Factor: upward * noise * moss_amount
     moss_mult = nodes.new(type='ShaderNodeMath')
     moss_mult.operation = 'MULTIPLY'
-    moss_mult.location = (-450, -400)
+    moss_mult.location = (-450, -750)
     links.new(ramp_upward.outputs['Color'], moss_mult.inputs[0])
     links.new(moss_noise.outputs['Fac'], moss_mult.inputs[1])
 
     moss_fac = nodes.new(type='ShaderNodeMath')
     moss_fac.operation = 'MULTIPLY'
-    moss_fac.location = (-250, -400)
+    moss_fac.location = (-250, -750)
     moss_fac.use_clamp = True
     links.new(moss_mult.outputs['Value'], moss_fac.inputs[0])
     moss_fac.inputs[1].default_value = (moss_amount * 1.8) if add_moss else 0.0
@@ -464,48 +627,57 @@ def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_riv
     # Final Surface Color: Mix Rock with Moss
     final_color = nodes.new(type='ShaderNodeMix')
     final_color.data_type = 'RGBA'
-    final_color.location = (0, 150)
+    final_color.location = (100, 150)
     links.new(moss_fac.outputs['Value'], final_color.inputs[0])
     links.new(mix_rock_wet.outputs[2], final_color.inputs[6])
     links.new(ramp_moss_col.outputs['Color'], final_color.inputs[7])
 
-    # Bump Map
-    bump = nodes.new(type='ShaderNodeBump')
-    bump.location = (0, -100)
-    bump.inputs['Strength'].default_value = 0.45
-    bump.inputs['Distance'].default_value = 0.15
-    links.new(rock_noise.outputs['Fac'], bump.inputs['Height'])
+    # Dual Chained Bump Nodes (Macro Fissures/Strata + Micro Grain)
+    # Combine Macro Height (Crack + Strata)
+    macro_mix = nodes.new(type='ShaderNodeMath')
+    macro_mix.operation = 'ADD'
+    macro_mix.location = (-300, -50)
+    links.new(ramp_crack.outputs['Color'], macro_mix.inputs[0])
+    links.new(wave_strata.outputs['Fac'], macro_mix.inputs[1])
+
+    bump_macro = nodes.new(type='ShaderNodeBump')
+    bump_macro.location = (-50, -50)
+    bump_macro.inputs['Strength'].default_value = 0.65
+    bump_macro.inputs['Distance'].default_value = 0.22
+    links.new(macro_mix.outputs['Value'], bump_macro.inputs['Height'])
+
+    bump_micro = nodes.new(type='ShaderNodeBump')
+    bump_micro.location = (150, -50)
+    bump_micro.inputs['Strength'].default_value = 0.45
+    bump_micro.inputs['Distance'].default_value = 0.035
+    links.new(bump_macro.outputs['Normal'], bump_micro.inputs['Normal'])
+    links.new(micro_noise.outputs['Fac'], bump_micro.inputs['Height'])
 
     # Principled BSDF
     bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
-    bsdf.location = (250, 100)
+    bsdf.location = (400, 100)
     links.new(final_color.outputs[2], bsdf.inputs['Base Color'])
-    links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+    links.new(bump_micro.outputs['Normal'], bsdf.inputs['Normal'])
 
     # Roughness: blend wet rock / dry rock / velvety moss
     rough_rock = nodes.new(type='ShaderNodeMix')
     rough_rock.data_type = 'FLOAT'
-    rough_rock.location = (-50, -250)
-    if has_river:
-        links.new(ramp_wet.outputs['Color'], rough_rock.inputs[0])
-        rough_rock.inputs[2].default_value = pal['roughness_dry']
-        rough_rock.inputs[3].default_value = 0.10
-    else:
-        rough_rock.inputs[0].default_value = 0.0
-        rough_rock.inputs[2].default_value = pal['roughness_dry']
-        rough_rock.inputs[3].default_value = pal['roughness_dry']
+    rough_rock.location = (-50, -400)
+    links.new(ramp_wet.outputs['Color'], rough_rock.inputs[0])
+    rough_rock.inputs[2].default_value = pal['roughness_dry']
+    rough_rock.inputs[3].default_value = 0.12
 
     rough_final = nodes.new(type='ShaderNodeMix')
     rough_final.data_type = 'FLOAT'
-    rough_final.location = (100, -250)
+    rough_final.location = (150, -400)
     links.new(moss_fac.outputs['Value'], rough_final.inputs[0])
     links.new(rough_rock.outputs[0], rough_final.inputs[2])
-    rough_final.inputs[3].default_value = 0.92
+    rough_final.inputs[3].default_value = 0.94
     links.new(rough_final.outputs[0], bsdf.inputs['Roughness'])
 
     # Output
     output = nodes.new(type='ShaderNodeOutputMaterial')
-    output.location = (500, 100)
+    output.location = (650, 100)
     links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
 
     return mat
@@ -857,8 +1029,8 @@ def get_or_create_cave_water_material(mat_name="Cave_Water_Mat", rock_style='SLA
 # 5. Speleothem & Debris Helpers (Step 3: 岩柱・鍾乳石・石筍・崩落巨石)
 # ==============================================================================
 
-def create_speleothem_cone_bmesh(bm, base_pos, tip_pos, base_radius=0.35, tip_radius=0.03, segments=12, rings=8, noise_seed=0):
-    """Creates an organic stalactite or stalagmite with smooth ribs and natural curvature."""
+def create_speleothem_cone_bmesh(bm, base_pos, tip_pos, base_radius=0.35, tip_radius=0.04, segments=16, rings=14, noise_seed=0):
+    """Creates an organic stalactite or stalagmite with rounded bulbous tip, flanged base, and rib drapery."""
     rng = random.Random(noise_seed)
     diff = tip_pos - base_pos
     length = diff.length
@@ -872,27 +1044,37 @@ def create_speleothem_cone_bmesh(bm, base_pos, tip_pos, base_radius=0.35, tip_ra
     side1 = dir_vec.cross(up).normalized()
     side2 = dir_vec.cross(side1).normalized()
 
-    wobble_dx = rng.uniform(-0.08, 0.08) * length
-    wobble_dy = rng.uniform(-0.08, 0.08) * length
+    wobble_dx = rng.uniform(-0.06, 0.06) * length
+    wobble_dy = rng.uniform(-0.06, 0.06) * length
 
     ring_verts_list = []
-    for r in range(rings + 1):
+    for r in range(rings):
         t = r / float(rings)
-        node_swell = 1.0 + 0.22 * math.sin(t * math.pi * 3.5 + noise_seed) * (1.0 - t * 0.7)
-        rad = (base_radius * ((1.0 - t)**1.15) + tip_radius * t) * node_swell
-        if t >= 0.98:
-            rad = max(0.015, tip_radius * 0.4)
+        
+        # Base flare blending into rock ceiling/floor
+        flare = math.exp(-t * 5.0) * 0.95
+
+        # Middle rhythmic drip nodes
+        drip_node = 0.12 * math.sin(t * math.pi * 4.5 + noise_seed) * (1.0 - t * 0.5)
+
+        # Teardrop water bulge near tip (smooth bulb instead of sharp cone)
+        bulb = 0.0
+        if t > 0.80:
+            bulb = 0.40 * math.sin(((t - 0.80) / 0.20) * math.pi)
+
+        rad = (base_radius * ((1.0 - t)**0.95) + tip_radius) * (1.0 + flare + drip_node + bulb)
 
         center = base_pos + dir_vec * (length * t)
-        center += side1 * (wobble_dx * (t**1.4))
-        center += side2 * (wobble_dy * (t**1.4))
+        center += side1 * (wobble_dx * (t**1.3))
+        center += side2 * (wobble_dy * (t**1.3))
 
         ring_verts = []
         for s in range(segments):
             ang = s * (2.0 * math.pi / segments)
-            rib = 1.0 + 0.16 * math.sin(ang * 5.0 + noise_seed) + 0.06 * math.cos(ang * 3.0)
-            nv = pseudo_noise_3d(center.x + math.cos(ang), center.y + math.sin(ang), center.z + t * 4.0, noise_seed)
-            r_final = max(0.01, rad * rib * (1.0 + nv * 0.14))
+            # Organic drapery ribs
+            rib = 1.0 + 0.20 * math.sin(ang * 4.0 + noise_seed) + 0.09 * math.cos(ang * 6.0)
+            nv = pseudo_noise_3d(center.x + math.cos(ang) * 0.5, center.y + math.sin(ang) * 0.5, center.z + t * 3.0, noise_seed)
+            r_final = max(0.012, rad * rib * (1.0 + nv * 0.12))
 
             px = center.x + (side1.x * math.cos(ang) + side2.x * math.sin(ang)) * r_final
             py = center.y + (side1.y * math.cos(ang) + side2.y * math.sin(ang)) * r_final
@@ -900,7 +1082,11 @@ def create_speleothem_cone_bmesh(bm, base_pos, tip_pos, base_radius=0.35, tip_ra
             ring_verts.append(bm.verts.new((px, py, pz)))
         ring_verts_list.append(ring_verts)
 
-    for r in range(rings):
+    # Rounded dome tip (bulbous droplet end)
+    tip_cap_center = base_pos + dir_vec * length + side1 * wobble_dx + side2 * wobble_dy
+    tip_cap_vert = bm.verts.new(tip_cap_center + dir_vec * (tip_radius * 0.7))
+
+    for r in range(rings - 1):
         rv1 = ring_verts_list[r]
         rv2 = ring_verts_list[r + 1]
         for s in range(segments):
@@ -908,12 +1094,14 @@ def create_speleothem_cone_bmesh(bm, base_pos, tip_pos, base_radius=0.35, tip_ra
             f = bm.faces.new((rv1[s], rv1[s_next], rv2[s_next], rv2[s]))
             f.smooth = True
 
+    # Base cap
     f_base = bm.faces.new(reversed(ring_verts_list[0]))
     f_base.smooth = True
-    tip_vert = bm.verts.new(tip_pos + side1 * wobble_dx + side2 * wobble_dy)
+
+    # Rounded dome tip fan
     for s in range(segments):
         s_next = (s + 1) % segments
-        f = bm.faces.new((ring_verts_list[-1][s], ring_verts_list[-1][s_next], tip_vert))
+        f = bm.faces.new((ring_verts_list[-1][s], ring_verts_list[-1][s_next], tip_cap_vert))
         f.smooth = True
 
 
@@ -986,7 +1174,10 @@ def build_stalagmites_on_floor_bmesh(bm, length, width, path_type, cluster_count
 
 
 def build_cave_pillars_bmesh(length, width, ceiling_height, path_type, count=4, seed=0):
-    """Builds organic speleothem rock pillars connecting floor to ceiling with smooth shading."""
+    """
+    Builds massive, multi-lobed organic speleothem rock pillars connecting floor to ceiling.
+    Features fused stalactite/stalagmite lobes, flanged skirts at connections, and banded drip rings.
+    """
     bm = bmesh.new()
     rng = random.Random(seed + 777)
     if count <= 0:
@@ -1002,8 +1193,8 @@ def build_cave_pillars_bmesh(length, width, ceiling_height, path_type, count=4, 
         eff_h = ceiling_height * hm
 
         side = 1.0 if (i % 2 == 0) else -1.0
-        min_dist = min(3.0, eff_w * 0.38)
-        max_dist = max(min_dist + 0.6, eff_w * 0.76)
+        min_dist = max(2.5, eff_w * 0.48)
+        max_dist = max(min_dist + 1.2, eff_w * 0.78)
         offset_x = side * rng.uniform(min_dist, max_dist)
         px = cx + offset_x
 
@@ -1016,9 +1207,10 @@ def build_cave_pillars_bmesh(length, width, ceiling_height, path_type, count=4, 
         if pillar_h < 1.5:
             continue
 
-        base_radius = rng.uniform(0.70, 1.15)
-        segments = 16
-        rings = 16
+        # Substantially thicker base radius (massive stalactite/stalagmite column)
+        base_radius = rng.uniform(1.6, 2.6)
+        segments = 32
+        rings = 28
 
         ring_verts_list = []
         p_seed = seed + i * 37
@@ -1026,20 +1218,32 @@ def build_cave_pillars_bmesh(length, width, ceiling_height, path_type, count=4, 
             t = r / float(rings)
             z = pz_floor + t * pillar_h
 
-            nz = 2.0 * t - 1.0
-            hourglass = 1.0 + 0.60 * (nz ** 2)
-            waist = 1.0 - 0.22 * math.exp(-5.0 * (nz ** 2))
-            rad = base_radius * hourglass * waist
+            # Organic flanged skirt at floor (t->0) and ceiling (t->1)
+            flare_bottom = math.exp(-t * 5.5) * 1.5
+            flare_top = math.exp(-(1.0 - t) * 5.5) * 1.4
+            waist_factor = 0.82 + flare_bottom + flare_top
 
-            lx = math.sin(t * math.pi + p_seed) * 0.22
-            ly = math.cos(t * math.pi + p_seed * 1.5) * 0.22
+            # Rhythmic calcified drip rings (banded nodes)
+            ring_nodes = 1.0 + 0.10 * math.sin(t * math.pi * 14.0 + p_seed) * (0.3 + 0.7 * math.sin(t * math.pi))
+
+            # Natural gentle spine meander
+            lx = math.sin(t * math.pi + p_seed) * 0.28
+            ly = math.cos(t * math.pi + p_seed * 1.5) * 0.28
 
             ring_verts = []
             for s in range(segments):
                 ang = s * (2.0 * math.pi / segments)
-                flute = 1.0 + 0.16 * math.sin(ang * 6.0 + p_seed) + 0.07 * math.cos(ang * 3.0)
-                n = pseudo_noise_3d(px + math.cos(ang) * rad, py + math.sin(ang) * rad, z * 0.8, p_seed)
-                r_final = max(0.18, rad * flute * (1.0 + n * 0.14))
+
+                # Multi-lobed profile: multiple fused stalactite columns growing together
+                lobe = (
+                    math.cos(ang * 3.0 + p_seed) * 0.32 +
+                    math.sin(ang * 5.0 + p_seed * 1.6) * 0.18 +
+                    math.cos(ang * 7.0 - p_seed * 2.1) * 0.08
+                )
+
+                # 3D geological noise
+                nv = pseudo_noise_3d(px + math.cos(ang) * 1.5, py + math.sin(ang) * 1.5, z * 0.4, p_seed)
+                r_final = max(0.35, base_radius * waist_factor * ring_nodes * (1.0 + lobe) * (1.0 + nv * 0.14))
 
                 vx = px + lx + math.cos(ang) * r_final
                 vy = py + ly + math.sin(ang) * r_final
@@ -1112,7 +1316,10 @@ def create_procedural_cave_scene(
     seed=0,
     path_type='S_CURVE',
     rock_style='SLATE',
+    water_type='PUDDLES',
     has_river=True,
+    puddle_count=6,
+    puddle_scale=2.4,
     floor_width=18.0,
     floor_length=35.0,
     river_width=4.5,
@@ -1137,20 +1344,35 @@ def create_procedural_cave_scene(
     **kwargs
 ):
     """
-    Main entry point for Cave System (Step 1 & Step 2).
+    Main entry point for Cave System (Step 1, Step 2, Step 3, Water & Realism Overhaul).
     Builds:
-    - Terraced rock floor with voronoi slabs
-    - Optional river trench with water mesh
+    - Terraced rock floor with voronoi slabs and organic depressions
+    - Water features (Puddles & Pools, Subterranean River, or Both)
     - Vertical cliff walls and overhanging ceiling arch (separate object)
+    - Massive multi-lobed speleothem columns, rounded bulb stalactites, boulders
     """
     col = context.collection
 
+    # Determine effective river & puddle flags
+    # If caller specifically passed water_type, respect it; otherwise fallback to has_river
+    if water_type in ('RIVER', 'BOTH'):
+        has_river_effective = True
+    elif water_type == 'NONE':
+        has_river_effective = False
+    elif water_type == 'PUDDLES':
+        has_river_effective = False
+    else:
+        has_river_effective = has_river
+
+    has_puddles_effective = water_type in ('PUDDLES', 'BOTH')
+
     # 0. Sanitize base name (prevent _Floor_Floor accumulation)
     import re
-    clean_name = re.sub(r'(_Floor|_Water|_Ceiling|_Pillars|_Debris)+$', '', name).strip() or "Cave_Dungeon"
+    clean_name = re.sub(r'(_Floor|_Water|_Puddles|_Ceiling|_Pillars|_Debris)+$', '', name).strip() or "Cave_Dungeon"
 
     floor_obj_name = clean_name + "_Floor"
-    water_obj_name = clean_name + "_Water"
+    river_obj_name = clean_name + "_Water"
+    puddles_obj_name = clean_name + "_Puddles"
     ceiling_obj_name = clean_name + "_Ceiling"
     pillar_obj_name = clean_name + "_Pillars"
     debris_obj_name = clean_name + "_Debris"
@@ -1160,7 +1382,7 @@ def create_procedural_cave_scene(
         width=floor_width,
         length=floor_length,
         path_type=path_type,
-        has_river=has_river,
+        has_river=has_river_effective,
         river_width=river_width,
         river_depth=river_depth,
         terrace_steps=terrace_steps,
@@ -1190,17 +1412,21 @@ def create_procedural_cave_scene(
 
     bm_floor.free()
 
-    mat_floor = get_or_create_cave_floor_material(clean_name + "_Floor_Mat", has_river=has_river, rock_style=rock_style, add_moss=add_moss, moss_amount=moss_amount)
+    mat_floor = get_or_create_cave_floor_material(
+        clean_name + "_Floor_Mat",
+        has_river=(has_river_effective or has_puddles_effective),
+        rock_style=rock_style,
+        add_moss=add_moss,
+        moss_amount=moss_amount
+    )
     if floor_obj.data.materials:
         floor_obj.data.materials[0] = mat_floor
     else:
         floor_obj.data.materials.append(mat_floor)
 
-    # 2. Handle River Water Mesh
-    # water_obj_name already set to clean_name + "_Water"
-    water_obj = bpy.data.objects.get(water_obj_name)
-
-    if has_river:
+    # 2A. Handle River Water Mesh
+    river_obj = bpy.data.objects.get(river_obj_name)
+    if has_river_effective:
         bm_water = build_cave_water_bmesh(
             length=floor_length,
             river_width=river_width,
@@ -1208,28 +1434,65 @@ def create_procedural_cave_scene(
             water_level=-river_depth * 0.45,
             seed=seed
         )
-        if water_obj and water_obj.type == 'MESH':
-            bm_water.to_mesh(water_obj.data)
-            water_obj.data.update()
-            water_obj.hide_viewport = False
-            water_obj.hide_render = False
+        if river_obj and river_obj.type == 'MESH':
+            bm_water.to_mesh(river_obj.data)
+            river_obj.data.update()
+            river_obj.hide_viewport = False
+            river_obj.hide_render = False
         else:
-            mesh_water = bpy.data.meshes.new(water_obj_name)
+            mesh_water = bpy.data.meshes.new(river_obj_name)
             bm_water.to_mesh(mesh_water)
-            water_obj = bpy.data.objects.new(water_obj_name, mesh_water)
-            col.objects.link(water_obj)
-
+            river_obj = bpy.data.objects.new(river_obj_name, mesh_water)
+            col.objects.link(river_obj)
         bm_water.free()
 
         mat_water = get_or_create_cave_water_material(clean_name + "_Water_Mat", rock_style=rock_style)
-        if water_obj.data.materials:
-            water_obj.data.materials[0] = mat_water
+        if river_obj.data.materials:
+            river_obj.data.materials[0] = mat_water
         else:
-            water_obj.data.materials.append(mat_water)
+            river_obj.data.materials.append(mat_water)
     else:
-        if water_obj:
-            bpy.data.objects.remove(water_obj, do_unlink=True)
-            water_obj = None
+        if river_obj:
+            bpy.data.objects.remove(river_obj, do_unlink=True)
+            river_obj = None
+
+    # 2B. Handle Scattered Puddles & Pools Mesh
+    puddles_obj = bpy.data.objects.get(puddles_obj_name)
+    if has_puddles_effective and puddle_count > 0:
+        bm_puddles = build_cave_puddles_bmesh(
+            width=floor_width,
+            length=floor_length,
+            path_type=path_type,
+            terrace_steps=terrace_steps,
+            step_height=step_height,
+            puddle_count=puddle_count,
+            puddle_scale=puddle_scale,
+            seed=seed
+        )
+        if puddles_obj and puddles_obj.type == 'MESH':
+            bm_puddles.to_mesh(puddles_obj.data)
+            puddles_obj.data.update()
+            puddles_obj.hide_viewport = False
+            puddles_obj.hide_render = False
+        else:
+            mesh_puddles = bpy.data.meshes.new(puddles_obj_name)
+            bm_puddles.to_mesh(mesh_puddles)
+            puddles_obj = bpy.data.objects.new(puddles_obj_name, mesh_puddles)
+            col.objects.link(puddles_obj)
+        bm_puddles.free()
+
+        mat_puddles = get_or_create_cave_water_material(clean_name + "_Water_Mat", rock_style=rock_style)
+        if puddles_obj.data.materials:
+            puddles_obj.data.materials[0] = mat_puddles
+        else:
+            puddles_obj.data.materials.append(mat_puddles)
+    else:
+        if puddles_obj:
+            bpy.data.objects.remove(puddles_obj, do_unlink=True)
+            puddles_obj = None
+
+    # Primary water reference for operator reporting
+    water_obj = puddles_obj or river_obj
 
     # 3. Handle Ceiling & Cliff Walls Mesh (Step 2)
     # ceiling_obj_name already set to clean_name + "_Ceiling"
