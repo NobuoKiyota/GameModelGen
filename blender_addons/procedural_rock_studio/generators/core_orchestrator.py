@@ -280,6 +280,8 @@ def resolve_prop_parameters(props):
         "arch_keystone_scale": getattr(props, 'arch_keystone_scale', 1.25),
         "arch_molding_tiers": getattr(props, 'arch_molding_tiers', 2),
         "arch_pillar_shape": getattr(props, 'arch_pillar_shape', 'SQUARE_PIER'),
+        "arch_pillar_width": getattr(props, 'arch_pillar_width', 0.55),
+        "arch_column_height": getattr(props, 'arch_column_height', 2.2),
         "arch_has_spandrel": getattr(props, 'arch_has_spandrel', True),
         "arch_has_pedestal": getattr(props, 'arch_has_pedestal', True),
     }
@@ -643,6 +645,8 @@ def generate_procedural_prop_mesh(
             structure_type=kwargs.get('arch_structure_type', 'SINGLE'),
             span_count=kwargs.get('arch_span_count', 3),
             pillar_shape=kwargs.get('arch_pillar_shape', 'SQUARE_PIER'),
+            pillar_width=kwargs.get('arch_pillar_width', 0.55),
+            column_height=kwargs.get('arch_column_height', 2.2),
             has_keystone=kwargs.get('arch_has_keystone', True),
             keystone_scale=kwargs.get('arch_keystone_scale', 1.25),
             molding_tiers=kwargs.get('arch_molding_tiers', 2),

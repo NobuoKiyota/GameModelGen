@@ -616,6 +616,9 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_a_pier = box_arch.box()
                 box_a_pier.label(text="支柱・台座設定 (Piers & Plinths):", icon='SNAP_VOLUME')
                 box_a_pier.prop(props, "arch_pillar_shape", text="柱の断面形状")
+                row_p_dim = box_a_pier.row(align=True)
+                row_p_dim.prop(props, "arch_pillar_width", text="太さ (m)")
+                row_p_dim.prop(props, "arch_column_height", text="長さ/高さ (m)")
                 row_ped = box_a_pier.row(align=True)
                 row_ped.prop(props, "arch_has_pedestal", text="🏛️ 柱脚台座 (Plinth Base)", toggle=True)
 

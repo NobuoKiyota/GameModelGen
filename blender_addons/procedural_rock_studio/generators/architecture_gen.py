@@ -839,6 +839,8 @@ def build_procedural_stone_arch_bmesh(
     structure_type='SINGLE',
     span_count=3,
     pillar_shape='SQUARE_PIER',
+    pillar_width=0.55,
+    column_height=2.2,
     has_keystone=True,
     keystone_scale=1.25,
     molding_tiers=2,
@@ -849,7 +851,8 @@ def build_procedural_stone_arch_bmesh(
     """
     Builds an architecturally authentic classical stone arch based on hbitproject's tutorial:
     - Watertight solid mesh topology with zero missing outer rim faces
-    - Mathematically rigorous height derivation preventing any crown breakthrough through the entablature
+    - Seamless gapless spandrel wall generation using vertical quad strips (no triangular voids)
+    - Full customization for pillar width (thickness) and column height (length)
     - Authentic semicircular, pointed (Gothic), segmental, or horseshoe arch ring with tiered stepped moldings
     - Trapezoidal Keystone firmly wedged at the crown
     - Clean rectangular boundary box for seamless modular tiling in Unreal Engine / Unity
@@ -864,16 +867,19 @@ def build_procedural_stone_arch_bmesh(
 
     span_w = size_x
     total_w = span_w * spans
+    half_d = depth * 0.5
 
-    # 1. 幾何学パラメータの厳密な比率設計（天板を絶対に突き抜けない数式）
-    cornice_h = min(0.35, size_z * 0.08)
-    wall_top_z = size_z - cornice_h
-    attic_h = min(0.30, size_z * 0.08)
+    # 1. 柱とアーチの幾何学設計（ユーザー指定の太さ・長さを直接反映）
+    pillar_w = max(0.15, min(pillar_width, span_w * 0.45))
+    col_h = max(0.4, column_height)
 
-    pillar_w = span_w * 0.22
-    opening_w = span_w - pillar_w * 2.0
+    plinth_h = min(0.35, col_h * 0.12) if has_pedestal else 0.0
+    capital_h = min(0.35, col_h * 0.13)
+    spring_z = plinth_h + col_h + capital_h
+
+    opening_w = max(0.6, span_w - pillar_w)
     r_in = opening_w * 0.5
-    ring_thick = min(pillar_w * 0.75, opening_w * 0.35)
+    ring_thick = min(0.42, pillar_w * 0.65)
     r_out = r_in + ring_thick
 
     # Rise (アーチの盛り上がり高さ)
@@ -886,24 +892,11 @@ def build_procedural_stone_arch_bmesh(
     else: # ROMAN_ROUND
         arch_rise = r_in
 
-    # アーチ最頂部が絶対に wall_top_z - attic_h を超えないよう spring_z を逆算
-    max_crown_z = wall_top_z - attic_h
-    spring_z = max(0.6, max_crown_z - (arch_rise + ring_thick * 0.5))
-    if spring_z < 0.8:
-        spring_z = 0.8
-        avail_h = wall_top_z - attic_h - spring_z
-        if (arch_rise + ring_thick * 0.5) > avail_h:
-            scale_fac = max(0.4, avail_h / (arch_rise + ring_thick * 0.5))
-            r_in *= scale_fac
-            ring_thick *= scale_fac
-            r_out = r_in + ring_thick
-            if style == 'GOTHIC_POINTED':
-                arch_rise = r_in * 1.30
-            else:
-                arch_rise = r_in
-
-    half_d = depth * 0.5
+    attic_h = 0.25
+    wall_top_z = spring_z + arch_rise + ring_thick * 0.4 + attic_h
+    cornice_h = 0.28
     segments = 24
+    m_step = 0.03 # モールディング段差
 
     def add_box(center, dims):
         return bmesh.ops.create_cube(
@@ -912,10 +905,46 @@ def build_procedural_stone_arch_bmesh(
 
     start_cx = -total_w * 0.5 + span_w * 0.5
 
+    # ── A. 柱（ピアー・カラム）の生成（全スパンで均等配置） ──
+    for p_idx in range(spans + 1):
+        px = -total_w * 0.5 + p_idx * span_w
+
+        # 柱脚 (Plinth Base)
+        if has_pedestal:
+            add_box((px, 0.0, plinth_h * 0.5), (pillar_w * 1.25, depth * 1.15, plinth_h))
+            add_box((px, 0.0, plinth_h * 0.85), (pillar_w * 1.12, depth * 1.08, plinth_h * 0.3))
+
+        # 柱身 (Shaft)
+        s_cz = plinth_h + col_h * 0.5
+        if pillar_shape == 'ROUND_COLUMN':
+            rad = pillar_w * 0.46
+            res = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=18,
+                radius1=rad, radius2=rad, depth=col_h
+            )
+            bmesh.ops.translate(bm, vec=(px, 0.0, s_cz), verts=res['verts'])
+        elif pillar_shape == 'OCTAGONAL':
+            rad = pillar_w * 0.48
+            res = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=8,
+                radius1=rad, radius2=rad, depth=col_h
+            )
+            bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(22.5), 3, 'Z'), verts=res['verts'])
+            bmesh.ops.translate(bm, vec=(px, 0.0, s_cz), verts=res['verts'])
+        else: # SQUARE_PIER
+            add_box((px, 0.0, s_cz), (pillar_w, depth, col_h))
+
+        # 柱頭 (Impost Capital) - 上面を spring_z に完全密着
+        c1_h = capital_h * 0.45
+        c2_h = capital_h * 0.55
+        add_box((px, 0.0, plinth_h + col_h + c1_h * 0.5), (pillar_w * 1.12, depth * 1.08, c1_h))
+        add_box((px, 0.0, spring_z - c2_h * 0.5), (pillar_w * 1.25, depth * 1.15, c2_h))
+
+    # ── B. 各スパンのアーチリング＆隙間ゼロスパンドレル壁 ──
     for ispan in range(spans):
         cx = start_cx + ispan * span_w
 
-        # ── 2D正面プロファイル点の生成 ──
+        # 2D正面プロファイル点
         inner_pts = []
         outer_pts = []
 
@@ -926,7 +955,8 @@ def build_procedural_stone_arch_bmesh(
                 x_val = -r_in + t * r_in
                 z_val = spring_z + math.sqrt(max(0.01, (r_in + d_center)**2 - (x_val - d_center)**2))
                 inner_pts.append((x_val, z_val))
-                outer_pts.append((x_val * (1.0 + ring_thick / r_in), z_val + ring_thick))
+                z_out = z_val + ring_thick * (1.0 - t * 0.15) if s > 0 else spring_z
+                outer_pts.append((x_val * (1.0 + ring_thick / r_in), z_out))
             for s in range(1, segments // 2 + 1):
                 idx = (segments // 2) - s
                 inner_pts.append((-inner_pts[idx][0], inner_pts[idx][1]))
@@ -968,46 +998,7 @@ def build_procedural_stone_arch_bmesh(
 
         n_arc = len(inner_pts)
 
-        # ── 柱（ピアー）の作成 ──
-        pier_xs = [cx - span_w * 0.5 + pillar_w * 0.5]
-        if ispan == spans - 1:
-            pier_xs.append(cx + span_w * 0.5 - pillar_w * 0.5)
-
-        for px in pier_xs:
-            plinth_h = spring_z * 0.12 if has_pedestal else 0.0
-            if has_pedestal:
-                add_box((px, 0.0, plinth_h * 0.5), (pillar_w * 1.20, depth * 1.12, plinth_h))
-
-            capital_h = spring_z * 0.14
-            c_z = spring_z - capital_h * 0.5
-            add_box((px, 0.0, c_z), (pillar_w * 1.22, depth * 1.15, capital_h))
-            add_box((px, 0.0, c_z - capital_h * 0.35), (pillar_w * 1.10, depth * 1.08, capital_h * 0.3))
-
-            s_bot = plinth_h
-            s_top = spring_z - capital_h
-            s_h = max(0.1, s_top - s_bot)
-            s_cz = s_bot + s_h * 0.5
-
-            if pillar_shape == 'ROUND_COLUMN':
-                rad = pillar_w * 0.46
-                res = bmesh.ops.create_cone(
-                    bm, cap_ends=True, cap_tris=False, segments=18,
-                    radius1=rad, radius2=rad, depth=s_h
-                )
-                bmesh.ops.translate(bm, vec=(px, 0.0, s_cz), verts=res['verts'])
-            elif pillar_shape == 'OCTAGONAL':
-                rad = pillar_w * 0.48
-                res = bmesh.ops.create_cone(
-                    bm, cap_ends=True, cap_tris=False, segments=8,
-                    radius1=rad, radius2=rad, depth=s_h
-                )
-                bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(22.5), 3, 'Z'), verts=res['verts'])
-                bmesh.ops.translate(bm, vec=(px, 0.0, s_cz), verts=res['verts'])
-            else: # SQUARE_PIER
-                add_box((px, 0.0, s_cz), (pillar_w, depth, s_h))
-
-        # ── アーチリングの完全ソリッド押し出し ──
-        m_step = 0.03
+        # アーチリングの完全ソリッド面張り
         vf_in, vf_out = [], []
         vb_in, vb_out = [], []
 
@@ -1028,51 +1019,63 @@ def build_procedural_stone_arch_bmesh(
             bm.faces.new((vb_in[i+1], vb_out[i+1], vb_out[i], vb_in[i]))
             # 3. 内周天井 (Soffit)
             bm.faces.new((vf_in[i+1], vb_in[i+1], vb_in[i], vf_in[i]))
-            # 4. 外周上面 (Outer Rim) ★ 隙間なく完全に塞ぐ
+            # 4. 外周上面 (Outer Rim)
             bm.faces.new((vf_out[i], vf_out[i+1], vb_out[i+1], vb_out[i]))
 
-        # ── スパンドレル壁＆アティック ──
+        # ── ★ 隙間ゼロ・完全ポリゴン密閉スパンドレル壁 ──
         if has_spandrel:
-            left_edge_x = cx - span_w * 0.5
-            right_edge_x = cx + span_w * 0.5
-            span_depth = depth
+            # 1. アーチ外周の各点 (xo, zo) から天面 (wall_top_z) までの垂直クアッドストリップ
+            vf_top = []
+            vb_top = []
+            for i in range(n_arc):
+                xo, _ = outer_pts[i]
+                vf_top.append(bm.verts.new((cx + xo, half_d, wall_top_z)))
+                vb_top.append(bm.verts.new((cx + xo, -half_d, wall_top_z)))
 
-            pier_outer_w = (span_w * 0.5 - r_in)
-            wall_h = wall_top_z - spring_z
-            add_box(
-                (left_edge_x + pier_outer_w * 0.5, 0.0, spring_z + wall_h * 0.5),
-                (pier_outer_w, span_depth, wall_h)
-            )
-            add_box(
-                (right_edge_x - pier_outer_w * 0.5, 0.0, spring_z + wall_h * 0.5),
-                (pier_outer_w, span_depth, wall_h)
-            )
-            max_arc_top_z = max(zo for _, zo in outer_pts)
-            top_attic_h = wall_top_z - max_arc_top_z
-            if top_attic_h > 0.01:
+            bm.verts.ensure_lookup_table()
+
+            # 前面・背面・天面の面張り（三角形の穴を完全に無くす）
+            for i in range(n_arc - 1):
+                # 前面スパンドレル面
+                bm.faces.new((vf_out[i], vf_top[i], vf_top[i+1], vf_out[i+1]))
+                # 背面スパンドレル面
+                bm.faces.new((vb_out[i+1], vb_top[i+1], vb_top[i], vb_out[i]))
+                # 天板上面
+                bm.faces.new((vf_top[i], vf_top[i+1], vb_top[i+1], vb_top[i]))
+
+            # 2. 左側柱の上の壁ブロック (cx - span_w*0.5 〜 cx + outer_pts[0][0])
+            left_w = (cx + outer_pts[0][0]) - (cx - span_w * 0.5)
+            if left_w > 0.001:
                 add_box(
-                    (cx, 0.0, max_arc_top_z + top_attic_h * 0.5),
-                    (opening_w, span_depth, top_attic_h)
+                    (cx - span_w * 0.5 + left_w * 0.5, 0.0, (spring_z + wall_top_z) * 0.5),
+                    (left_w, depth, wall_top_z - spring_z)
                 )
 
-        # ── 要石（Keystone） ──
+            # 3. 右側柱の上の壁ブロック (cx + outer_pts[-1][0] 〜 cx + span_w*0.5)
+            right_w = (cx + span_w * 0.5) - (cx + outer_pts[-1][0])
+            if right_w > 0.001:
+                add_box(
+                    (cx + span_w * 0.5 - right_w * 0.5, 0.0, (spring_z + wall_top_z) * 0.5),
+                    (right_w, depth, wall_top_z - spring_z)
+                )
+
+        # 要石（Keystone）
         if has_keystone:
             mid = n_arc // 2
             k_in_z = inner_pts[mid][1]
             k_out_z = outer_pts[mid][1]
-            k_top_z = min(wall_top_z, k_out_z + ring_thick * 0.25 * keystone_scale)
+            k_top_z = min(wall_top_z, k_out_z + ring_thick * 0.28 * keystone_scale)
             k_bot_z = k_in_z - ring_thick * 0.08
             k_h = k_top_z - k_bot_z
-            k_w = ring_thick * 0.9 * keystone_scale
-            k_depth = depth + m_step * 2.8
-            add_box((cx, 0.0, (k_top_z + k_bot_z) * 0.5), (k_w, k_depth, k_h))
+            k_w = ring_thick * 0.85 * keystone_scale
+            add_box((cx, 0.0, (k_top_z + k_bot_z) * 0.5), (k_w, depth + m_step * 2.8, k_h))
 
-    # ── コーニス天板（Cornice Entablature） ──
+    # ── C. 連続コーニス天板 ──
     if has_spandrel:
         c_cz = wall_top_z + cornice_h * 0.5
-        c_w = total_w + 0.10
+        c_w = total_w + 0.12
         add_box((0.0, 0.0, c_cz - cornice_h * 0.2), (c_w, depth + 0.08, cornice_h * 0.6))
-        add_box((0.0, 0.0, c_cz + cornice_h * 0.25), (c_w + 0.12, depth + 0.18, cornice_h * 0.5))
+        add_box((0.0, 0.0, c_cz + cornice_h * 0.25), (c_w + 0.14, depth + 0.18, cornice_h * 0.5))
 
     bm.verts.ensure_lookup_table()
     bm.normal_update()

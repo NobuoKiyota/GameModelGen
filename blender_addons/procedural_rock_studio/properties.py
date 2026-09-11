@@ -1537,6 +1537,18 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         ],
         default='SQUARE_PIER'
     )
+    arch_pillar_width: bpy.props.FloatProperty(
+        name="柱の太さ (Pillar Width)",
+        default=0.55, min=0.15, max=2.5,
+        unit='LENGTH',
+        description="アーチを支える柱の太さ・直径 (m)"
+    )
+    arch_column_height: bpy.props.FloatProperty(
+        name="柱の長さ・高さ (Column Height)",
+        default=2.2, min=0.5, max=10.0,
+        unit='LENGTH',
+        description="柱身（シャフト）の垂直方向の長さ・高さ (m)"
+    )
     arch_has_spandrel: bpy.props.BoolProperty(
         name="🧱 上部スパンドレル壁 (Spandrel Wall)",
         default=True,
