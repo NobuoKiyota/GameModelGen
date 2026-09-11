@@ -116,10 +116,14 @@ def resolve_prop_parameters(props):
             final_sx = round(random.choice([2.0, 3.0, 4.0]), 2)
             final_sy = round(random.uniform(0.8, 1.2), 2)
             final_sz = round(random.choice([2.0, 2.5, 3.0]), 2)
-        elif cat in ("BEAM", "BEAM_ARCH"):
+        elif cat == "BEAM":
             final_sx = round(random.uniform(1.8, 3.5), 2)
             final_sy = round(random.uniform(1.5, 2.5), 2)
             final_sz = round(random.uniform(1.8, 2.8), 2)
+        elif cat == "BEAM_ARCH":
+            final_sx = round(random.uniform(3.0, 4.2), 2)
+            final_sy = round(random.uniform(0.6, 0.9), 2)
+            final_sz = round(random.uniform(3.4, 4.4), 2)
         elif cat == "PILLAR":
             final_sx = round(random.uniform(0.8, 1.6), 2)
             final_sy = round(random.uniform(0.8, 1.6), 2)
@@ -673,7 +677,12 @@ def generate_procedural_prop_mesh(
     # 2. Bevel for Furniture, Architecture & Grass Mound
     if category in ("FLOOR", "WALL", "PILLAR", "BEAM", "BEAM_ARCH", "BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED") or (category == "GRASS" and grass_mode == "MOUND"):
         bevel_mod = obj.modifiers.new(name="Bevel_Chipping", type='BEVEL')
-        bevel_mod.width = 0.012 if category in ("BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED") else min(0.03, (size_z if category != "WALL" else size_y) * 0.15)
+        if category == "BEAM_ARCH":
+            bevel_mod.width = 0.008
+        elif category in ("BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED"):
+            bevel_mod.width = 0.012
+        else:
+            bevel_mod.width = min(0.03, (size_z if category != "WALL" else size_y) * 0.15)
         bevel_mod.segments = 2
         try:
             bpy.ops.object.modifier_apply(modifier=bevel_mod.name)
@@ -920,7 +929,7 @@ def generate_procedural_prop_mesh(
                 mat = create_procedural_pbr_material(name + "_Mat", seed, is_grass=False)
             obj.data.materials.append(mat)
 
-        if enable_disp and disp_strength > 0.001 and category in ("WALL", "FLOOR", "PILLAR", "BEAM", "BEAM_ARCH", "TABLE", "PC_DESK", "CHEST", "GRASS"):
+        if enable_disp and disp_strength > 0.001 and category in ("WALL", "FLOOR", "PILLAR", "BEAM", "TABLE", "PC_DESK", "CHEST", "GRASS"):
             apply_geometry_displacement(
                 obj,
                 disp_image_path=disp_img,
