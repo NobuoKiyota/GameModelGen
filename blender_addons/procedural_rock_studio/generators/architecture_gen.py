@@ -1121,3 +1121,388 @@ def build_beam_arch_base(bm, size_x, size_y, size_z, **kwargs):
         size_z=size_z,
         **kwargs
     )
+
+
+def build_modular_relief_wall_mesh(
+    bm,
+    size_x=3.0,
+    size_y=0.4,
+    size_z=3.5,
+    bays=1,
+    relief_style='ROSETTE',
+    relief_depth=0.035,
+    pilaster_width=0.40,
+    pilaster_depth=0.08,
+    frame_bevel=0.12,
+    damage=0.35,
+    weathering=0.50,
+    moss_amount=0.30,
+    custom_image="",
+    seed=0,
+    **kwargs
+):
+    """
+    Builds an architecturally authentic classical Modular Relief Wall:
+    - Modular seamless tiling: Halved pilasters at boundary ends merge seamlessly into full pilasters when snap-placed side-by-side.
+    - Multi-bay array support (1 to 10 bays) with unified horizontal cornice, plinth, and rhythmic bays.
+    - Flat, gapless boundary snapping surfaces (X = ±TotalWidth/2) with zero seam gaps.
+    - True 3D relief carvings:
+        * ROSETTE: Concentric molded medallion rings with quatrefoil/octofoil floral ribs and central boss.
+        * FRIEZE: Classical continuous Greek Key / Meander geometric fretwork band.
+        * RUNIC: Authentic deep-chiseled sacred elder futhark rune glyphs and ceremonial geometric channels.
+        * CUSTOM: Subdivided planar panel ready for procedural / image displacement.
+    - Classical architectural anatomy: Heavy plinth base (moss accumulation), fluted pilasters, tiered architrave frame, and projecting cornice.
+    - Selective procedural damage chipping on exposed outer edges while strictly protecting boundary snap faces.
+    """
+    import mathutils
+    import random
+
+    rng = random.Random(seed)
+
+    spans = max(1, int(bays))
+    span_w = max(1.0, float(size_x))
+    total_w = span_w * spans
+    depth = max(0.15, float(size_y))
+    height = max(1.0, float(size_z))
+    half_d = depth * 0.5
+    half_total_w = total_w * 0.5
+
+    # 1. 建築プロポーションの計算
+    p_w = max(0.15, min(pilaster_width, span_w * 0.35))
+    p_proj = max(0.02, min(pilaster_depth, depth * 0.5))
+    r_depth = max(0.008, min(relief_depth, depth * 0.4))
+    f_bevel = max(0.04, min(frame_bevel, (span_w - p_w) * 0.25))
+
+    plinth_h = height * 0.12      # 下部台座の高さ
+    cornice_h = height * 0.09     # 上部コーニス天板の高さ
+    attic_h = height * 0.04       # コーニス直下のフリーズ小帯
+    field_h = height - plinth_h - cornice_h - attic_h # レリーフパネルの有効高さ
+    field_z_min = plinth_h
+    field_z_max = plinth_h + field_h
+    field_cz = (field_z_min + field_z_max) * 0.5
+
+    # 境界保護チッピング付きボックス追加ヘルパー
+    def add_box(center, size, chip=True):
+        hw = size[0] * 0.5
+        hd = size[1] * 0.5
+        hh = size[2] * 0.5
+        cx, cy, cz = center
+
+        v_res = bmesh.ops.create_cube(
+            bm, size=1.0,
+            matrix=mathutils.Matrix.Translation((cx, cy, cz)) @ mathutils.Matrix.Diagonal((size[0], size[1], size[2], 1.0))
+        )['verts']
+
+        if damage > 0.05 and chip:
+            noise_amt = damage * 0.012
+            for v in v_res:
+                # 左右のモジュラー接合境界（X = ±half_total_w）に接する頂点は絶対にX移動させない（スナップ保護）
+                is_boundary_x = abs(abs(v.co.x) - half_total_w) < 1e-4
+                if not is_boundary_x:
+                    v.co.x += rng.uniform(-noise_amt, noise_amt)
+                
+                # 背面（Y < 0）の壁貼り合わせ面も保護
+                is_back_y = abs(v.co.y - (-half_d)) < 1e-4
+                if not is_back_y:
+                    v.co.y += rng.uniform(-noise_amt, noise_amt)
+                
+                # 底面（Z = 0）も地面スナップのため保護
+                if v.co.z > 0.01:
+                    v.co.z += rng.uniform(-noise_amt, noise_amt)
+        return v_res
+
+    # ── 1. 主壁コア（バックウォール） ──
+    # 全スパンを貫通する堅牢な石壁本体
+    add_box((0.0, 0.0, height * 0.5), (total_w, depth, height), chip=True)
+
+    # ── 2. 下部台座（Plinth / Dado） ──
+    # 地面に接する重厚な土台（前面に突出）
+    add_box(
+        (0.0, p_proj * 0.6, plinth_h * 0.45),
+        (total_w, depth + p_proj * 1.2, plinth_h * 0.9),
+        chip=True
+    )
+    # 台座上部の面取りモールディング小段
+    add_box(
+        (0.0, p_proj * 0.4, plinth_h - plinth_h * 0.1),
+        (total_w, depth + p_proj * 0.8, plinth_h * 0.2),
+        chip=True
+    )
+
+    # ── 3. 上部コーニス＆アティック天板（Cornice & Entablature） ──
+    c_base_z = field_z_max
+    # アティック小帯
+    add_box(
+        (0.0, p_proj * 0.3, c_base_z + attic_h * 0.5),
+        (total_w, depth + p_proj * 0.6, attic_h),
+        chip=True
+    )
+    # コーニス下段モールディング
+    c1_h = cornice_h * 0.4
+    add_box(
+        (0.0, p_proj * 0.7, c_base_z + attic_h + c1_h * 0.5),
+        (total_w, depth + p_proj * 1.4, c1_h),
+        chip=True
+    )
+    # コーニス上段天板（最も前にせり出し、雨垂れの起点となる）
+    c2_h = cornice_h * 0.6
+    add_box(
+        (0.0, p_proj * 1.0, c_base_z + attic_h + c1_h + c2_h * 0.5),
+        (total_w, depth + p_proj * 2.0, c2_h),
+        chip=True
+    )
+
+    # ── 4. ピラスター（付け柱） ──
+    # 各スパン境界（0 〜 spans）に配置。端点は半幅にしてモジュラー結合時に合体する設計。
+    for p_idx in range(spans + 1):
+        is_left_end = (p_idx == 0)
+        is_right_end = (p_idx == spans)
+
+        if is_left_end:
+            cur_pw = p_w * 0.5
+            px = -half_total_w + cur_pw * 0.5
+        elif is_right_end:
+            cur_pw = p_w * 0.5
+            px = half_total_w - cur_pw * 0.5
+        else:
+            cur_pw = p_w
+            px = -half_total_w + p_idx * span_w
+
+        p_cz = (field_z_min + field_z_max) * 0.5
+        p_front_y = half_d + p_proj * 0.5
+
+        # 柱脚ベース (Pilaster Base)
+        pb_h = field_h * 0.08
+        add_box(
+            (px, half_d + p_proj * 0.6, field_z_min + pb_h * 0.5),
+            (cur_pw, p_proj * 1.2, pb_h),
+            chip=True
+        )
+
+        # 柱頭キャピタル (Pilaster Capital)
+        pc_h = field_h * 0.09
+        add_box(
+            (px, half_d + p_proj * 0.65, field_z_max - pc_h * 0.5),
+            (cur_pw, p_proj * 1.3, pc_h),
+            chip=True
+        )
+
+        # 柱身シャフト (Pilaster Shaft)
+        ps_h = field_h - pb_h - pc_h
+        ps_cz = field_z_min + pb_h + ps_h * 0.5
+        add_box(
+            (px, half_d + p_proj * 0.5, ps_cz),
+            (cur_pw, p_proj, ps_h),
+            chip=True
+        )
+
+        # 柱身のフルート装飾（中央柱身の縦リブ）
+        if not is_left_end and not is_right_end and cur_pw > 0.25:
+            # 2本のフルートスリットリブ
+            flute_w = cur_pw * 0.22
+            flute_proj = p_proj * 0.35
+            add_box((px - cur_pw * 0.25, half_d + p_proj + flute_proj * 0.5, ps_cz), (flute_w, flute_proj, ps_h * 0.88), chip=False)
+            add_box((px + cur_pw * 0.25, half_d + p_proj + flute_proj * 0.5, ps_cz), (flute_w, flute_proj, ps_h * 0.88), chip=False)
+
+    # ── 5. 各ベイの中央額縁フレーム＆レリーフ彫刻 ──
+    for ispan in range(spans):
+        cx = -half_total_w + (ispan + 0.5) * span_w
+        panel_w = span_w - p_w  # ピラスター間の正味幅
+        panel_h = field_h
+
+        # 額縁モールディング枠（四方を囲む立体ステップフレーム）
+        # 下枠
+        add_box((cx, half_d + p_proj * 0.35, field_z_min + f_bevel * 0.5), (panel_w, p_proj * 0.7, f_bevel), chip=True)
+        # 上枠
+        add_box((cx, half_d + p_proj * 0.35, field_z_max - f_bevel * 0.5), (panel_w, p_proj * 0.7, f_bevel), chip=True)
+        # 左右枠
+        side_frame_h = panel_h - f_bevel * 2.0
+        add_box((cx - panel_w * 0.5 + f_bevel * 0.5, half_d + p_proj * 0.35, field_cz), (f_bevel, p_proj * 0.7, side_frame_h), chip=True)
+        add_box((cx + panel_w * 0.5 - f_bevel * 0.5, half_d + p_proj * 0.35, field_cz), (f_bevel, p_proj * 0.7, side_frame_h), chip=True)
+
+        # 彫刻有効領域
+        inner_w = panel_w - f_bevel * 2.0
+        inner_h = panel_h - f_bevel * 2.0
+        r_y = half_d + r_depth * 0.5
+
+        if relief_style == 'ROSETTE':
+            # ── 🌹 ゴシック・円形薔薇ロゼット彫刻 ──
+            # 外径・内径
+            r_max = min(inner_w, inner_h) * 0.42
+            r_mid = r_max * 0.72
+            r_inner = r_max * 0.35
+
+            # 1. 外円形モールディングリング (16角形リング)
+            n_seg = 20
+            ring_th = r_max * 0.12
+            for s in range(n_seg):
+                ang1 = (s / n_seg) * 2.0 * math.pi
+                ang2 = ((s + 1) / n_seg) * 2.0 * math.pi
+                mid_ang = (ang1 + ang2) * 0.5
+                rx = cx + math.cos(mid_ang) * (r_max - ring_th * 0.5)
+                rz = field_cz + math.sin(mid_ang) * (r_max - ring_th * 0.5)
+                seg_len = 2.0 * math.sin(math.pi / n_seg) * r_max
+                # 各セグメントボックス
+                res = bmesh.ops.create_cube(
+                    bm, size=1.0,
+                    matrix=mathutils.Matrix.Translation((rx, r_y, rz)) @
+                           mathutils.Matrix.Rotation(mid_ang + math.pi*0.5, 4, 'Y') @
+                           mathutils.Matrix.Diagonal((seg_len * 1.05, r_depth, ring_th, 1.0))
+                )
+
+            # 2. 四つ葉 / 八つ葉飾り (Quatrefoil / Octofoil Ribs)
+            # 8方向に花弁状の立体リブを放射
+            n_petals = 8
+            for p in range(n_petals):
+                ang = (p / n_petals) * 2.0 * math.pi
+                petal_len = r_mid - r_inner * 0.5
+                petal_cx = cx + math.cos(ang) * (r_inner + petal_len * 0.5)
+                petal_cz = field_cz + math.sin(ang) * (r_inner + petal_len * 0.5)
+                w_petal = r_max * 0.16
+                bmesh.ops.create_cube(
+                    bm, size=1.0,
+                    matrix=mathutils.Matrix.Translation((petal_cx, r_y + r_depth * 0.2, petal_cz)) @
+                           mathutils.Matrix.Rotation(ang, 4, 'Y') @
+                           mathutils.Matrix.Diagonal((petal_len, r_depth * 1.4, w_petal, 1.0))
+                )
+
+            # 3. 内円リング
+            for s in range(12):
+                ang1 = (s / 12) * 2.0 * math.pi
+                ang2 = ((s + 1) / 12) * 2.0 * math.pi
+                mid_ang = (ang1 + ang2) * 0.5
+                rx = cx + math.cos(mid_ang) * r_inner
+                rz = field_cz + math.sin(mid_ang) * r_inner
+                seg_len = 2.0 * math.sin(math.pi / 12) * r_inner
+                bmesh.ops.create_cube(
+                    bm, size=1.0,
+                    matrix=mathutils.Matrix.Translation((rx, r_y + r_depth * 0.3, rz)) @
+                           mathutils.Matrix.Rotation(mid_ang + math.pi*0.5, 4, 'Y') @
+                           mathutils.Matrix.Diagonal((seg_len * 1.05, r_depth * 1.6, r_inner * 0.2, 1.0))
+                )
+
+            # 4. 中央ボス（円形突起）
+            add_box((cx, r_y + r_depth * 0.6, field_cz), (r_inner * 0.6, r_depth * 2.2, r_inner * 0.6), chip=False)
+
+        elif relief_style == 'FRIEZE':
+            # ── 🏛️ 古代神殿・雷文フリーズ彫刻 ──
+            # ギリシャ雷文（Greek Key / Meander）の立体幾何リブを上下3段に配置
+            n_frieze_rows = 3
+            row_spacing = inner_h / (n_frieze_rows + 1)
+            frieze_th = min(0.045, inner_w * 0.04)
+
+            for row in range(n_frieze_rows):
+                row_z = field_z_min + f_bevel + (row + 1) * row_spacing
+                # 雷文ユニットの幅
+                unit_w = inner_w / 4.0
+                unit_h = row_spacing * 0.7
+                for u in range(4):
+                    ux = cx - inner_w * 0.5 + (u + 0.5) * unit_w
+                    # メアンダーの折り返しリブ（外周枠 + 内部スパイラル）
+                    # 上辺
+                    add_box((ux, r_y, row_z + unit_h * 0.4), (unit_w * 0.9, r_depth, frieze_th), chip=False)
+                    # 下辺
+                    add_box((ux, r_y, row_z - unit_h * 0.4), (unit_w * 0.9, r_depth, frieze_th), chip=False)
+                    # 右外縦
+                    add_box((ux + unit_w * 0.45 - frieze_th * 0.5, r_y, row_z), (frieze_th, r_depth, unit_h * 0.8), chip=False)
+                    # 左折り返し縦
+                    add_box((ux - unit_w * 0.45 + frieze_th * 0.5, r_y, row_z + unit_h * 0.1), (frieze_th, r_depth, unit_h * 0.6), chip=False)
+                    # 中心のフック横
+                    add_box((ux - unit_w * 0.1, r_y, row_z), (unit_w * 0.5, r_depth, frieze_th), chip=False)
+
+        elif relief_style == 'RUNIC':
+            # ── ᚱ 古代ルーン・神聖グリフ石刻 ──
+            # 深く彫り込まれたルーン文字（主柱幹 + 幾何学斜め枝）
+            glyph_cols = 3
+            glyph_rows = 2
+            dx = inner_w / (glyph_cols + 1)
+            dz = inner_h / (glyph_rows + 1)
+            groove_w = min(0.035, inner_w * 0.03)
+
+            rune_types = ['FEHU', 'ALGIZ', 'TIWAZ', 'THURISAZ', 'SOWILO', 'ANSUZ']
+            r_idx = 0
+
+            for gr in range(glyph_rows):
+                for gc in range(glyph_cols):
+                    gx = cx - inner_w * 0.5 + (gc + 1) * dx
+                    gz = field_z_min + f_bevel + (gr + 1) * dz
+                    g_h = dz * 0.65
+                    rtype = rune_types[r_idx % len(rune_types)]
+                    r_idx += 1
+
+                    # 1. 垂直主幹（すべてのルーンの基本軸）
+                    add_box((gx, r_y + r_depth * 0.1, gz), (groove_w, r_depth * 1.5, g_h), chip=False)
+
+                    # 2. ルーンごとの斜め枝・幾何学リブ
+                    if rtype == 'FEHU': # ᚠ 上向き2本斜め枝
+                        bmesh.ops.create_cube(
+                            bm, size=1.0,
+                            matrix=mathutils.Matrix.Translation((gx + g_h * 0.22, r_y + r_depth * 0.1, gz + g_h * 0.28)) @
+                                   mathutils.Matrix.Rotation(math.radians(35), 4, 'Y') @
+                                   mathutils.Matrix.Diagonal((g_h * 0.5, r_depth * 1.5, groove_w, 1.0))
+                        )
+                        bmesh.ops.create_cube(
+                            bm, size=1.0,
+                            matrix=mathutils.Matrix.Translation((gx + g_h * 0.20, r_y + r_depth * 0.1, gz - g_h * 0.02)) @
+                                   mathutils.Matrix.Rotation(math.radians(35), 4, 'Y') @
+                                   mathutils.Matrix.Diagonal((g_h * 0.45, r_depth * 1.5, groove_w, 1.0))
+                        )
+                    elif rtype == 'ALGIZ': # ᛉ 鹿の角状の左右斜め枝
+                        bmesh.ops.create_cube(
+                            bm, size=1.0,
+                            matrix=mathutils.Matrix.Translation((gx - g_h * 0.20, r_y + r_depth * 0.1, gz + g_h * 0.25)) @
+                                   mathutils.Matrix.Rotation(math.radians(-45), 4, 'Y') @
+                                   mathutils.Matrix.Diagonal((g_h * 0.5, r_depth * 1.5, groove_w, 1.0))
+                        )
+                        bmesh.ops.create_cube(
+                            bm, size=1.0,
+                            matrix=mathutils.Matrix.Translation((gx + g_h * 0.20, r_y + r_depth * 0.1, gz + g_h * 0.25)) @
+                                   mathutils.Matrix.Rotation(math.radians(45), 4, 'Y') @
+                                   mathutils.Matrix.Diagonal((g_h * 0.5, r_depth * 1.5, groove_w, 1.0))
+                        )
+                    elif rtype == 'TIWAZ': # ᛏ 矢印型上部枝
+                        bmesh.ops.create_cube(
+                            bm, size=1.0,
+                            matrix=mathutils.Matrix.Translation((gx - g_h * 0.18, r_y + r_depth * 0.1, gz + g_h * 0.38)) @
+                                   mathutils.Matrix.Rotation(math.radians(-35), 4, 'Y') @
+                                   mathutils.Matrix.Diagonal((g_h * 0.4, r_depth * 1.5, groove_w, 1.0))
+                        )
+                        bmesh.ops.create_cube(
+                            bm, size=1.0,
+                            matrix=mathutils.Matrix.Translation((gx + g_h * 0.18, r_y + r_depth * 0.1, gz + g_h * 0.38)) @
+                                   mathutils.Matrix.Rotation(math.radians(35), 4, 'Y') @
+                                   mathutils.Matrix.Diagonal((g_h * 0.4, r_depth * 1.5, groove_w, 1.0))
+                        )
+                    elif rtype == 'THURISAZ': # ᚦ 棘型三角
+                        bmesh.ops.create_cube(
+                            bm, size=1.0,
+                            matrix=mathutils.Matrix.Translation((gx + g_h * 0.18, r_y + r_depth * 0.1, gz + g_h * 0.12)) @
+                                   mathutils.Matrix.Rotation(math.radians(40), 4, 'Y') @
+                                   mathutils.Matrix.Diagonal((g_h * 0.38, r_depth * 1.5, groove_w, 1.0))
+                        )
+                        bmesh.ops.create_cube(
+                            bm, size=1.0,
+                            matrix=mathutils.Matrix.Translation((gx + g_h * 0.18, r_y + r_depth * 0.1, gz - g_h * 0.12)) @
+                                   mathutils.Matrix.Rotation(math.radians(-40), 4, 'Y') @
+                                   mathutils.Matrix.Diagonal((g_h * 0.38, r_depth * 1.5, groove_w, 1.0))
+                        )
+                    elif rtype == 'SOWILO': # ᛋ 稲妻型ジグザグ
+                        bmesh.ops.create_cube(
+                            bm, size=1.0,
+                            matrix=mathutils.Matrix.Translation((gx, r_y + r_depth * 0.1, gz)) @
+                                   mathutils.Matrix.Rotation(math.radians(-50), 4, 'Y') @
+                                   mathutils.Matrix.Diagonal((g_h * 0.65, r_depth * 1.5, groove_w, 1.0))
+                        )
+
+        else: # CUSTOM
+            # ── 🖼️ カスタム画像ハイトマップ彫刻パネル ──
+            # 中央パネルを密閉ボックスとして配置
+            add_box((cx, r_y, field_cz), (inner_w * 0.96, r_depth * 1.2, inner_h * 0.96), chip=False)
+
+    bm.verts.ensure_lookup_table()
+    bm.normal_update()
+    for f in bm.faces:
+        f.smooth = False
+
+    return bm.verts[:]
+

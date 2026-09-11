@@ -26,7 +26,8 @@ from .architecture_gen import (
     build_pillar_base,
     build_beam_base,
     build_beam_arch_base,
-    build_procedural_stone_arch_bmesh
+    build_procedural_stone_arch_bmesh,
+    build_modular_relief_wall_mesh
 )
 from .furniture_gen import (
     build_chair_base,
@@ -124,6 +125,10 @@ def resolve_prop_parameters(props):
             final_sx = round(random.uniform(3.0, 4.2), 2)
             final_sy = round(random.uniform(0.6, 0.9), 2)
             final_sz = round(random.uniform(3.4, 4.4), 2)
+        elif cat == "RELIEF_WALL":
+            final_sx = round(random.uniform(2.8, 3.6), 2)
+            final_sy = round(random.uniform(0.35, 0.45), 2)
+            final_sz = round(random.uniform(3.2, 4.0), 2)
         elif cat == "PILLAR":
             final_sx = round(random.uniform(0.8, 1.6), 2)
             final_sy = round(random.uniform(0.8, 1.6), 2)
@@ -287,6 +292,17 @@ def resolve_prop_parameters(props):
         "arch_moss_amount": getattr(props, 'arch_moss_amount', 0.30),
         "arch_has_spandrel": getattr(props, 'arch_has_spandrel', True),
         "arch_has_pedestal": getattr(props, 'arch_has_pedestal', True),
+        # Relief Wall parameters
+        "relief_style": getattr(props, 'relief_style', 'ROSETTE'),
+        "relief_wall_bays": getattr(props, 'relief_wall_bays', 1),
+        "relief_depth": getattr(props, 'relief_depth', 0.035),
+        "relief_pilaster_width": getattr(props, 'relief_pilaster_width', 0.40),
+        "relief_pilaster_depth": getattr(props, 'relief_pilaster_depth', 0.08),
+        "relief_frame_bevel": getattr(props, 'relief_frame_bevel', 0.12),
+        "relief_damage": getattr(props, 'relief_damage', 0.35),
+        "relief_weathering": getattr(props, 'relief_weathering', 0.50),
+        "relief_moss_amount": getattr(props, 'relief_moss_amount', 0.30),
+        "relief_custom_image": getattr(props, 'relief_custom_image', ""),
     }
 
 
@@ -658,6 +674,21 @@ def generate_procedural_prop_mesh(
             has_pedestal=kwargs.get('arch_has_pedestal', True),
             seed=seed
         )
+    elif category == "RELIEF_WALL":
+        build_modular_relief_wall_mesh(
+            bm, size_x, size_y, size_z,
+            bays=kwargs.get('relief_wall_bays', 1),
+            relief_style=kwargs.get('relief_style', 'ROSETTE'),
+            relief_depth=kwargs.get('relief_depth', 0.035),
+            pilaster_width=kwargs.get('relief_pilaster_width', 0.40),
+            pilaster_depth=kwargs.get('relief_pilaster_depth', 0.08),
+            frame_bevel=kwargs.get('relief_frame_bevel', 0.12),
+            damage=kwargs.get('relief_damage', 0.35),
+            weathering=kwargs.get('relief_weathering', 0.50),
+            moss_amount=kwargs.get('relief_moss_amount', 0.30),
+            custom_image=kwargs.get('relief_custom_image', ""),
+            seed=seed
+        )
     elif category == "CRAG":
         build_crag_base(bm, size_x, size_y, size_z, style=style, chisel_cuts=big_chunk_cuts * 3 + 4, seed=seed)
     else: # ROCK (丸岩・巨石)
@@ -921,11 +952,13 @@ def generate_procedural_prop_mesh(
             pbr_set = find_pbr_texture_set(full_tex_path)
             disp_img = pbr_set.get('displacement') or full_tex_path
 
-            if category == "BEAM_ARCH":
+            if category in ("BEAM_ARCH", "RELIEF_WALL"):
+                w_val = kwargs.get('relief_weathering' if category == 'RELIEF_WALL' else 'arch_weathering', 0.50)
+                m_val = kwargs.get('relief_moss_amount' if category == 'RELIEF_WALL' else 'arch_moss_amount', 0.30)
                 apply_weathered_stone_arch_material(
                     obj, full_tex_path,
-                    weathering=kwargs.get('arch_weathering', 0.50),
-                    moss_amount=kwargs.get('arch_moss_amount', 0.30),
+                    weathering=w_val,
+                    moss_amount=m_val,
                     scale=1.0 if uv_mode == "FIT" else tex_tiling,
                     bump_strength=0.45
                 )

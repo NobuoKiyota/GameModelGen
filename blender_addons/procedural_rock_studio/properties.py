@@ -36,11 +36,17 @@ def update_category_preset(self, context):
         'IMAGE_DISPLACE': "Image_Displace_Asset",
         'CASTLE_WALL': "Castle_Wall",
         'CAVE': "Cave_Dungeon",
-        'CAVE_FLOOR': "Cave_Floor"
+        'CAVE_FLOOR': "Cave_Floor",
+        'RELIEF_WALL': "Relief_Wall_Modular"
     }
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
-    if cat == "IMAGE_DISPLACE":
+    if cat == "RELIEF_WALL":
+        props.size_x = 3.0
+        props.size_y = 0.4
+        props.size_z = 3.5
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "IMAGE_DISPLACE":
         props.size_x = 2.0
         props.size_y = 2.0
         props.size_z = 0.2
@@ -158,6 +164,7 @@ def update_category_preset(self, context):
         'PILLAR': r"Z:\MeshCreator\textures\Pillar",
         'BEAM': r"Z:\MeshCreator\textures\Wood",
         'BEAM_ARCH': r"Z:\MeshCreator\textures\Wall",
+        'RELIEF_WALL': r"Z:\MeshCreator\textures\Wall",
         'GRASS': r"Z:\MeshCreator\textures\Grass",
         'WATER': r"Z:\MeshCreator\textures\Floor",
         'BOOKSHELF': r"Z:\MeshCreator\textures\Wood",
@@ -340,7 +347,8 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('CAVE', "🪨 洞窟・岩窟ジオラマ (Procedural Cave)", "一本道・S字・Y字分岐・大空洞を持つリアルな洞窟システム（地面・天井分離）"),
             ('PILLAR', "🏛️ 柱・石柱 (Pillar / Column)", "textures/Pillar/ と自動連動"),
             ('BEAM', "🪵 梁・丸太支柱 (Timber Log Beam)", "textures/Wood/ と自動連動（シリンダー丸太梁）"),
-            ('BEAM_ARCH', "🏛️ 建築アーチ・回廊 (Stone Arch / Colonnade)", "ローマ半円/ゴシック尖頭・要石・多段モールディング・連続列廊・ヴォールト天井")
+            ('BEAM_ARCH', "🏛️ 建築アーチ・回廊 (Stone Arch / Colonnade)", "ローマ半円/ゴシック尖頭・要石・多段モールディング・連続列廊・ヴォールト天井"),
+            ('RELIEF_WALL', "🏛️ モジュラー・レリーフ壁 (Relief Wall)", "付け柱ピラスター・額縁モールディング・多種レリーフ彫刻（薔薇ロゼット/神殿フリーズ/ルーン文字）・風化汚し・連数指定")
         ],
         default='WATER',
         update=update_category_preset
@@ -1574,6 +1582,68 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="足元の苔・湿気 (Ground Moss)",
         default=0.30, min=0.0, max=1.0,
         description="柱脚台座および柱下部に自然発生する苔と湿った暗色の量"
+    )
+
+    # ── MODULAR RELIEF WALL Properties ──
+    relief_style: bpy.props.EnumProperty(
+        name="レリーフ様式 (Relief Style)",
+        items=[
+            ('ROSETTE', "🌹 ゴシック・円形薔薇ロゼット (Gothic Rosette)", "多層リングと幾何学放射花弁の立体浮き彫り（大聖堂・宮殿）"),
+            ('FRIEZE', "🏛️ 古代神殿・雷文フリーズ (Ancient Frieze)", "幾何学的メアンダー（雷文帯）の連続浮き彫り（古代遺跡・神殿）"),
+            ('RUNIC', "ᚱ 古代ルーン・神聖グリフ (Runic Glyphs)", "古代石板に深く刻印されたルーン文字・神秘スリット（ダンジョン・祭壇）"),
+            ('CUSTOM', "🖼️ カスタム画像ハイトマップ (Custom Image)", "指定した白黒テクスチャをそのまま石壁に立体彫刻")
+        ],
+        default='ROSETTE'
+    )
+    relief_wall_bays: bpy.props.IntProperty(
+        name="連続数 (Bays / Array)",
+        default=1, min=1, max=10,
+        description="モジュラー壁を横に連続生成する連数（1=単体モジュール、3以上=連続回廊壁）"
+    )
+    relief_depth: bpy.props.FloatProperty(
+        name="彫りの深さ・浮き彫り高 (Relief Depth)",
+        default=0.035, min=0.005, max=0.15,
+        unit='LENGTH',
+        description="中央レリーフの彫り込み・浮き彫りの立体深さ (m)"
+    )
+    relief_pilaster_width: bpy.props.FloatProperty(
+        name="ピラスター柱幅 (Pilaster Width)",
+        default=0.40, min=0.15, max=1.2,
+        unit='LENGTH',
+        description="壁の両端を装飾する付け柱（ピラスター）の全幅 (m)"
+    )
+    relief_pilaster_depth: bpy.props.FloatProperty(
+        name="ピラスター出っ張り (Pilaster Projection)",
+        default=0.08, min=0.02, max=0.3,
+        unit='LENGTH',
+        description="壁面から前方に突出するピラスターの厚み (m)"
+    )
+    relief_frame_bevel: bpy.props.FloatProperty(
+        name="額縁モールディング幅 (Frame Bevel)",
+        default=0.12, min=0.04, max=0.3,
+        unit='LENGTH',
+        description="中央レリーフを囲む額縁モールディングの幅 (m)"
+    )
+    relief_damage: bpy.props.FloatProperty(
+        name="経年欠け・チッピング (Damage)",
+        default=0.35, min=0.0, max=1.0,
+        description="露出エッジのノミ削り・角欠け・微細凹凸（接合面は平坦を保持）"
+    )
+    relief_weathering: bpy.props.FloatProperty(
+        name="汚し・風化 (Weathering)",
+        default=0.50, min=0.0, max=1.0,
+        description="彫刻の溝に溜まるAO黒ずみ（AO Grime）および雨垂れ染み（Rain Streaks）の強さ"
+    )
+    relief_moss_amount: bpy.props.FloatProperty(
+        name="足元の苔・湿気 (Ground Moss)",
+        default=0.30, min=0.0, max=1.0,
+        description="下部台座（Plinth）に自然発生する苔と湿った暗色の量"
+    )
+    relief_custom_image: bpy.props.StringProperty(
+        name="カスタム画像 (Relief Image)",
+        subtype='FILE_PATH',
+        default="",
+        description="浮き彫りとして使用する白黒ハイトマップ画像"
     )
 
 

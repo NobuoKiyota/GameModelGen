@@ -647,6 +647,39 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_a_hint.label(text="💡 hbitproject式 建築プロポーション＆要石・多段モールディング", icon='INFO')
                 box_a_hint.label(text="   外周はモジュラー壁や上階と完全フラットに接合できる形状です")
 
+            # Modular Relief Wall Preset Specific
+            elif props.prop_category == 'RELIEF_WALL':
+                box_rw = layout.box()
+                box_rw.label(text="🏛️ モジュラー・レリーフ壁 (Modular Relief Wall):", icon='MOD_BUILD')
+
+                # 1. レリーフ様式 & 連続スパン数
+                box_rw_style = box_rw.box()
+                box_rw_style.prop(props, "relief_style", text="レリーフ様式")
+                if props.relief_style == 'CUSTOM':
+                    box_rw_style.prop(props, "relief_custom_image", text="画像パス")
+                box_rw_style.prop(props, "relief_wall_bays", text="連続数 (Bays / Array)")
+                box_rw_style.prop(props, "relief_depth", text="彫りの深さ (m)")
+
+                # 2. ピラスター（付け柱）& 額縁モールディング設定
+                box_rw_frame = box_rw.box()
+                box_rw_frame.label(text="ピラスター & 額縁モールディング:", icon='SNAP_VOLUME')
+                row_rw_p = box_rw_frame.row(align=True)
+                row_rw_p.prop(props, "relief_pilaster_width", text="柱幅 (m)")
+                row_rw_p.prop(props, "relief_pilaster_depth", text="突出厚 (m)")
+                box_rw_frame.prop(props, "relief_frame_bevel", text="額縁幅 (m)")
+
+                # 3. 経年風化・汚し & 欠け設定
+                box_rw_weath = box_rw.box()
+                box_rw_weath.label(text="経年風化・汚し & 欠け (Aging & Wear):", icon='BRUSH_DATA')
+                box_rw_weath.prop(props, "relief_damage", text="🧱 経年欠け・チッピング", slider=True)
+                box_rw_weath.prop(props, "relief_weathering", text="🌧️ 汚し・風化 (AO/雨垂れ)", slider=True)
+                box_rw_weath.prop(props, "relief_moss_amount", text="🌿 足元の苔・湿気", slider=True)
+
+                # 特徴ヒント
+                box_rw_hint = box_rw.box()
+                box_rw_hint.label(text="💡 モジュラー設計: 左右端の半幅ピラスターが並べた瞬間に合体します", icon='INFO')
+                box_rw_hint.label(text="   X境界は完全フラットスナップ面を維持し、継ぎ目が完全に隠れます")
+
             # Dimensions Box
             box_dim = layout.box()
             row_dh = box_dim.row(align=True)
