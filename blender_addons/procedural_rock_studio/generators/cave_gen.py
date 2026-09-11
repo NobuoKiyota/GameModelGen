@@ -230,13 +230,10 @@ def build_terraced_cave_floor_bmesh(
                             lip_height = math.sin(t_lip * math.pi) * 0.08
                             z_final += lip_height
 
-            # 4. Voronoi Rock Fissures (Clean tectonic slabs, no wave ripples)
-            d1, fissure, cell_id = voronoi_cell_noise(x_pos, y_pos, cell_size=3.2, seed=seed)
-            slab_offset = (cell_id - 0.5) * 0.35 * roughness
-            crack_indent = (1.0 - min(1.0, fissure * 3.0)) * -0.25 * roughness
-
-            # Combine height layers cleanly (NO jx/jy sinusoidal grid warping)
-            z_total = z_final + slab_offset + crack_indent
+            # 4. Organic Rock Slabs (Natural multi-scale noise, NO geometric Voronoi grid cracks)
+            macro_noise = pseudo_noise_3d(x_pos * 0.35, y_pos * 0.35, 0.0, seed=seed + 101) * 0.26 * roughness
+            micro_noise = pseudo_noise_3d(x_pos * 1.25, y_pos * 1.25, 0.0, seed=seed + 202) * 0.09 * roughness
+            z_total = z_final + macro_noise + micro_noise
 
             vert = bm.verts.new((x_pos, y_pos, z_total))
             row.append((vert, river_factor))
@@ -507,21 +504,23 @@ def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_riv
     coord = nodes.new(type='ShaderNodeTexCoord')
     coord.location = (-1200, 200)
 
-    # 1. Base Multi-Scale Rock Textures
-    # 1A. Macro Voronoi Fissures / Cracks
-    voro_crack = nodes.new(type='ShaderNodeTexVoronoi')
-    voro_crack.location = (-1000, 500)
-    voro_crack.feature = 'DISTANCE_TO_EDGE'
-    voro_crack.inputs['Scale'].default_value = 1.2
-    links.new(coord.outputs['Object'], voro_crack.inputs['Vector'])
+    # 1. Base Multi-Scale Geological Rock Textures (NO Voronoi honeycomb cracks)
+    # 1A. Macro Geological Form & Folded Crevices
+    macro_noise = nodes.new(type='ShaderNodeTexNoise')
+    macro_noise.location = (-1000, 500)
+    macro_noise.inputs['Scale'].default_value = 1.4
+    macro_noise.inputs['Detail'].default_value = 5.0
+    macro_noise.inputs['Roughness'].default_value = 0.52
+    macro_noise.inputs['Distortion'].default_value = 0.0 # Solid isotropic rock grain, no swirls
+    links.new(coord.outputs['Object'], macro_noise.inputs['Vector'])
 
-    ramp_crack = nodes.new(type='ShaderNodeValToRGB')
-    ramp_crack.location = (-750, 500)
-    ramp_crack.color_ramp.elements[0].position = 0.05
-    ramp_crack.color_ramp.elements[0].color = (0.0, 0.0, 0.0, 1.0)
-    ramp_crack.color_ramp.elements[1].position = 0.35
-    ramp_crack.color_ramp.elements[1].color = (1.0, 1.0, 1.0, 1.0)
-    links.new(voro_crack.outputs['Distance'], ramp_crack.inputs['Fac'])
+    ramp_crevice = nodes.new(type='ShaderNodeValToRGB')
+    ramp_crevice.location = (-750, 500)
+    ramp_crevice.color_ramp.elements[0].position = 0.22
+    ramp_crevice.color_ramp.elements[0].color = (0.55, 0.55, 0.55, 1.0) # Gentle crevice shadow
+    ramp_crevice.color_ramp.elements[1].position = 0.78
+    ramp_crevice.color_ramp.elements[1].color = (1.0, 1.0, 1.0, 1.0)
+    links.new(macro_noise.outputs['Fac'], ramp_crevice.inputs['Fac'])
 
     # 1B. Natural Medium Rock Noise
     rock_noise = nodes.new(type='ShaderNodeTexNoise')
@@ -550,14 +549,14 @@ def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_riv
     ramp_rock.color_ramp.elements[1].color = pal['rock_light']
     links.new(rock_noise.outputs['Fac'], ramp_rock.inputs['Fac'])
 
-    # Darken Cracks / Crevices
+    # Natural Crevice Shading
     mix_cracked_rock = nodes.new(type='ShaderNodeMix')
     mix_cracked_rock.data_type = 'RGBA'
     mix_cracked_rock.location = (-420, 150)
     mix_cracked_rock.blend_type = 'MULTIPLY'
-    mix_cracked_rock.inputs[0].default_value = 0.65
+    mix_cracked_rock.inputs[0].default_value = 0.60
     links.new(ramp_rock.outputs['Color'], mix_cracked_rock.inputs[6])
-    links.new(ramp_crack.outputs['Color'], mix_cracked_rock.inputs[7])
+    links.new(ramp_crevice.outputs['Color'], mix_cracked_rock.inputs[7])
 
     # Wetness Mask (Only low river trench and puddle basins are wet, NOT entire floor)
     sep_xyz = nodes.new(type='ShaderNodeSeparateXYZ')
@@ -639,24 +638,25 @@ def get_or_create_cave_floor_material(mat_name="Cave_Floor_Terrace_Mat", has_riv
     links.new(mix_rock_wet.outputs[2], final_color.inputs[6])
     links.new(ramp_moss_col.outputs['Color'], final_color.inputs[7])
 
-    # Dual Chained Bump Nodes (Macro Fissures + Micro Grain, NO Wave Ripples)
-    macro_mix = nodes.new(type='ShaderNodeMath')
-    macro_mix.operation = 'ADD'
-    macro_mix.location = (-300, -50)
-    links.new(ramp_crack.outputs['Color'], macro_mix.inputs[0])
-    links.new(rock_noise.outputs['Fac'], macro_mix.inputs[1])
-
+    # 3-Tier Chained Geological Bump Stack (Macro Form -> Meso Facets -> Micro Grain)
     bump_macro = nodes.new(type='ShaderNodeBump')
-    bump_macro.location = (-50, -50)
-    bump_macro.inputs['Strength'].default_value = 0.40
-    bump_macro.inputs['Distance'].default_value = 0.15
-    links.new(macro_mix.outputs['Value'], bump_macro.inputs['Height'])
+    bump_macro.location = (-150, -50)
+    bump_macro.inputs['Strength'].default_value = 0.35
+    bump_macro.inputs['Distance'].default_value = 0.12
+    links.new(macro_noise.outputs['Fac'], bump_macro.inputs['Height'])
+
+    bump_medium = nodes.new(type='ShaderNodeBump')
+    bump_medium.location = (50, -50)
+    bump_medium.inputs['Strength'].default_value = 0.25
+    bump_medium.inputs['Distance'].default_value = 0.04
+    links.new(bump_macro.outputs['Normal'], bump_medium.inputs['Normal'])
+    links.new(rock_noise.outputs['Fac'], bump_medium.inputs['Height'])
 
     bump_micro = nodes.new(type='ShaderNodeBump')
-    bump_micro.location = (150, -50)
-    bump_micro.inputs['Strength'].default_value = 0.30
-    bump_micro.inputs['Distance'].default_value = 0.03
-    links.new(bump_macro.outputs['Normal'], bump_micro.inputs['Normal'])
+    bump_micro.location = (250, -50)
+    bump_micro.inputs['Strength'].default_value = 0.20
+    bump_micro.inputs['Distance'].default_value = 0.015
+    links.new(bump_medium.outputs['Normal'], bump_micro.inputs['Normal'])
     links.new(micro_noise.outputs['Fac'], bump_micro.inputs['Height'])
 
     # Principled BSDF
@@ -927,28 +927,35 @@ def build_cliff_ceiling_bmesh(
             # World X position following cave centerline
             x_pos = center_x + x_rel
 
-            # Voronoi Faceted Rock Slabs (Just The Basics & Kev Binge approach)
-            d1, fissure_val, cell_id = voronoi_cell_noise(x_pos, y_pos + z_base * 0.5, cell_size=2.6, seed=seed + 77)
-            slab_disp = (cell_id - 0.5) * 0.55 * roughness
-            crack_indent = (1.0 - min(1.0, fissure_val * 3.5)) * -0.4 * roughness
+            # 1. Sedimentary Strata Steps (Natural horizontal bedded rock layers, NO Voronoi honeycomb)
+            strata_thickness = 0.85
+            layer_val = (z_base + 3.0) / strata_thickness
+            layer_idx = math.floor(layer_val)
+            layer_frac = layer_val - layer_idx
+            shelf_blend = layer_frac ** 3 * (layer_frac * (layer_frac * 6 - 15) + 10)
+            z_strata = (layer_idx + shelf_blend) * strata_thickness - 3.0
 
-            # Horizontal strata steps (Z quantization on walls)
-            strata_step = 0.55
-            z_quant = math.floor(z_base / strata_step) * strata_step
-            z_frac = (z_base / strata_step) - math.floor(z_base / strata_step)
-            cliff_blend = z_frac ** 3 * (z_frac * (z_frac * 6 - 15) + 10)
-            z_strata = z_quant + cliff_blend * strata_step
-            z_final = z_base * 0.5 + z_strata * 0.5
+            # Deterministic shelf overhang per geological stratum
+            layer_rand = math.sin(layer_idx * 17.13 + seed * 3.71)
+            strata_ledge = layer_rand * 0.65 * roughness
 
-            # Micro roughness
-            micro = pseudo_noise_3d(x_pos * 0.7, y_pos * 0.7, z_final * 0.9, seed=seed + 99) * 0.35 * roughness
+            # 2. Multi-Octave Fractal Cliff & Crag Form (Macro bulges + Meso block facets)
+            macro_crag = pseudo_noise_3d(x_pos * 0.22, y_pos * 0.22, z_base * 0.30, seed=seed + 41) * 0.85 * roughness
+            meso_crag = pseudo_noise_3d(x_pos * 0.65, y_pos * 0.65, z_base * 0.65, seed=seed + 83) * 0.38 * roughness
+            micro_crag = pseudo_noise_3d(x_pos * 1.6, y_pos * 1.6, z_base * 1.6, seed=seed + 127) * 0.12 * roughness
 
-            # Inward/Outward displacement based on wall normal
+            # 3. Smooth Directional Displacement (Rock shelves on walls, hanging masses on ceiling)
             norm_sign = -1.0 if x_rel < 0 else 1.0
-            x_disp = norm_sign * (slab_disp + crack_indent) * 0.7
-            z_disp = slab_disp + micro
+            wall_jut = norm_sign * (strata_ledge + macro_crag * 0.8 + meso_crag)
+            ceiling_hang = -abs(macro_crag) * 0.75 + meso_crag
 
-            vert = bm.verts.new((x_pos + x_disp, y_pos, z_final + z_disp))
+            ceiling_weight = math.sin(u * math.pi) ** 1.5
+            wall_weight = 1.0 - ceiling_weight
+
+            x_disp = wall_jut * wall_weight + (meso_crag + micro_crag) * ceiling_weight * 0.4
+            z_disp = (z_strata - z_base) * 0.5 + ceiling_hang * ceiling_weight + (meso_crag * 0.4 + micro_crag) * wall_weight
+
+            vert = bm.verts.new((x_pos + x_disp, y_pos, z_base + z_disp))
             row.append(vert)
 
         grid_verts.append(row)
@@ -1320,6 +1327,11 @@ def attach_cave_modifiers(obj, subsurf_levels=1, displace_strength=0.16, texture
     if not obj or obj.type != 'MESH':
         return
 
+    # Clean legacy modifier if present
+    legacy_disp = obj.modifiers.get("Cave_Displace")
+    if legacy_disp:
+        obj.modifiers.remove(legacy_disp)
+
     # 1. Subdivision Surface (Smooths angular facets)
     subsurf = obj.modifiers.get("Cave_Subsurf")
     if not subsurf:
@@ -1327,23 +1339,42 @@ def attach_cave_modifiers(obj, subsurf_levels=1, displace_strength=0.16, texture
     subsurf.levels = subsurf_levels
     subsurf.render_levels = max(subsurf_levels + 1, 2)
 
-    # 2. Rock Displace Modifier with Procedural Texture (Natural rock roughness)
-    disp = obj.modifiers.get("Cave_Displace")
-    if not disp:
-        disp = obj.modifiers.new("Cave_Displace", 'DISPLACE')
+    # 2. Chuck CG Multi-Displace Stack (Macro bulges + Micro faceted crags)
+    # Tier A: Macro Cliff Ledges & Rock Form
+    disp_macro = obj.modifiers.get("Cave_Disp_Macro")
+    if not disp_macro:
+        disp_macro = obj.modifiers.new("Cave_Disp_Macro", 'DISPLACE')
 
-    tex_name = "Cave_Rock_Displace_Tex"
-    tex = bpy.data.textures.get(tex_name)
-    if not tex:
-        tex = bpy.data.textures.new(tex_name, type='CLOUDS')
-        tex.noise_scale = texture_scale
-        tex.noise_depth = 2
-        tex.noise_type = 'HARD_NOISE'
+    tex_macro_name = "Cave_Tex_Disp_Macro"
+    tex_macro = bpy.data.textures.get(tex_macro_name)
+    if not tex_macro:
+        tex_macro = bpy.data.textures.new(tex_macro_name, type='CLOUDS')
+        tex_macro.noise_scale = 0.65
+        tex_macro.noise_depth = 2
+        tex_macro.noise_type = 'SOFT_NOISE'
 
-    disp.texture = tex
-    disp.texture_coords = 'GLOBAL'
-    disp.mid_level = 0.5
-    disp.strength = displace_strength
+    disp_macro.texture = tex_macro
+    disp_macro.texture_coords = 'GLOBAL'
+    disp_macro.mid_level = 0.5
+    disp_macro.strength = displace_strength * 0.70
+
+    # Tier B: Micro Faceted Crags & Rock Roughness
+    disp_micro = obj.modifiers.get("Cave_Disp_Micro")
+    if not disp_micro:
+        disp_micro = obj.modifiers.new("Cave_Disp_Micro", 'DISPLACE')
+
+    tex_micro_name = "Cave_Tex_Disp_Micro"
+    tex_micro = bpy.data.textures.get(tex_micro_name)
+    if not tex_micro:
+        tex_micro = bpy.data.textures.new(tex_micro_name, type='CLOUDS')
+        tex_micro.noise_scale = 0.18
+        tex_micro.noise_depth = 3
+        tex_micro.noise_type = 'SOFT_NOISE'
+
+    disp_micro.texture = tex_micro
+    disp_micro.texture_coords = 'GLOBAL'
+    disp_micro.mid_level = 0.5
+    disp_micro.strength = displace_strength * 0.30
 
 
 def create_procedural_cave_scene(
@@ -1582,8 +1613,8 @@ def create_procedural_cave_scene(
         else:
             ceiling_obj.data.materials.append(mat_ceiling)
 
-        # Attach non-destructive modifiers
-        attach_cave_modifiers(ceiling_obj, subsurf_levels=1, displace_strength=0.18)
+        # Attach non-destructive modifiers (Chuck CG 2-tier displacement stack)
+        attach_cave_modifiers(ceiling_obj, subsurf_levels=1, displace_strength=0.28)
     else:
         if ceiling_obj:
             bpy.data.objects.remove(ceiling_obj, do_unlink=True)
