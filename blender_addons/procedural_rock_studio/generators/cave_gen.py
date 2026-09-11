@@ -176,8 +176,8 @@ def build_terraced_cave_floor_bmesh(
             dist_to_center = abs(offset_x)
             norm_dist = min(1.3, dist_to_center / max(1.0, effective_hx * 0.85))
             
-            # Base canyon slope: sides rise up towards cave walls
-            base_z = (norm_dist ** 1.8) * (terrace_steps * step_height)
+            # Base canyon slope: continuous smooth curve rising up towards cave walls
+            base_z = (norm_dist ** 1.45) * 1.5
 
             # River trench (carve valley at the center)
             in_river = False
@@ -194,14 +194,16 @@ def build_terraced_cave_floor_bmesh(
                     t_bank = (dist_to_center - half_rw) / 1.2
                     base_z -= river_depth * (1.0 - t_bank) * 0.25
 
-            # 2. Rock Terraces (Step quantization for flat walkable ledges)
+            # 2. Localized Subtle Rock Ledges (Smooth Hermite blend, only in certain zones)
             if not in_river:
+                shelf_noise = pseudo_noise_3d(x_pos * 0.15, y_pos * 0.15, 0.0, seed=seed + 77) * 0.5 + 0.5
+                terrace_blend = 0.12 + shelf_noise * 0.18 # 12~30% subtle plateau, mostly continuous smooth slope
                 step_val = base_z / step_height
                 stepped_z = math.floor(step_val) * step_height
                 frac = step_val - math.floor(step_val)
-                cliff_blend = frac ** 3 * (frac * (frac * 6 - 15) + 10)
+                cliff_blend = frac ** 2 * (3.0 - 2.0 * frac) # Smoothstep Hermite
                 terrace_z = stepped_z + cliff_blend * step_height
-                z_final = terrace_z * 0.7 + base_z * 0.3
+                z_final = base_z * (1.0 - terrace_blend) + terrace_z * terrace_blend
             else:
                 z_final = base_z
 
@@ -227,12 +229,12 @@ def build_terraced_cave_floor_bmesh(
                         else:
                             # Natural rimstone lip (slight raised edge holding the water)
                             t_lip = (dist_p - rim_inner) / (rim_outer - rim_inner)
-                            lip_height = math.sin(t_lip * math.pi) * 0.08
+                            lip_height = math.sin(t_lip * math.pi) * 0.07
                             z_final += lip_height
 
             # 4. Organic Rock Slabs (Natural multi-scale noise, NO geometric Voronoi grid cracks)
-            macro_noise = pseudo_noise_3d(x_pos * 0.35, y_pos * 0.35, 0.0, seed=seed + 101) * 0.26 * roughness
-            micro_noise = pseudo_noise_3d(x_pos * 1.25, y_pos * 1.25, 0.0, seed=seed + 202) * 0.09 * roughness
+            macro_noise = pseudo_noise_3d(x_pos * 0.35, y_pos * 0.35, 0.0, seed=seed + 101) * 0.18 * roughness
+            micro_noise = pseudo_noise_3d(x_pos * 1.25, y_pos * 1.25, 0.0, seed=seed + 202) * 0.06 * roughness
             z_total = z_final + macro_noise + micro_noise
 
             vert = bm.verts.new((x_pos, y_pos, z_total))
@@ -242,7 +244,7 @@ def build_terraced_cave_floor_bmesh(
 
     bm.verts.ensure_lookup_table()
 
-    # 2. Create Faces
+    # 2. Create Faces for Surface Grid
     for iy in range(subdivisions_y):
         for ix in range(subdivisions_x):
             v1 = grid_verts[iy][ix][0]
@@ -254,10 +256,60 @@ def build_terraced_cave_floor_bmesh(
             except ValueError:
                 pass
 
+    # 3. Diorama Solid Base (Skirts and Bottom Slab)
+    # Extrude perimeter edges downward to Z = -1.2m to give earth/rock thickness
+    base_bottom_z = -1.2
+    
+    # Boundary vertex rings:
+    # Bottom edge (iy = 0): ix from 0 to subdivisions_x
+    # Right edge (ix = subdivisions_x): iy from 0 to subdivisions_y
+    # Top edge (iy = subdivisions_y): ix from subdivisions_x down to 0
+    # Left edge (ix = 0): iy from subdivisions_y down to 0
+    boundary_top_verts = []
+    for ix in range(subdivisions_x):
+        boundary_top_verts.append(grid_verts[0][ix][0])
+    for iy in range(subdivisions_y):
+        boundary_top_verts.append(grid_verts[iy][subdivisions_x][0])
+    for ix in range(subdivisions_x, 0, -1):
+        boundary_top_verts.append(grid_verts[subdivisions_y][ix][0])
+    for iy in range(subdivisions_y, 0, -1):
+        boundary_top_verts.append(grid_verts[iy][0][0])
+
+    # Create corresponding bottom perimeter vertices
+    boundary_bot_verts = []
+    for bv in boundary_top_verts:
+        bot_v = bm.verts.new((bv.co.x, bv.co.y, base_bottom_z))
+        boundary_bot_verts.append(bot_v)
+
+    bm.verts.ensure_lookup_table()
+
+    # Create skirt wall faces
+    num_b = len(boundary_top_verts)
+    for i in range(num_b):
+        i_next = (i + 1) % num_b
+        t1 = boundary_top_verts[i]
+        t2 = boundary_top_verts[i_next]
+        b1 = boundary_bot_verts[i]
+        b2 = boundary_bot_verts[i_next]
+        try:
+            bm.faces.new((t1, t2, b2, b1))
+        except ValueError:
+            pass
+
+    # Create bottom cap face (fan from center or polygon)
+    center_bot = bm.verts.new((0.0, 0.0, base_bottom_z))
+    for i in range(num_b):
+        i_next = (i + 1) % num_b
+        b1 = boundary_bot_verts[i]
+        b2 = boundary_bot_verts[i_next]
+        try:
+            bm.faces.new((center_bot, b2, b1)) # Normal facing downward
+        except ValueError:
+            pass
+
     bm.faces.ensure_lookup_table()
     bm.normal_update()
 
-    # Smooth shading
     for f in bm.faces:
         f.smooth = True
 
@@ -345,43 +397,36 @@ def get_cave_puddle_locations(
     """
     Calculates deterministic center coordinates (px, py, pz, radius, aspect, rot)
     shared between floor basin carving and water surface generation.
-    Places puddles safely on flat terrace shelves to prevent any edge clipping or overhang.
+    Places puddles naturally along the gentle slope hollows, perfectly level with carved basins.
     """
     if puddle_count <= 0:
         return []
 
     locations = []
     rng = random.Random(seed + 9999)
-    y_range = length * 0.76
+    y_range = length * 0.72
     y_start = -y_range * 0.5
     y_step = y_range / float(max(1, puddle_count))
 
     for i in range(puddle_count):
-        py = y_start + (i + 0.5) * y_step + rng.uniform(-length * 0.03, length * 0.03)
+        py = y_start + (i + 0.5) * y_step + rng.uniform(-length * 0.04, length * 0.04)
         cx, wm, _ = get_cave_profile_at_y(py, length=length, path_type=path_type, seed=seed)
         eff_hx = (width * 0.5) * wm
 
-        # Alternate left and right ledges
+        # Alternate left and right ledges with organic scatter
         side = 1.0 if (i % 2 == 0) else -1.0
-
-        # Choose a terrace step k (e.g. step 0, 1, or 2, avoiding top wall)
-        max_step = max(0, min(terrace_steps - 2, 2))
-        k_step = (i % (max_step + 1))
-        # Flat shelf sweet spot: frac ~ 0.22
-        shelf_target = (k_step + 0.22) / float(max(1, terrace_steps))
-        norm_dist = min(0.85, max(0.12, shelf_target ** (1.0 / 1.8)))
-        offset_x = side * (norm_dist * eff_hx * 0.85)
+        dist_ratio = rng.uniform(0.18, 0.62)
+        offset_x = side * (dist_ratio * eff_hx * 0.85)
         px = cx + offset_x
+        norm_dist = dist_ratio
 
-        shelf_z = k_step * step_height
-        # Water level nestled inside basin, below rock rim
-        puddle_z = shelf_z - 0.03
+        # Continuous smooth slope height at this position
+        ground_z = (norm_dist ** 1.45) * 1.5
+        puddle_z = ground_z - 0.04 # Snugly seated 4cm below lip
 
-        # Step shelf width estimate
-        shelf_w = (eff_hx * 0.85) / float(max(1, terrace_steps))
-        max_rad = shelf_w * 0.45
-        p_rad = min(max_rad, puddle_scale * 0.45) * rng.uniform(0.85, 1.15)
-        aspect = rng.uniform(0.82, 1.25)
+        max_rad = (eff_hx * 0.28)
+        p_rad = min(max_rad, puddle_scale * 0.42) * rng.uniform(0.85, 1.15)
+        aspect = rng.uniform(0.80, 1.30)
         rot = rng.uniform(0, math.pi * 2.0)
 
         locations.append((px, py, puddle_z, p_rad, aspect, rot))
