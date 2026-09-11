@@ -159,27 +159,26 @@ def build_terraced_cave_floor_bmesh(
 
     grid_verts = []
 
-    # 1. Create Grid Vertices with Procedural Heights
+    # 1. Create Clean Rectangular Grid Vertices (No border distortion, perfect modular alignment)
     for iy in range(subdivisions_y + 1):
         y_pos = -hy + iy * dy
-        center_x, w_mult, h_mult = get_cave_profile_at_y(y_pos, length=length, path_type=path_type, seed=seed)
-        effective_hx = hx * w_mult
-        effective_dx = (effective_hx * 2.0) / float(subdivisions_x)
-        effective_rw = river_width * (0.65 + w_mult * 0.35)
+        center_x, w_mult, _ = get_cave_profile_at_y(y_pos, length=length, path_type=path_type, seed=seed)
+        effective_rw = river_width * (0.8 + w_mult * 0.2)
         row = []
 
         for ix in range(subdivisions_x + 1):
-            offset_x = -effective_hx + ix * effective_dx
-            x_pos = center_x + offset_x
+            # Straight modular rectangular boundary: X is strictly -hx to +hx
+            x_pos = -hx + ix * dx
             
-            # Distance from cave/river center (strictly relative to cave centerline)
-            dist_to_center = abs(offset_x)
-            norm_dist = min(1.3, dist_to_center / max(1.0, effective_hx * 0.85))
-            
-            # Base canyon slope: continuous smooth curve rising up towards cave walls
-            base_z = (norm_dist ** 1.45) * 1.5
+            # Distance from the meandering river center
+            dist_to_center = abs(x_pos - center_x)
+            # Normalized distance across the terrain width (0 at center, 1 at boundary)
+            norm_dist = min(1.2, abs(x_pos) / max(1.0, hx * 0.9))
 
-            # River trench (carve valley at the center)
+            # Base slope: subtle rise towards the outer edges
+            base_z = (norm_dist ** 1.5) * 1.2
+
+            # River trench (carve smooth valley following the meandering center)
             in_river = False
             river_factor = 0.0
             if has_river:
@@ -190,14 +189,14 @@ def build_terraced_cave_floor_bmesh(
                     depth_curve = math.cos(t * math.pi * 0.5) ** 1.5
                     base_z -= river_depth * depth_curve
                     river_factor = 1.0 - t
-                elif dist_to_center < half_rw + 1.2:
-                    t_bank = (dist_to_center - half_rw) / 1.2
+                elif dist_to_center < half_rw + 1.8:
+                    t_bank = (dist_to_center - half_rw) / 1.8
                     base_z -= river_depth * (1.0 - t_bank) * 0.25
 
             # 2. Localized Subtle Rock Ledges (Smooth Hermite blend, only in certain zones)
             if not in_river:
-                shelf_noise = pseudo_noise_3d(x_pos * 0.15, y_pos * 0.15, 0.0, seed=seed + 77) * 0.5 + 0.5
-                terrace_blend = 0.12 + shelf_noise * 0.18 # 12~30% subtle plateau, mostly continuous smooth slope
+                shelf_noise = pseudo_noise_3d(x_pos * 0.12, y_pos * 0.12, 0.0, seed=seed + 77) * 0.5 + 0.5
+                terrace_blend = 0.10 + shelf_noise * 0.15 # Subtle natural plateau
                 step_val = base_z / step_height
                 stepped_z = math.floor(step_val) * step_height
                 frac = step_val - math.floor(step_val)
@@ -207,34 +206,9 @@ def build_terraced_cave_floor_bmesh(
             else:
                 z_final = base_z
 
-            # 3. Carve Natural Hollow Basins for Puddles (Depressions into rock)
-            if puddle_locations:
-                for (px_p, py_p, pz_p, p_rad_p, aspect_p, rot_p) in puddle_locations:
-                    dx_p = x_pos - px_p
-                    dy_p = y_pos - py_p
-                    cos_r = math.cos(-rot_p)
-                    sin_r = math.sin(-rot_p)
-                    lx = dx_p * cos_r - dy_p * sin_r
-                    ly = (dx_p * sin_r + dy_p * cos_r) / max(0.1, aspect_p)
-                    dist_p = math.sqrt(lx**2 + ly**2)
-                    rim_outer = p_rad_p * 1.35
-                    rim_inner = p_rad_p * 0.95
-                    if dist_p < rim_outer:
-                        if dist_p < rim_inner:
-                            # Bowl basin depression (hollow inside)
-                            t_bowl = dist_p / rim_inner
-                            # Deepest at center (-0.22m), smoothly rising up
-                            bowl_drop = (1.0 - t_bowl ** 2) * 0.22
-                            z_final -= bowl_drop
-                        else:
-                            # Natural rimstone lip (slight raised edge holding the water)
-                            t_lip = (dist_p - rim_inner) / (rim_outer - rim_inner)
-                            lip_height = math.sin(t_lip * math.pi) * 0.07
-                            z_final += lip_height
-
-            # 4. Organic Rock Slabs (Natural multi-scale noise, NO geometric Voronoi grid cracks)
-            macro_noise = pseudo_noise_3d(x_pos * 0.35, y_pos * 0.35, 0.0, seed=seed + 101) * 0.18 * roughness
-            micro_noise = pseudo_noise_3d(x_pos * 1.25, y_pos * 1.25, 0.0, seed=seed + 202) * 0.06 * roughness
+            # 3. Organic Rock Slabs (Multi-scale noise)
+            macro_noise = pseudo_noise_3d(x_pos * 0.35, y_pos * 0.35, 0.0, seed=seed + 101) * 0.16 * roughness
+            micro_noise = pseudo_noise_3d(x_pos * 1.25, y_pos * 1.25, 0.0, seed=seed + 202) * 0.05 * roughness
             z_total = z_final + macro_noise + micro_noise
 
             vert = bm.verts.new((x_pos, y_pos, z_total))
@@ -1465,18 +1439,10 @@ def create_procedural_cave_scene(
     """
     col = context.collection
 
-    # Determine effective river & puddle flags
-    # If caller specifically passed water_type, respect it; otherwise fallback to has_river
-    if water_type in ('RIVER', 'BOTH'):
-        has_river_effective = True
-    elif water_type == 'NONE':
-        has_river_effective = False
-    elif water_type == 'PUDDLES':
-        has_river_effective = False
-    else:
-        has_river_effective = has_river
-
-    has_puddles_effective = water_type in ('PUDDLES', 'BOTH')
+    # Water settings: Puddles are omitted per user feedback (floating/oily look)
+    # Water feature is focused exclusively on natural river stream or dry terrain
+    has_river_effective = (water_type in ('RIVER', 'BOTH')) if water_type != 'NONE' else False
+    has_puddles_effective = False # Puddles completely omitted
 
     # 0. Sanitize base name (prevent _Floor_Floor accumulation)
     import re
@@ -1489,19 +1455,7 @@ def create_procedural_cave_scene(
     pillar_obj_name = clean_name + "_Pillars"
     debris_obj_name = clean_name + "_Debris"
 
-    # 0B. Calculate puddle locations upfront so floor can carve basins
     puddle_locations = None
-    if has_puddles_effective and puddle_count > 0:
-        puddle_locations = get_cave_puddle_locations(
-            width=floor_width,
-            length=floor_length,
-            path_type=path_type,
-            terrace_steps=terrace_steps,
-            step_height=step_height,
-            puddle_count=puddle_count,
-            puddle_scale=puddle_scale,
-            seed=seed
-        )
 
     # 1. Build Floor BMesh with puddle basin carving
     bm_floor = build_terraced_cave_floor_bmesh(
@@ -1586,34 +1540,14 @@ def create_procedural_cave_scene(
             bpy.data.objects.remove(river_obj, do_unlink=True)
             river_obj = None
 
-    # 2B. Handle Scattered Puddles & Pools Mesh
+    # 2B. Clean up any legacy puddles object (puddles are omitted)
     puddles_obj = bpy.data.objects.get(puddles_obj_name)
-    if has_puddles_effective and puddle_locations:
-        bm_puddles = build_cave_puddles_bmesh(puddle_locations=puddle_locations)
-        if puddles_obj and puddles_obj.type == 'MESH':
-            bm_puddles.to_mesh(puddles_obj.data)
-            puddles_obj.data.update()
-            puddles_obj.hide_viewport = False
-            puddles_obj.hide_render = False
-        else:
-            mesh_puddles = bpy.data.meshes.new(puddles_obj_name)
-            bm_puddles.to_mesh(mesh_puddles)
-            puddles_obj = bpy.data.objects.new(puddles_obj_name, mesh_puddles)
-            col.objects.link(puddles_obj)
-        bm_puddles.free()
-
-        mat_puddles = get_or_create_cave_water_material(clean_name + "_Water_Mat", rock_style=rock_style)
-        if puddles_obj.data.materials:
-            puddles_obj.data.materials[0] = mat_puddles
-        else:
-            puddles_obj.data.materials.append(mat_puddles)
-    else:
-        if puddles_obj:
-            bpy.data.objects.remove(puddles_obj, do_unlink=True)
-            puddles_obj = None
+    if puddles_obj:
+        bpy.data.objects.remove(puddles_obj, do_unlink=True)
+        puddles_obj = None
 
     # Primary water reference for operator reporting
-    water_obj = puddles_obj or river_obj
+    water_obj = river_obj
 
     # 3. Handle Ceiling & Cliff Walls Mesh (Step 2)
     # ceiling_obj_name already set to clean_name + "_Ceiling"

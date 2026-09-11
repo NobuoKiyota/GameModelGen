@@ -480,21 +480,18 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 if props.cave_add_moss:
                     row_moss.prop(props, "cave_moss_amount", text="苔の量", slider=True)
 
-                # 1. 水面設定 (水たまり・河川・なし)
+                # 1. 水面設定 (リアルな地下水流・川の有無)
                 box_cf_water = box_cf.box()
-                box_cf_water.prop(props, "cave_water_type", text="💧 水面タイプ")
-                if props.cave_water_type in ('PUDDLES', 'BOTH'):
-                    row_p = box_cf_water.row(align=True)
-                    row_p.prop(props, "cave_puddle_count", text="水たまり数")
-                    row_p.prop(props, "cave_puddle_scale", text="規模 (m)")
-                if props.cave_water_type in ('RIVER', 'BOTH'):
+                row_r_tog = box_cf_water.row(align=True)
+                row_r_tog.prop(props, "cave_has_river", text="💧 地下水流・川を生成 (River Trench)", toggle=True)
+                if props.cave_has_river:
                     row_r = box_cf_water.row(align=True)
                     row_r.prop(props, "cave_river_width", text="川幅 (m)")
                     row_r.prop(props, "cave_river_depth", text="谷の深さ (m)")
 
-                # 2. フロア寸法 & 起伏
+                # 2. フロア寸法 & 起伏 (100x100mなどの大規模テレインに対応)
                 box_cf_dim = box_cf.box()
-                box_cf_dim.label(text="📐 フロア寸法 & 起伏設定:", icon='ARROW_LEFTRIGHT')
+                box_cf_dim.label(text="📐 フロア寸法 & 起伏設定 (矩形モジュラー境界):", icon='ARROW_LEFTRIGHT')
                 row_cf_d1 = box_cf_dim.row(align=True)
                 row_cf_d1.prop(props, "cave_floor_width", text="全幅 (m)")
                 row_cf_d1.prop(props, "cave_floor_length", text="全長 (m)")
@@ -503,8 +500,8 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
                 # 特徴ヒント
                 box_cf_hint = box_cf.box()
-                box_cf_hint.label(text="✨ 特徴: なだらかな自然傾斜スロープ＋外周ソリッドスラブ（厚み1.2m）", icon='INFO')
-                box_cf_hint.label(text="   水たまりはすり鉢状ボウルに自然沈み込み、非破壊ディスプレイスメント保持")
+                box_cf_hint.label(text="✨ 外周4辺は完全な直線矩形（歪みゼロ・UE上でタイル配置時に空白地なし）", icon='INFO')
+                box_cf_hint.label(text="   厚み1.2mのソリッド基盤スラブ＋蛇行川トレンチ（水たまりはオミット済み）")
 
                 # 操作ボタン
                 col_cf_btn = box_cf.column(align=True)
