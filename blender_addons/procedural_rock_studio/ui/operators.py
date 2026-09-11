@@ -1120,6 +1120,8 @@ class MESH_OT_regenerate_cave(bpy.types.Operator):
         import re
         name = re.sub(r'(_Floor|_Water|_Ceiling|_Pillars|_Debris)+$', '', target.name).strip() if target else (props.asset_name.strip() or "Cave")
 
+        is_floor_mode = (props.prop_category == 'CAVE_FLOOR')
+
         floor_obj, water_obj, ceil_obj, pillar_obj, debris_obj = create_procedural_cave_scene(
             context=context,
             name=name,
@@ -1140,12 +1142,12 @@ class MESH_OT_regenerate_cave(bpy.types.Operator):
             ceiling_overhang=props.cave_ceiling_overhang,
             ceiling_fissure=props.cave_ceiling_fissure,
             ceiling_roughness=props.cave_ceiling_roughness,
-            generate_ceiling=props.cave_generate_ceiling,
-            generate_pillars=props.cave_generate_pillars,
+            generate_ceiling=False if is_floor_mode else props.cave_generate_ceiling,
+            generate_pillars=False if is_floor_mode else props.cave_generate_pillars,
             pillar_count=props.cave_pillar_count,
-            generate_stalactites=props.cave_generate_stalactites,
+            generate_stalactites=False if is_floor_mode else props.cave_generate_stalactites,
             stalactite_density=props.cave_stalactite_density,
-            generate_boulders=props.cave_generate_boulders,
+            generate_boulders=False if is_floor_mode else props.cave_generate_boulders,
             boulder_count=props.cave_boulder_count,
             add_moss=props.cave_add_moss,
             moss_amount=props.cave_moss_amount,
@@ -1197,6 +1199,8 @@ class MESH_OT_create_cave(bpy.types.Operator):
 
         from ..generators.cave_gen import create_procedural_cave_scene
 
+        is_floor_mode = (props.prop_category == 'CAVE_FLOOR')
+
         floor_obj, water_obj, ceil_obj, pillar_obj, debris_obj = create_procedural_cave_scene(
             context=context,
             name=name,
@@ -1217,12 +1221,12 @@ class MESH_OT_create_cave(bpy.types.Operator):
             ceiling_overhang=props.cave_ceiling_overhang,
             ceiling_fissure=props.cave_ceiling_fissure,
             ceiling_roughness=props.cave_ceiling_roughness,
-            generate_ceiling=props.cave_generate_ceiling,
-            generate_pillars=props.cave_generate_pillars,
+            generate_ceiling=False if is_floor_mode else props.cave_generate_ceiling,
+            generate_pillars=False if is_floor_mode else props.cave_generate_pillars,
             pillar_count=props.cave_pillar_count,
-            generate_stalactites=props.cave_generate_stalactites,
+            generate_stalactites=False if is_floor_mode else props.cave_generate_stalactites,
             stalactite_density=props.cave_stalactite_density,
-            generate_boulders=props.cave_generate_boulders,
+            generate_boulders=False if is_floor_mode else props.cave_generate_boulders,
             boulder_count=props.cave_boulder_count,
             add_moss=props.cave_add_moss,
             moss_amount=props.cave_moss_amount,

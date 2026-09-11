@@ -35,7 +35,8 @@ def update_category_preset(self, context):
         'BUSH': "Bush_Shrub",
         'IMAGE_DISPLACE': "Image_Displace_Asset",
         'CASTLE_WALL': "Castle_Wall",
-        'CAVE': "Cave_Dungeon"
+        'CAVE': "Cave_Dungeon",
+        'CAVE_FLOOR': "Cave_Floor"
     }
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
@@ -330,6 +331,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('FLOOR', "🟫 床・タイル (Floor / Tile)", "textures/Floor/ と自動連動（正方形・円形・六角形＆有機的亀裂）"),
             ('WALL', "🧱 壁・城壁 (Wall / Ruins)", "textures/Wall/ と自動連動（直線・L字・円弧・▲三角切妻壁）"),
             ('CASTLE_WALL', "🏰 城壁・石積み壁 (Castle Stone Wall)", "動画の散布手法を応用した立体石材ブロック積みの城壁・石垣・銃眼胸壁"),
+            ('CAVE_FLOOR', "🪨 洞窟床・新テレイン (Cave Floor / Terrain)", "なだらかな自然傾斜・大地の厚みスラブ・水たまり・岩肌スタイルを持つ新・床フォーマット"),
             ('CAVE', "🪨 洞窟・岩窟ジオラマ (Procedural Cave)", "一本道・S字・Y字分岐・大空洞を持つリアルな洞窟システム（地面・天井分離）"),
             ('PILLAR', "🏛️ 柱・石柱 (Pillar / Column)", "textures/Pillar/ と自動連動"),
             ('BEAM', "🪵 梁・丸太支柱 (Timber Log Beam)", "textures/Wood/ と自動連動（シリンダー丸太梁）"),

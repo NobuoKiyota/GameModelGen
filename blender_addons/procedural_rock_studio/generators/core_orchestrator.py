@@ -402,33 +402,46 @@ def generate_procedural_prop_mesh(
         )
         return wall_obj
 
-    # 🪨 Cave Preset (新・岩棚テラス＆水流トレンチ＆断崖天井アーチ)
-    if category == "CAVE":
+    # 🪨 Cave & Cave Floor Presets (洞窟フロア基盤＆ジオラマ)
+    if category in ("CAVE", "CAVE_FLOOR"):
         from .cave_gen import create_procedural_cave_scene
         import re
         # Strip any existing suffixes to strictly prevent object duplication
-        cave_clean_name = re.sub(r'(_Floor|_Water|_Ceiling|_Pillars|_Debris)+$', '', name).strip() or "Cave_Dungeon"
+        prefix = "Cave_Floor" if category == "CAVE_FLOOR" else "Cave_Dungeon"
+        cave_clean_name = re.sub(r'(_Floor|_Water|_Puddles|_Ceiling|_Pillars|_Debris)+$', '', name).strip() or prefix
         c_path = kwargs.get('cave_path_type', 'S_CURVE')
         c_style = kwargs.get('cave_rock_style', 'SLATE')
+        c_w_type = kwargs.get('cave_water_type', 'PUDDLES')
         c_river = kwargs.get('cave_has_river', True)
+        c_p_cnt = kwargs.get('cave_puddle_count', 6)
+        c_p_scale = kwargs.get('cave_puddle_scale', 2.4)
         c_r_w = kwargs.get('cave_river_width', 4.5)
         c_r_d = kwargs.get('cave_river_depth', 1.3)
         c_steps = kwargs.get('cave_terrace_steps', 4)
         c_f_w = kwargs.get('cave_floor_width', 18.0)
         c_f_l = kwargs.get('cave_floor_length', 35.0)
         c_rough = kwargs.get('cave_roughness', 0.8)
-        c_ceil = kwargs.get('cave_generate_ceiling', True)
+        
+        # In CAVE_FLOOR mode, strictly focus on Floor & Water without ceiling/pillars
+        if category == "CAVE_FLOOR":
+            c_ceil = False
+            c_pillars = False
+            c_stalactites = False
+            c_boulders = False
+        else:
+            c_ceil = kwargs.get('cave_generate_ceiling', True)
+            c_pillars = kwargs.get('cave_generate_pillars', True)
+            c_stalactites = kwargs.get('cave_generate_stalactites', True)
+            c_boulders = kwargs.get('cave_generate_boulders', True)
+
         c_c_h = kwargs.get('cave_ceiling_height', 6.5)
         c_c_o = kwargs.get('cave_ceiling_overhang', 0.85)
         c_c_f = kwargs.get('cave_ceiling_fissure', 0.3)
         c_c_r = kwargs.get('cave_ceiling_roughness', 0.9)
         c_lights = kwargs.get('cave_setup_lights', True)
         c_l_int = kwargs.get('cave_light_intensity', 1.0)
-        c_pillars = kwargs.get('cave_generate_pillars', True)
         c_p_count = kwargs.get('cave_pillar_count', 4)
-        c_stalactites = kwargs.get('cave_generate_stalactites', True)
         c_s_dens = kwargs.get('cave_stalactite_density', 1.0)
-        c_boulders = kwargs.get('cave_generate_boulders', True)
         c_b_count = kwargs.get('cave_boulder_count', 16)
         c_moss = kwargs.get('cave_add_moss', True)
         c_m_amt = kwargs.get('cave_moss_amount', 0.6)
@@ -439,7 +452,10 @@ def generate_procedural_prop_mesh(
             seed=seed,
             path_type=c_path,
             rock_style=c_style,
+            water_type=c_w_type,
             has_river=c_river,
+            puddle_count=c_p_cnt,
+            puddle_scale=c_p_scale,
             floor_width=c_f_w,
             floor_length=c_f_l,
             river_width=c_r_w,

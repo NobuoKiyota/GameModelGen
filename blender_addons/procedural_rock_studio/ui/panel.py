@@ -466,6 +466,53 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 col_cw_btn.separator()
                 col_cw_btn.operator("mesh.convert_castle_wall_to_game_mesh", text="🎮 ゲーム用実体メッシュへ変換 (Make Real)", icon='CHECKMARK')
 
+            # Cave Floor (New Terrain) Preset Specific
+            elif props.prop_category == 'CAVE_FLOOR':
+                box_cf = layout.box()
+                box_cf.label(text="🪨 洞窟床・新テレイン (なだらか傾斜 & ソリッド大地スラブ):", icon='MESH_GRID')
+
+                # 0. 岩肌スタイル & ルート形状
+                box_cf_style = box_cf.box()
+                box_cf_style.prop(props, "cave_rock_style", text="🎨 岩肌スタイル")
+                box_cf_style.prop(props, "cave_path_type", text="ルート形状")
+                row_moss = box_cf_style.row(align=True)
+                row_moss.prop(props, "cave_add_moss", text="🌿 苔を生やす (Moss)", toggle=True)
+                if props.cave_add_moss:
+                    row_moss.prop(props, "cave_moss_amount", text="苔の量", slider=True)
+
+                # 1. 水面設定 (水たまり・河川・なし)
+                box_cf_water = box_cf.box()
+                box_cf_water.prop(props, "cave_water_type", text="💧 水面タイプ")
+                if props.cave_water_type in ('PUDDLES', 'BOTH'):
+                    row_p = box_cf_water.row(align=True)
+                    row_p.prop(props, "cave_puddle_count", text="水たまり数")
+                    row_p.prop(props, "cave_puddle_scale", text="規模 (m)")
+                if props.cave_water_type in ('RIVER', 'BOTH'):
+                    row_r = box_cf_water.row(align=True)
+                    row_r.prop(props, "cave_river_width", text="川幅 (m)")
+                    row_r.prop(props, "cave_river_depth", text="谷の深さ (m)")
+
+                # 2. フロア寸法 & 起伏
+                box_cf_dim = box_cf.box()
+                box_cf_dim.label(text="📐 フロア寸法 & 起伏設定:", icon='ARROW_LEFTRIGHT')
+                row_cf_d1 = box_cf_dim.row(align=True)
+                row_cf_d1.prop(props, "cave_floor_width", text="全幅 (m)")
+                row_cf_d1.prop(props, "cave_floor_length", text="全長 (m)")
+                row_cf_d2 = box_cf_dim.row(align=True)
+                row_cf_d2.prop(props, "cave_roughness", text="断層起伏 (Roughness)", slider=True)
+
+                # 特徴ヒント
+                box_cf_hint = box_cf.box()
+                box_cf_hint.label(text="✨ 特徴: なだらかな自然傾斜スロープ＋外周ソリッドスラブ（厚み1.2m）", icon='INFO')
+                box_cf_hint.label(text="   水たまりはすり鉢状ボウルに自然沈み込み、非破壊ディスプレイスメント保持")
+
+                # 操作ボタン
+                col_cf_btn = box_cf.column(align=True)
+                col_cf_btn.scale_y = 1.3
+                col_cf_btn.operator("mesh.reroll_cave", text="🎲 床を再抽選 (Re-Roll)", icon='FILE_REFRESH')
+                col_cf_btn.operator("mesh.regenerate_cave", text="🔄 現在の設定で更新 (その場更新)", icon='FILE_CACHE')
+                col_cf_btn.operator("mesh.create_cave", text="➕ 新規洞窟床を生成", icon='ADD')
+
             # Cave Preset Specific
             elif props.prop_category == 'CAVE':
                 box_cave = layout.box()
