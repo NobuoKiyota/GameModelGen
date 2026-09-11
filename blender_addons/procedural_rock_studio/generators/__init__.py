@@ -5,7 +5,8 @@ from .architecture_gen import (
     build_wall_base,
     build_pillar_base,
     build_beam_base,
-    build_beam_arch_base
+    build_beam_arch_base,
+    build_procedural_stone_arch_bmesh
 )
 from .furniture_gen import (
     build_bookshelf_base,

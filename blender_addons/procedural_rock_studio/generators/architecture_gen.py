@@ -630,54 +630,485 @@ def build_beam_base(bm, size_x, size_y, size_z):
         radius1=rad, radius2=rad, depth=length
     )
     verts = res['verts']
+# 方形台座 (Plinth)
+    res_plinth = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(radius * 2.6, radius * 2.6, base_h * 0.5), verts=res_plinth['verts'])
+    bmesh.ops.translate(bm, vec=(0, 0, -height * 0.5 - base_h * 0.75), verts=res_plinth['verts'])
+    all_verts.extend(res_plinth['verts'])
+    
+    # 円形トロスリング (Torus)
+    res_torus = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=24,
+        radius1=radius * 1.35, radius2=radius * 1.15, depth=base_h * 0.5
+    )
+    bmesh.ops.translate(bm, vec=(0, 0, -height * 0.5 - base_h * 0.25), verts=res_torus['verts'])
+    all_verts.extend(res_torus['verts'])
+    
+    # ── 柱頭 (Capital) ───────────────────────────────────
+    # 湾曲受皿 (Echinus)
+    res_echinus = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=24,
+        radius1=radius * 0.95, radius2=radius * 1.32, depth=cap_h * 0.5
+    )
+    bmesh.ops.translate(bm, vec=(0, 0, height * 0.5 + cap_h * 0.25), verts=res_echinus['verts'])
+    all_verts.extend(res_echinus['verts'])
+    
+    # 方形上板 (Abacus)
+    res_abacus = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(radius * 2.5, radius * 2.5, cap_h * 0.5), verts=res_abacus['verts'])
+    bmesh.ops.translate(bm, vec=(0, 0, height * 0.5 + cap_h * 0.75), verts=res_abacus['verts'])
+    all_verts.extend(res_abacus['verts'])
+    
+    return all_verts
+
+
+def build_stone_drum_pillar(bm, height, radius, drums=7, seed=0):
+    """古代遺跡のドラム石積み柱（円盤状の石ブロック積み重ね＆目地溝）"""
+    rng = random.Random(seed)
+    all_verts = []
+    drum_h = height / drums
+    grout_gap = drum_h * 0.08
+    actual_drum_h = drum_h - grout_gap
+    
+    for di in range(drums):
+        z_center = -height * 0.5 + (di + 0.5) * drum_h
+        
+        # 各ドラムのわずかなランダムサイズ・中心ズレ（遺跡の風化感）
+        d_rad = radius * rng.uniform(0.96, 1.04)
+        ox = rng.uniform(-0.015, 0.015) * radius
+        oy = rng.uniform(-0.015, 0.015) * radius
+        
+        res = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=20,
+            radius1=d_rad, radius2=d_rad * rng.uniform(0.98, 1.02),
+            depth=actual_drum_h
+        )
+        bmesh.ops.translate(bm, vec=(ox, oy, z_center), verts=res['verts'])
+        
+        # 表面の微小ジッターノイズ
+        for v in res['verts']:
+            v.co.x += rng.uniform(-0.008, 0.008) * radius
+            v.co.y += rng.uniform(-0.008, 0.008) * radius
+            v.co.z += rng.uniform(-0.005, 0.005) * drum_h
+        all_verts.extend(res['verts'])
+        
+    # 上下に石積みの素朴な四角い台座と笠石
+    cap_v = bmesh.ops.create_cube(bm, size=1.0)['verts']
+    bmesh.ops.scale(bm, vec=(radius * 2.3, radius * 2.3, height * 0.06), verts=cap_v)
+    bmesh.ops.translate(bm, vec=(0, 0, height * 0.5 + height * 0.03), verts=cap_v)
+    all_verts.extend(cap_v)
+    
+    base_v = bmesh.ops.create_cube(bm, size=1.0)['verts']
+    bmesh.ops.scale(bm, vec=(radius * 2.4, radius * 2.4, height * 0.08), verts=base_v)
+    bmesh.ops.translate(bm, vec=(0, 0, -height * 0.5 - height * 0.04), verts=base_v)
+    all_verts.extend(base_v)
+    
+    return all_verts
+
+
+def build_gothic_clustered_pillar(bm, height, radius, colonnettes=6):
+    """ゴシック大聖堂の束ね柱（主柱＋周囲の小柱クラスタ＋結束リング）"""
+    all_verts = []
+    shaft_h = height * 0.84
+    
+    # ── 1. 中央大主柱 ────────────────────────────────────
+    main_r = radius * 0.65
+    res_m = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=16,
+        radius1=main_r, radius2=main_r, depth=shaft_h
+    )
+    all_verts.extend(res_m['verts'])
+    
+    # ── 2. 周囲の束ね小柱 (Colonnettes) ──────────────────
+    sub_r = radius * 0.22
+    orbit_r = radius * 0.78
+    step_ang = (math.pi * 2.0) / colonnettes
+    
+    for ci in range(colonnettes):
+        ang = ci * step_ang
+        cx = math.cos(ang) * orbit_r
+        cy = math.sin(ang) * orbit_r
+        res_sub = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=12,
+            radius1=sub_r, radius2=sub_r, depth=shaft_h
+        )
+        bmesh.ops.translate(bm, vec=(cx, cy, 0), verts=res_sub['verts'])
+        all_verts.extend(res_sub['verts'])
+        
+    # ── 3. 結束リングカラー (Ring Collars: 1/3 と 2/3 高さ) ──
+    for zf in [-0.18, 0.18]:
+        res_ring = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=24,
+            radius1=radius * 1.08, radius2=radius * 1.08, depth=height * 0.04
+        )
+        bmesh.ops.translate(bm, vec=(0, 0, shaft_h * zf), verts=res_ring['verts'])
+        all_verts.extend(res_ring['verts'])
+        
+    # ── 4. ゴシック多段基壇＆柱頭 ────────────────────────
+    cap_h = height * 0.08
+    base_h = height * 0.08
+    
+    res_base = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=colonnettes * 2,
+        radius1=radius * 1.35, radius2=radius * 1.15, depth=base_h
+    )
+    bmesh.ops.translate(bm, vec=(0, 0, -shaft_h * 0.5 - base_h * 0.5), verts=res_base['verts'])
+    all_verts.extend(res_base['verts'])
+    
+    res_cap = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=colonnettes * 2,
+        radius1=radius * 1.12, radius2=radius * 1.35, depth=cap_h
+    )
+    bmesh.ops.translate(bm, vec=(0, 0, shaft_h * 0.5 + cap_h * 0.5), verts=res_cap['verts'])
+    all_verts.extend(res_cap['verts'])
+    
+    return all_verts
+
+
+def build_solomonic_twisted_pillar(bm, height, radius):
+    """バロック・ソロモン螺旋柱（優美なツイストヘリックス）"""
+    all_verts = []
+    shaft_h = height * 0.82
+    cuts = 20
+    
+    res = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=16,
+        radius1=radius * 0.85, radius2=radius * 0.85, depth=shaft_h
+    )
+    bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=cuts, use_grid_fill=True)
+    
+    # Z座標に応じた回転（螺旋ねじれ）
+    twist_rot = math.pi * 3.0 # 540度
+    for v in bm.verts:
+        zf = (v.co.z / shaft_h) # -0.5 〜 0.5
+        ang = zf * twist_rot
+        cos_a = math.cos(ang)
+        sin_a = math.sin(ang)
+        # 螺旋の波状うねり
+        wave = math.sin(zf * math.pi * 4.0) * (radius * 0.18)
+        nx = v.co.x * cos_a - v.co.y * sin_a + math.cos(ang) * wave
+        ny = v.co.x * sin_a + v.co.y * cos_a + math.sin(ang) * wave
+        v.co.x = nx
+        v.co.y = ny
+    all_verts.extend(bm.verts[:])
+    
+    # クラシック柱頭と基壇
+    cap_v = build_classical_capital_and_base(bm, shaft_h, radius)
+    all_verts.extend(cap_v)
+    return all_verts
+
+
+def build_pillar_base(bm, size_x, size_y, size_z, style="CLASSIC_FLUTED",
+                      flutes=16, colonnettes=6, entasis=0.08, seed=0):
+    """建築柱の総合生成エンジン（ギリシャ神殿、ゴシック束ね柱、ドラム石積み、ソロモン螺旋）"""
+    radius = (size_x + size_y) * 0.25 # 平均半径
+    height = size_z
+    
+    if style == "GOTHIC_CLUSTERED":
+        return build_gothic_clustered_pillar(bm, height, radius, colonnettes=colonnettes)
+    elif style == "STONE_DRUM":
+        return build_stone_drum_pillar(bm, height, radius, drums=7, seed=seed)
+    elif style == "TWISTED_SOLOMONIC":
+        return build_solomonic_twisted_pillar(bm, height, radius)
+    else: # CLASSIC_FLUTED (デフォルト)
+        shaft_h = height * 0.83
+        verts = build_fluted_shaft(bm, shaft_h, radius, flutes=flutes, entasis=entasis)
+        cap_verts = build_classical_capital_and_base(bm, shaft_h, radius)
+        return verts + cap_verts
+
+
+def build_beam_base(bm, size_x, size_y, size_z):
+    rad = min(size_y, size_z) * 0.35
+    length = size_x * 2.2
+    res = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=16,
+        radius1=rad, radius2=rad, depth=length
+    )
+    verts = res['verts']
     bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(90), 3, 'Y'), verts=verts)
     bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=2, use_grid_fill=True)
     return bm.verts[:]
 
 
-def build_beam_arch_base(bm, size_x, size_y, size_z):
-    all_verts = []
-    rad = min(size_x, size_y) * 0.14
-    res_top = bmesh.ops.create_cone(
-        bm, cap_ends=True, cap_tris=False, segments=16,
-        radius1=rad, radius2=rad, depth=size_x * 2.2
-    )
-    top_verts = res_top['verts']
-    bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(90), 3, 'Y'), verts=top_verts)
-    bmesh.ops.translate(bm, vec=(0, 0, size_z * 1.0), verts=top_verts)
-    all_verts.extend(top_verts)
-    
-    res_lp = bmesh.ops.create_cone(
-        bm, cap_ends=True, cap_tris=False, segments=16,
-        radius1=rad * 1.1, radius2=rad * 1.1, depth=size_z * 2.0
-    )
-    lp_verts = res_lp['verts']
-    bmesh.ops.translate(bm, vec=(-size_x * 0.85, 0, 0), verts=lp_verts)
-    all_verts.extend(lp_verts)
-    
-    res_rp = bmesh.ops.create_cone(
-        bm, cap_ends=True, cap_tris=False, segments=16,
-        radius1=rad * 1.1, radius2=rad * 1.1, depth=size_z * 2.0
-    )
-    rp_verts = res_rp['verts']
-    bmesh.ops.translate(bm, vec=(size_x * 0.85, 0, 0), verts=rp_verts)
-    all_verts.extend(rp_verts)
-    
-    res_lb = bmesh.ops.create_cone(
-        bm, cap_ends=True, cap_tris=False, segments=12,
-        radius1=rad * 0.85, radius2=rad * 0.85, depth=size_z * 0.8
-    )
-    lb_verts = res_lb['verts']
-    bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(-45), 3, 'Y'), verts=lb_verts)
-    bmesh.ops.translate(bm, vec=(-size_x * 0.55, 0, size_z * 0.7), verts=lb_verts)
-    all_verts.extend(lb_verts)
+def build_procedural_stone_arch_bmesh(
+    bm,
+    size_x=3.2,
+    size_y=0.8,
+    size_z=3.8,
+    style='ROMAN_ROUND',
+    structure_type='SINGLE',
+    span_count=3,
+    pillar_shape='SQUARE_PIER',
+    has_keystone=True,
+    keystone_scale=1.25,
+    molding_tiers=2,
+    has_spandrel=True,
+    has_pedestal=True,
+    **kwargs
+):
+    """
+    Builds an architecturally authentic classical stone arch based on hbitproject's tutorial:
+    - 2D-to-3D continuous extrusion preventing any spandrel occlusion
+    - Authentic semicircular / pointed arch ring with tiered moldings
+    - Trapezoidal Keystone firmly locked at the crown
+    - Clean rectangular boundary box for seamless modular tiling in Unreal Engine
+    - Multi-span Colonnade / Arcade support
+    """
+    import mathutils
 
-    res_rb = bmesh.ops.create_cone(
-        bm, cap_ends=True, cap_tris=False, segments=12,
-        radius1=rad * 0.85, radius2=rad * 0.85, depth=size_z * 0.8
+    spans = span_count if structure_type == 'COLONNADE' else 1
+    depth = size_y
+    if structure_type == 'VAULT_CEILING':
+        depth = max(size_y, size_x * 1.6)
+
+    # 1. Dimension Ratios per span
+    span_w = size_x
+    total_w = span_w * spans
+    pillar_w = span_w * 0.22
+    opening_w = span_w - pillar_w * 2.0
+    r_in = opening_w * 0.5
+    ring_thick = pillar_w * 0.78
+    r_out = r_in + ring_thick
+
+    # Rise calculation based on style
+    if style == 'GOTHIC_POINTED':
+        arch_rise = r_in * 1.35
+    elif style == 'SEGMENTAL':
+        arch_rise = r_in * 0.65
+    elif style == 'HORSESHOE':
+        arch_rise = r_in * 1.15
+    else: # ROMAN_ROUND
+        arch_rise = r_in
+
+    # Heights
+    cornice_h = 0.28
+    wall_top_z = size_z - cornice_h
+    spring_z = max(1.0, wall_top_z - arch_rise - 0.35)
+
+    def add_box(center, dims):
+        return bmesh.ops.create_cube(
+            bm, size=1.0, matrix=mathutils.Matrix.Translation(center) @ mathutils.Matrix.Diagonal((*dims, 1.0))
+        )['verts']
+
+    # 2. Build Colonnade Spans
+    start_cx = -total_w * 0.5 + span_w * 0.5
+
+    for ispan in range(spans):
+        cx = start_cx + ispan * span_w
+        
+        # A. Piers (Left & Right columns of this span)
+        # Left pier center: cx - span_w * 0.5 + pillar_w * 0.5
+        # Right pier center: cx + span_w * 0.5 - pillar_w * 0.5
+        # For colonnade, shared piers between adjacent spans are merged naturally
+        pier_xs = [cx - span_w * 0.5 + pillar_w * 0.5]
+        if ispan == spans - 1: # Include right pier on last span
+            pier_xs.append(cx + span_w * 0.5 - pillar_w * 0.5)
+
+        for px in pier_xs:
+            # Plinth Base
+            if has_pedestal:
+                b1_h = spring_z * 0.09
+                b2_h = spring_z * 0.06
+                add_box((px, 0.0, b1_h * 0.5), (pillar_w * 1.25, depth * 1.12, b1_h))
+                add_box((px, 0.0, b1_h + b2_h * 0.5), (pillar_w * 1.12, depth * 1.06, b2_h))
+                shaft_bot = b1_h + b2_h
+            else:
+                shaft_bot = 0.0
+
+            # Impost Capital
+            c1_h = spring_z * 0.07
+            c2_h = spring_z * 0.08
+            c_bot = spring_z - (c1_h + c2_h)
+            add_box((px, 0.0, c_bot + c1_h * 0.5), (pillar_w * 1.14, depth * 1.08, c1_h))
+            add_box((px, 0.0, spring_z - c2_h * 0.5), (pillar_w * 1.26, depth * 1.16, c2_h))
+            shaft_top = c_bot
+
+            # Pier Shaft
+            s_h = shaft_top - shaft_bot
+            s_cz = shaft_bot + s_h * 0.5
+            if pillar_shape == 'ROUND_COLUMN':
+                rad = pillar_w * 0.46
+                res = bmesh.ops.create_cone(
+                    bm, cap_ends=True, cap_tris=False, segments=18,
+                    radius1=rad, radius2=rad, depth=s_h
+                )
+                bmesh.ops.translate(bm, vec=(px, 0.0, s_cz), verts=res['verts'])
+            elif pillar_shape == 'OCTAGONAL':
+                rad = pillar_w * 0.50
+                res = bmesh.ops.create_cone(
+                    bm, cap_ends=True, cap_tris=False, segments=8,
+                    radius1=rad, radius2=rad, depth=s_h
+                )
+                bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(22.5), 3, 'Z'), verts=res['verts'])
+                bmesh.ops.translate(bm, vec=(px, 0.0, s_cz), verts=res['verts'])
+            else: # SQUARE_PIER
+                add_box((px, 0.0, s_cz), (pillar_w, depth, s_h))
+
+        # B. Arch Ring Points (2D profile)
+        segments = 24
+        inner_pts = []
+        outer_pts = []
+
+        if style == 'GOTHIC_POINTED':
+            d_center = r_in * 0.45
+            for s in range(segments // 2 + 1):
+                t = s / float(segments // 2)
+                x_val = -r_in + t * r_in
+                z_val = spring_z + math.sqrt(max(0.01, (r_in + d_center)**2 - (x_val - d_center)**2))
+                inner_pts.append((x_val, z_val))
+                z_out = z_val + ring_thick * (1.0 - t * 0.2)
+                x_out = x_val * (1.0 + ring_thick / r_in)
+                outer_pts.append((x_out, z_out))
+            for s in range(1, segments // 2 + 1):
+                idx = (segments // 2) - s
+                inner_pts.append((-inner_pts[idx][0], inner_pts[idx][1]))
+                outer_pts.append((-outer_pts[idx][0], outer_pts[idx][1]))
+
+        elif style == 'SEGMENTAL':
+            h_sag = arch_rise
+            r_seg = (r_in**2 + h_sag**2) / (2.0 * h_sag)
+            c_seg_z = spring_z - (r_seg - h_sag)
+            half_angle = math.asin(r_in / r_seg)
+            for s in range(segments + 1):
+                t = s / float(segments)
+                ang = (math.pi * 0.5 - half_angle) + t * (2.0 * half_angle)
+                x_in = -r_seg * math.cos(ang)
+                z_in = c_seg_z + r_seg * math.sin(ang)
+                inner_pts.append((x_in, z_in))
+                outer_pts.append((x_in * (1.0 + ring_thick / r_in), z_in + ring_thick))
+
+        else: # ROMAN_ROUND & HORSESHOE
+            sweep = math.pi
+            if style == 'HORSESHOE':
+                ang_start = -math.radians(16)
+                ang_range = math.pi + math.radians(32)
+            else:
+                ang_start = 0.0
+                ang_range = math.pi
+
+            for s in range(segments + 1):
+                t = s / float(segments)
+                ang = ang_start + t * ang_range
+                x_in = -r_in * math.cos(ang)
+                z_in = spring_z + r_in * math.sin(ang)
+                inner_pts.append((x_in, z_in))
+                x_out = -r_out * math.cos(ang)
+                z_out = spring_z + r_out * math.sin(ang)
+                outer_pts.append((x_out, z_out))
+
+        # C. Extrude Arch Ring with Tiered Moldings (No Spandrel Occlusion)
+        num_arc = len(inner_pts)
+        y_f = depth * 0.5
+        y_b = -depth * 0.5
+        m_step = 0.04 # 4cm stepped relief
+
+        ring_fi = []
+        ring_fo = []
+        ring_bi = []
+        ring_bo = []
+
+        for i in range(num_arc):
+            xi, zi = inner_pts[i]
+            xo, zo = outer_pts[i]
+            # Front verts
+            vfi = bm.verts.new((cx + xi, y_f, zi))
+            vfo = bm.verts.new((cx + xo, y_f + m_step, zo))
+            ring_fi.append(vfi)
+            ring_fo.append(vfo)
+            # Back verts
+            vbi = bm.verts.new((cx + xi, y_b, zi))
+            vbo = bm.verts.new((cx + xo, y_b - m_step, zo))
+            ring_bi.append(vbi)
+            ring_bo.append(vbo)
+
+        bm.verts.ensure_lookup_table()
+
+        # Build faces for ring and inner soffit
+        for i in range(num_arc - 1):
+            # Front face
+            try:
+                bm.faces.new((ring_fi[i], ring_fo[i], ring_fo[i+1], ring_fi[i+1]))
+            except ValueError:
+                pass
+            # Back face
+            try:
+                bm.faces.new((ring_bi[i+1], ring_bo[i+1], ring_bo[i], ring_bi[i]))
+            except ValueError:
+                pass
+            # Inner Soffit (Under-arch ceiling)
+            try:
+                bm.faces.new((ring_fi[i+1], ring_bi[i+1], ring_bi[i], ring_fi[i]))
+            except ValueError:
+                pass
+
+        # D. Spandrel Wall & Modular Sides (Strictly OUTSIDE the arch ring)
+        if has_spandrel:
+            # Left upper corner spandrel
+            left_w = (span_w * 0.5 - r_in) * 0.8
+            spandrel_h = wall_top_z - spring_z
+            # Solid blocks strictly to the left and right of the arch curve
+            add_box(
+                (cx - span_w * 0.5 + left_w * 0.5, 0.0, spring_z + spandrel_h * 0.5),
+                (left_w, depth, spandrel_h)
+            )
+            add_box(
+                (cx + span_w * 0.5 - left_w * 0.5, 0.0, spring_z + spandrel_h * 0.5),
+                (left_w, depth, spandrel_h)
+            )
+            # Attic slab above arch crown (strictly above outer arc)
+            max_arc_z = max(zo for _, zo in outer_pts)
+            attic_slab_h = wall_top_z - max_arc_z
+            if attic_slab_h > 0.05:
+                add_box(
+                    (cx, 0.0, max_arc_z + attic_slab_h * 0.5),
+                    (span_w, depth, attic_slab_h)
+                )
+
+        # E. Keystone (楔形要石 - Firmly wedged at crown)
+        if has_keystone and num_arc >= 5:
+            mid_idx = num_arc // 2
+            apex_in_z = inner_pts[mid_idx][1]
+            apex_out_z = outer_pts[mid_idx][1]
+            k_top_z = min(wall_top_z, apex_out_z + ring_thick * 0.28 * keystone_scale)
+            k_bot_z = apex_in_z - ring_thick * 0.10
+            k_w_top = ring_thick * 0.85 * keystone_scale
+            k_w_bot = ring_thick * 0.52 * keystone_scale
+            k_h = k_top_z - k_bot_z
+            k_cz = (k_top_z + k_bot_z) * 0.5
+            k_depth = depth + m_step * 2.5
+
+            add_box((cx, 0.0, k_cz), (k_w_top, k_depth, k_h))
+
+    # 3. Continuous Top Cornice Entablature (水平コーニス天板)
+    if has_spandrel:
+        cornice_overhang = 0.10
+        c_cz = wall_top_z + cornice_h * 0.5
+        c_total_w = total_w + pillar_w * 0.5
+        # Base entablature beam
+        add_box(
+            (0.0, 0.0, c_cz - cornice_h * 0.2),
+            (c_total_w, depth + cornice_overhang * 1.5, cornice_h * 0.6)
+        )
+        # Projecting crown moulding
+        add_box(
+            (0.0, 0.0, c_cz + cornice_h * 0.3),
+            (c_total_w + 0.12, depth + cornice_overhang * 2.4, cornice_h * 0.4)
+        )
+
+    bm.verts.ensure_lookup_table()
+    bm.normal_update()
+    for f in bm.faces:
+        f.smooth = False # Crisp classical architectural facets
+
+    return bm.verts[:]
+
+
+def build_beam_arch_base(bm, size_x, size_y, size_z, **kwargs):
+    """Backward compatibility wrapper redirecting to the new procedural stone arch."""
+    return build_procedural_stone_arch_bmesh(
+        bm,
+        size_x=size_x,
+        size_y=size_y,
+        size_z=size_z,
+        **kwargs
     )
-    rb_verts = res_rb['verts']
-    bmesh.ops.rotate(bm, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(45), 3, 'Y'), verts=rb_verts)
-    bmesh.ops.translate(bm, vec=(size_x * 0.55, 0, size_z * 0.7), verts=rb_verts)
-    all_verts.extend(rb_verts)
-    return all_verts

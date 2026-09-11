@@ -24,7 +24,7 @@ def update_category_preset(self, context):
         'WALL': "Wall_Block",
         'PILLAR': "Pillar_Column",
         'BEAM': "Timber_Beam",
-        'BEAM_ARCH': "Beam_Arch",
+        'BEAM_ARCH': "Stone_Arch",
         'GRASS': "Grass_Meadow",
         'BOOKSHELF': "Antique_Bookshelf",
         'TABLE': "Antique_Table",
@@ -131,10 +131,15 @@ def update_category_preset(self, context):
         props.size_y = 1.0
         props.size_z = 2.5
         props.uv_mapping_mode = 'FIT'
-    elif cat in ("BEAM", "BEAM_ARCH"):
+    elif cat == "BEAM":
         props.size_x = 2.4
         props.size_y = 1.5
         props.size_z = 2.0
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "BEAM_ARCH":
+        props.size_x = 3.2
+        props.size_y = 0.8
+        props.size_z = 3.8
         props.uv_mapping_mode = 'FIT'
     elif cat == "PILLAR":
         props.size_x = 1.2
@@ -152,7 +157,7 @@ def update_category_preset(self, context):
         'WALL': r"Z:\MeshCreator\textures\Wall",
         'PILLAR': r"Z:\MeshCreator\textures\Pillar",
         'BEAM': r"Z:\MeshCreator\textures\Wood",
-        'BEAM_ARCH': r"Z:\MeshCreator\textures\Wood",
+        'BEAM_ARCH': r"Z:\MeshCreator\textures\Wall",
         'GRASS': r"Z:\MeshCreator\textures\Grass",
         'WATER': r"Z:\MeshCreator\textures\Floor",
         'BOOKSHELF': r"Z:\MeshCreator\textures\Wood",
@@ -335,7 +340,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('CAVE', "🪨 洞窟・岩窟ジオラマ (Procedural Cave)", "一本道・S字・Y字分岐・大空洞を持つリアルな洞窟システム（地面・天井分離）"),
             ('PILLAR', "🏛️ 柱・石柱 (Pillar / Column)", "textures/Pillar/ と自動連動"),
             ('BEAM', "🪵 梁・丸太支柱 (Timber Log Beam)", "textures/Wood/ と自動連動（シリンダー丸太梁）"),
-            ('BEAM_ARCH', "🪵🏛️ 梁アーチ (Beam Arch)", "textures/Wood/ と自動連動（シリンダー丸太アーチ）")
+            ('BEAM_ARCH', "🏛️ 建築アーチ・回廊 (Stone Arch / Colonnade)", "ローマ半円/ゴシック尖頭・要石・多段モールディング・連続列廊・ヴォールト天井")
         ],
         default='WATER',
         update=update_category_preset
@@ -1481,6 +1486,66 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="苔の量 (Moss Amount)",
         default=0.6, min=0.0, max=1.0,
         description="岩肌を覆う苔の面積・密度"
+    )
+
+    # ── ARCH (Stone Arch & Colonnade) Properties ──
+    arch_style: bpy.props.EnumProperty(
+        name="アーチ様式 (Arch Style)",
+        items=[
+            ('ROMAN_ROUND', "🏛️ ローマ半円アーチ (Roman Round)", "古代ローマ・ルネサンス建築の正円アーチ"),
+            ('GOTHIC_POINTED', "⛪ ゴシック尖頭アーチ (Gothic Pointed)", "二心円弧で上部に鋭利な頂点を持つゴシック様式"),
+            ('HORSESHOE', "🕌 蹄鉄形アーチ (Horseshoe Arch)", "開口部がやや絞り込まれたイスラム・ムーア様式"),
+            ('SEGMENTAL', "🌉 偏平・欠円アーチ (Segmental Arch)", "半円より低い緩やかな円弧・橋梁や低天井用")
+        ],
+        default='ROMAN_ROUND'
+    )
+    arch_structure_type: bpy.props.EnumProperty(
+        name="構造タイプ (Structure Type)",
+        items=[
+            ('SINGLE', "🚪 単体アーチ門 (Single Archway)", "モジュラー壁と繋がる単体のアーチ開口部"),
+            ('COLONNADE', "🏛️ 連続アーチ回廊 (Colonnade / Arcade)", "柱とアーチが横に等間隔で連なる連続列廊"),
+            ('VAULT_CEILING', "🛖 ヴォールト天井 (Vault Ceiling)", "アーチを奥行きに押し出した天井スラブ")
+        ],
+        default='SINGLE'
+    )
+    arch_span_count: bpy.props.IntProperty(
+        name="連数 (Span Count)",
+        default=3, min=2, max=8,
+        description="連続回廊（Colonnade）におけるアーチの連数"
+    )
+    arch_has_keystone: bpy.props.BoolProperty(
+        name="🏛️ 要石を配置 (Keystone)",
+        default=True,
+        description="アーチ最頂部に楔（くさび）形状の要石を突出配置"
+    )
+    arch_keystone_scale: bpy.props.FloatProperty(
+        name="要石サイズ (Keystone Scale)",
+        default=1.25, min=1.0, max=2.0,
+        description="要石の突出・拡大倍率"
+    )
+    arch_molding_tiers: bpy.props.IntProperty(
+        name="モールディング段数 (Molding Tiers)",
+        default=2, min=1, max=4,
+        description="アーチ内周・外周の多段ステップ装飾"
+    )
+    arch_pillar_shape: bpy.props.EnumProperty(
+        name="支柱形状 (Pillar Shape)",
+        items=[
+            ('SQUARE_PIER', "🧱 角柱・ピアー (Square Pier)", "重厚な角柱支柱＋柱頭モールディング"),
+            ('OCTAGONAL', "💎 八角柱 (Octagonal Pier)", "角を落としたクラシックな八角柱"),
+            ('ROUND_COLUMN', "🏛️ 円柱・コラム (Round Column)", "クラシックな円柱＋ベース台座")
+        ],
+        default='SQUARE_PIER'
+    )
+    arch_has_spandrel: bpy.props.BoolProperty(
+        name="🧱 上部スパンドレル壁 (Spandrel Wall)",
+        default=True,
+        description="アーチ上部を水平に塞ぎ、壁や天井とフラットに接合できる形状にする"
+    )
+    arch_has_pedestal: bpy.props.BoolProperty(
+        name="🏛️ 柱脚台座 (Pedestal Base)",
+        default=True,
+        description="柱の下部に重厚な台座ブロックを配置"
     )
 
 

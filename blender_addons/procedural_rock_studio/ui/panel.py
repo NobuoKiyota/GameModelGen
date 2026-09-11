@@ -600,6 +600,43 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 col_c_btn.operator("mesh.regenerate_cave", text="🔄 現在の設定で更新 (その場更新)", icon='FILE_CACHE')
                 col_c_btn.operator("mesh.create_cave", text="➕ 新規洞窟フロアを生成", icon='ADD')
 
+            # Stone Arch & Colonnade Preset Specific
+            elif props.prop_category == 'BEAM_ARCH':
+                box_arch = layout.box()
+                box_arch.label(text="🏛️ 建築アーチ・回廊 (Stone Arch / Colonnade):", icon='MOD_BUILD')
+
+                # 1. 様式 & 構造タイプ
+                box_a_style = box_arch.box()
+                box_a_style.prop(props, "arch_style", text="様式")
+                box_a_style.prop(props, "arch_structure_type", text="構造")
+                if props.arch_structure_type == 'COLONNADE':
+                    box_a_style.prop(props, "arch_span_count", text="連続スパン数 (2~8)")
+
+                # 2. 支柱 & 台座設定
+                box_a_pier = box_arch.box()
+                box_a_pier.label(text="支柱・台座設定 (Piers & Plinths):", icon='SNAP_VOLUME')
+                box_a_pier.prop(props, "arch_pillar_shape", text="柱の断面形状")
+                row_ped = box_a_pier.row(align=True)
+                row_ped.prop(props, "arch_has_pedestal", text="🏛️ 柱脚台座 (Plinth Base)", toggle=True)
+
+                # 3. 装飾モールディング & 要石
+                box_a_decor = box_arch.box()
+                box_a_decor.label(text="装飾モールディング & 要石:", icon='MOD_SUBSURF')
+                box_a_decor.prop(props, "arch_molding_tiers", text="段数 (Tiers)")
+                row_key = box_a_decor.row(align=True)
+                row_key.prop(props, "arch_has_keystone", text="🏛️ 要石 (Keystone)", toggle=True)
+                if props.arch_has_keystone:
+                    row_key.prop(props, "arch_keystone_scale", text="突出倍率")
+
+                # 4. スパンドレル壁
+                box_a_span = box_arch.box()
+                box_a_span.prop(props, "arch_has_spandrel", text="🧱 上部スパンドレル壁 & コーニス天板", toggle=True)
+
+                # 特徴ヒント
+                box_a_hint = box_arch.box()
+                box_a_hint.label(text="💡 hbitproject式 建築プロポーション＆要石・多段モールディング", icon='INFO')
+                box_a_hint.label(text="   外周はモジュラー壁や上階と完全フラットに接合できる形状です")
+
             # Dimensions Box
             box_dim = layout.box()
             row_dh = box_dim.row(align=True)

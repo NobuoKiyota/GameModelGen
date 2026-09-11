@@ -25,7 +25,8 @@ from .architecture_gen import (
     build_wall_base,
     build_pillar_base,
     build_beam_base,
-    build_beam_arch_base
+    build_beam_arch_base,
+    build_procedural_stone_arch_bmesh
 )
 from .furniture_gen import (
     build_chair_base,
@@ -267,6 +268,16 @@ def resolve_prop_parameters(props):
         "cave_boulder_count": getattr(props, 'cave_boulder_count', 16),
         "cave_add_moss": getattr(props, 'cave_add_moss', True),
         "cave_moss_amount": getattr(props, 'cave_moss_amount', 0.6),
+        # Arch parameters
+        "arch_style": getattr(props, 'arch_style', 'ROMAN_ROUND'),
+        "arch_structure_type": getattr(props, 'arch_structure_type', 'SINGLE'),
+        "arch_span_count": getattr(props, 'arch_span_count', 3),
+        "arch_has_keystone": getattr(props, 'arch_has_keystone', True),
+        "arch_keystone_scale": getattr(props, 'arch_keystone_scale', 1.25),
+        "arch_molding_tiers": getattr(props, 'arch_molding_tiers', 2),
+        "arch_pillar_shape": getattr(props, 'arch_pillar_shape', 'SQUARE_PIER'),
+        "arch_has_spandrel": getattr(props, 'arch_has_spandrel', True),
+        "arch_has_pedestal": getattr(props, 'arch_has_pedestal', True),
     }
 
 
@@ -622,7 +633,18 @@ def generate_procedural_prop_mesh(
     elif category == "BEAM":
         build_beam_base(bm, size_x, size_y, size_z)
     elif category == "BEAM_ARCH":
-        build_beam_arch_base(bm, size_x, size_y, size_z)
+        build_procedural_stone_arch_bmesh(
+            bm, size_x, size_y, size_z,
+            style=kwargs.get('arch_style', 'ROMAN_ROUND'),
+            structure_type=kwargs.get('arch_structure_type', 'SINGLE'),
+            span_count=kwargs.get('arch_span_count', 3),
+            pillar_shape=kwargs.get('arch_pillar_shape', 'SQUARE_PIER'),
+            has_keystone=kwargs.get('arch_has_keystone', True),
+            keystone_scale=kwargs.get('arch_keystone_scale', 1.25),
+            molding_tiers=kwargs.get('arch_molding_tiers', 2),
+            has_spandrel=kwargs.get('arch_has_spandrel', True),
+            has_pedestal=kwargs.get('arch_has_pedestal', True)
+        )
     elif category == "CRAG":
         build_crag_base(bm, size_x, size_y, size_z, style=style, chisel_cuts=big_chunk_cuts * 3 + 4, seed=seed)
     else: # ROCK (丸岩・巨石)
