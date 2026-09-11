@@ -1559,5 +1559,21 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default=True,
         description="柱の下部に重厚な台座ブロックを配置"
     )
+    # ── 風化・汚し & 経年欠け ──
+    arch_damage: bpy.props.FloatProperty(
+        name="経年欠け・チッピング (Damage)",
+        default=0.35, min=0.0, max=1.0,
+        description="エッジのノミ削り・角欠け・石材ブロックの微小な不揃い感"
+    )
+    arch_weathering: bpy.props.FloatProperty(
+        name="汚し・風化 (Weathering)",
+        default=0.50, min=0.0, max=1.0,
+        description="アンビエントオクルージョン黒ずみ（AO Grime）および雨垂れ染み（Rain Streaks）の強さ"
+    )
+    arch_moss_amount: bpy.props.FloatProperty(
+        name="足元の苔・湿気 (Ground Moss)",
+        default=0.30, min=0.0, max=1.0,
+        description="柱脚台座および柱下部に自然発生する苔と湿った暗色の量"
+    )
 
 

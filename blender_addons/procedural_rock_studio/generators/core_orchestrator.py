@@ -15,7 +15,7 @@ from ..materials.nature_shaders import (
     create_procedural_cobblestone_shader
 )
 from ..materials.furniture_shaders import create_procedural_pbr_material
-from ..materials.image_shaders import apply_image_texture_material
+from ..materials.image_shaders import apply_image_texture_material, apply_weathered_stone_arch_material
 from ..utils.texture_utils import get_textures_from_folder, find_pbr_texture_set
 from ..utils.mesh_utils import apply_geometry_displacement
 
@@ -282,6 +282,9 @@ def resolve_prop_parameters(props):
         "arch_pillar_shape": getattr(props, 'arch_pillar_shape', 'SQUARE_PIER'),
         "arch_pillar_width": getattr(props, 'arch_pillar_width', 0.55),
         "arch_column_height": getattr(props, 'arch_column_height', 2.2),
+        "arch_damage": getattr(props, 'arch_damage', 0.35),
+        "arch_weathering": getattr(props, 'arch_weathering', 0.50),
+        "arch_moss_amount": getattr(props, 'arch_moss_amount', 0.30),
         "arch_has_spandrel": getattr(props, 'arch_has_spandrel', True),
         "arch_has_pedestal": getattr(props, 'arch_has_pedestal', True),
     }
@@ -647,11 +650,13 @@ def generate_procedural_prop_mesh(
             pillar_shape=kwargs.get('arch_pillar_shape', 'SQUARE_PIER'),
             pillar_width=kwargs.get('arch_pillar_width', 0.55),
             column_height=kwargs.get('arch_column_height', 2.2),
+            damage=kwargs.get('arch_damage', 0.35),
             has_keystone=kwargs.get('arch_has_keystone', True),
             keystone_scale=kwargs.get('arch_keystone_scale', 1.25),
             molding_tiers=kwargs.get('arch_molding_tiers', 2),
             has_spandrel=kwargs.get('arch_has_spandrel', True),
-            has_pedestal=kwargs.get('arch_has_pedestal', True)
+            has_pedestal=kwargs.get('arch_has_pedestal', True),
+            seed=seed
         )
     elif category == "CRAG":
         build_crag_base(bm, size_x, size_y, size_z, style=style, chisel_cuts=big_chunk_cuts * 3 + 4, seed=seed)
@@ -916,13 +921,22 @@ def generate_procedural_prop_mesh(
             pbr_set = find_pbr_texture_set(full_tex_path)
             disp_img = pbr_set.get('displacement') or full_tex_path
 
-            apply_image_texture_material(
-                obj, full_tex_path,
-                scale=1.0 if uv_mode == "FIT" else tex_tiling,
-                bump_strength=0.35,
-                displacement_strength=disp_strength if enable_disp else 0.0,
-                is_transparent=False
-            )
+            if category == "BEAM_ARCH":
+                apply_weathered_stone_arch_material(
+                    obj, full_tex_path,
+                    weathering=kwargs.get('arch_weathering', 0.50),
+                    moss_amount=kwargs.get('arch_moss_amount', 0.30),
+                    scale=1.0 if uv_mode == "FIT" else tex_tiling,
+                    bump_strength=0.45
+                )
+            else:
+                apply_image_texture_material(
+                    obj, full_tex_path,
+                    scale=1.0 if uv_mode == "FIT" else tex_tiling,
+                    bump_strength=0.35,
+                    displacement_strength=disp_strength if enable_disp else 0.0,
+                    is_transparent=False
+                )
         else:
             if (category == "FLOOR" and floor_shape == "COBBLESTONE") or (category == "WALL" and wall_shape == "COBBLE_WALL"):
                 tile_sc = max(1.2, (1.0 / max(0.1, cobble_stone_size)) * 0.8)

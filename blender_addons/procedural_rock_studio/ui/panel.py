@@ -635,6 +635,13 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_a_span = box_arch.box()
                 box_a_span.prop(props, "arch_has_spandrel", text="🧱 上部スパンドレル壁 & コーニス天板", toggle=True)
 
+                # 5. 経年風化・汚し & 欠け設定
+                box_a_weath = box_arch.box()
+                box_a_weath.label(text="経年風化・汚し & 欠け (Aging & Wear):", icon='BRUSH_DATA')
+                box_a_weath.prop(props, "arch_damage", text="🧱 経年欠け・チッピング", slider=True)
+                box_a_weath.prop(props, "arch_weathering", text="🌧️ 汚し・風化 (AO/雨垂れ)", slider=True)
+                box_a_weath.prop(props, "arch_moss_amount", text="🌿 足元の苔・湿気", slider=True)
+
                 # 特徴ヒント
                 box_a_hint = box_arch.box()
                 box_a_hint.label(text="💡 hbitproject式 建築プロポーション＆要石・多段モールディング", icon='INFO')

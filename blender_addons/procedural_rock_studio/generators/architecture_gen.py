@@ -841,11 +841,13 @@ def build_procedural_stone_arch_bmesh(
     pillar_shape='SQUARE_PIER',
     pillar_width=0.55,
     column_height=2.2,
+    damage=0.35,
     has_keystone=True,
     keystone_scale=1.25,
     molding_tiers=2,
     has_spandrel=True,
     has_pedestal=True,
+    seed=0,
     **kwargs
 ):
     """
@@ -853,12 +855,16 @@ def build_procedural_stone_arch_bmesh(
     - Watertight solid mesh topology with zero missing outer rim faces
     - Seamless gapless spandrel wall generation using vertical quad strips (no triangular voids)
     - Full customization for pillar width (thickness) and column height (length)
+    - Natural chipping, edge damage, and voussoir block depth offsets (damage parameter)
     - Authentic semicircular, pointed (Gothic), segmental, or horseshoe arch ring with tiered stepped moldings
     - Trapezoidal Keystone firmly wedged at the crown
     - Clean rectangular boundary box for seamless modular tiling in Unreal Engine / Unity
     - Multi-span Colonnade / Arcade and Vault ceiling support
     """
     import mathutils
+    import random
+
+    rng = random.Random(seed)
 
     spans = span_count if structure_type == 'COLONNADE' else 1
     depth = size_y
@@ -898,10 +904,17 @@ def build_procedural_stone_arch_bmesh(
     segments = 24
     m_step = 0.03 # モールディング段差
 
-    def add_box(center, dims):
-        return bmesh.ops.create_cube(
+    def add_box(center, dims, chip=True):
+        v_res = bmesh.ops.create_cube(
             bm, size=1.0, matrix=mathutils.Matrix.Translation(center) @ mathutils.Matrix.Diagonal((*dims, 1.0))
         )['verts']
+        if damage > 0.05 and chip:
+            noise_amt = damage * 0.014
+            for v in v_res:
+                v.co.x += rng.uniform(-noise_amt, noise_amt)
+                v.co.y += rng.uniform(-noise_amt, noise_amt)
+                v.co.z += rng.uniform(-noise_amt, noise_amt)
+        return v_res
 
     start_cx = -total_w * 0.5 + span_w * 0.5
 
@@ -1005,10 +1018,24 @@ def build_procedural_stone_arch_bmesh(
         for i in range(n_arc):
             xi, zi = inner_pts[i]
             xo, zo = outer_pts[i]
-            vf_in.append(bm.verts.new((cx + xi, half_d, zi)))
-            vf_out.append(bm.verts.new((cx + xo, half_d + m_step, zo)))
-            vb_in.append(bm.verts.new((cx + xi, -half_d, zi)))
-            vb_out.append(bm.verts.new((cx + xo, -half_d - m_step, zo)))
+            # 迫石（Voussoir）ごとの微小な厚みジッター（石材ブロック感）
+            v_jitter = rng.uniform(-0.005, 0.005) * damage if damage > 0.05 else 0.0
+            cur_step = m_step + v_jitter
+
+            vfi = bm.verts.new((cx + xi, half_d, zi))
+            vfo = bm.verts.new((cx + xo, half_d + cur_step, zo))
+            vbi = bm.verts.new((cx + xi, -half_d, zi))
+            vbo = bm.verts.new((cx + xo, -half_d - cur_step, zo))
+
+            if damage > 0.05:
+                c_noise = damage * 0.010
+                vfo.co.z += rng.uniform(-c_noise, c_noise)
+                vbo.co.z += rng.uniform(-c_noise, c_noise)
+
+            vf_in.append(vfi)
+            vf_out.append(vfo)
+            vb_in.append(vbi)
+            vb_out.append(vbo)
 
         bm.verts.ensure_lookup_table()
 
