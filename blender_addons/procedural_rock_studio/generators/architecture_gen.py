@@ -1512,32 +1512,25 @@ def build_western_window_mesh(
     size_x=1.6,
     size_y=0.35,
     size_z=2.5,
-    frame_style='GOTHIC_POINTED',
-    grille_style='DIAMOND_WIRE',
+    frame_style='ROMAN_ROUND',
+    grille_style='SUNBURST',
+    arch_style='MOLDED_FRENCH',
+    has_keystone=True,
     wire_density=6,
     wire_thickness=0.012,
     frame_width=0.18,
     has_sill=True,
     has_hood=True,
-    damage=0.30,
+    damage=0.15,
     seed=0,
     **kwargs
 ):
     """
-    Builds an architecturally authentic Western Classical / Gothic Window:
-    - Multi-material face indexing:
-        * 0: Stone / Wood Outer Frame (Surround, Sill, Hood)
-        * 1: Transparent Refractive Glass Pane
-        * 2: Wrought Iron / Lead Caming (Cross Mullions, Diamond X-Wire, Iron Bars, Tracery)
-    - Arch frame styles: Gothic Pointed, Roman Round, Tudor Arch, Classic Rectangle.
-    - Grille / Glazing styles:
-        * CROSS: Classical cross mullion & transom divider.
-        * DIAMOND_WIRE: 45-degree diagonal intersecting X-wire / leaded diaper diamond grid.
-        * IRON_BARS: Heavy fortress / prison vertical iron security bars with tie-bands.
-        * GOTHIC_TRACERY: Double lancet sub-arches crowned with trefoil rosette tracery.
-        * PLAIN: Clear uninterrupted glass pane.
-    - Full architectural casing: Projecting sloping window sill (water shed) and dripstone hood molding.
-    - Procedural edge chipping and aging wear on exposed stone faces.
+    Builds a stylish, architecturally authentic Western Classical / French / Gothic Window.
+    - True solid spandrel wall without stepped slices or bumpy artifacts.
+    - True radial voussoirs & keystone OR smooth French concentric molded archivolts.
+    - Sunburst Fanlight grille (radiating spokes & concentric semicircular arc) for stylish mansions.
+    - Sharp, crisp architectural stone blocks with restrained micro-chisel displacement.
     """
     import mathutils
     import random
@@ -1575,22 +1568,8 @@ def build_western_window_mesh(
         spring_z = max(sill_h + 0.4, total_h - f_w - arch_rise)
         opening_h = total_h - f_w - sill_h
 
-    # ボックス作成ヘルパー（マテリアルインデックス＆チッピング対応）
-    def add_box(center, size, mat_idx=0, chip=True):
-        cx, cy, cz = center
-        sx, sy, sz = size
-        v_res = bmesh.ops.create_cube(
-            bm, size=1.0,
-            matrix=mathutils.Matrix.Translation((cx, cy, cz)) @ mathutils.Matrix.Diagonal((sx, sy, sz, 1.0))
-        )['verts']
-
-        # 面にマテリアルインデックスを割り当て
-        for f in bm.faces:
-            if all(v in v_res for v in f.verts):
-                f.material_index = mat_idx
-
     def add_box(center, size, mat_idx=0, chip=True, subdiv=0):
-        """直方体ブロックを生成し、マテリアルと微細ジッターを適用"""
+        """直方体ブロックを生成し、マテリアルを割り当て"""
         cx, cy, cz = center
         sx, sy, sz = size
         res = bmesh.ops.create_cube(
@@ -1606,7 +1585,6 @@ def build_western_window_mesh(
                 new_verts = [g for g in sub_res.get('geom_inner', []) if isinstance(g, bmesh.types.BMVert)]
                 v_res = list(set(v_res + new_verts))
 
-        # 面にマテリアルインデックスを割り当て
         for f in bm.faces:
             if any(v in v_res for v in f.verts):
                 f.material_index = mat_idx
@@ -1635,26 +1613,26 @@ def build_western_window_mesh(
             return spring_z + math.sqrt(rad_sq)
 
     # ── A. 外枠（石造フレーム / 窓台 / 上部コーニス） [mat_idx = 0] ──
-    # 1. 窓台 (Window Sill) - 重厚な2段水切り台座
+    # 1. 窓台 (Window Sill) - 重厚でシャープな2段水切り台座
     if has_sill:
         # 下段の台座（Plinth Base）
         add_box(
-            (0.0, sill_proj * 0.4, sill_h * 0.35),
-            (total_w + 0.16, depth + sill_proj * 0.8, sill_h * 0.7),
-            mat_idx=0, chip=True, subdiv=2
+            (0.0, sill_proj * 0.35, sill_h * 0.35),
+            (total_w + 0.14, depth + sill_proj * 0.7, sill_h * 0.7),
+            mat_idx=0, chip=False, subdiv=1
         )
-        # 上段の傾斜天板（Sill Nose）
+        # 上段の水切り天板（Sill Nose）
         add_box(
-            (0.0, sill_proj * 0.5, sill_h * 0.85),
-            (total_w + 0.12, depth + sill_proj, sill_h * 0.3),
-            mat_idx=0, chip=True, subdiv=2
+            (0.0, sill_proj * 0.45, sill_h * 0.85),
+            (total_w + 0.10, depth + sill_proj, sill_h * 0.3),
+            mat_idx=0, chip=False, subdiv=1
         )
 
-    # 2. 左右の縦枠 (Jambs) - 本格的な長短切石（Ashlar Quoin Stones）ブロック段積み
+    # 2. 左右の縦枠 (Jambs) - 端正な西洋切石（Ashlar Quoin Stones）ブロック
     jamb_h = spring_z - sill_h
-    n_blocks = max(4, min(10, int(jamb_h / 0.28)))
+    n_blocks = max(4, min(8, int(jamb_h / 0.32)))
     block_h = jamb_h / float(n_blocks)
-    grout = 0.007 # 7mmの深い目地溝スリット
+    grout = 0.006 # 6mmのシャープな目地スリット
 
     for bi in range(n_blocks):
         b_cz = sill_h + (bi + 0.5) * block_h
@@ -1662,116 +1640,195 @@ def build_western_window_mesh(
         is_long = (bi % 2 == 0)
         
         # 偶数段は長石（Quoin Long）、奇数段は短石（Quoin Short）
-        w_factor = 1.12 if is_long else 0.94
-        d_factor = rng.uniform(0.98, 1.03)
-        y_jit = rng.uniform(-0.004, 0.004)
-        x_jit = rng.uniform(-0.003, 0.003)
-
+        w_factor = 1.08 if is_long else 0.96
         cur_fw = f_w * w_factor
-        cur_dp = depth * d_factor
 
         # 左柱ブロック
-        lx_c = -half_w + f_w * 0.5 + x_jit
-        add_box((lx_c, y_jit, b_cz), (cur_fw, cur_dp, eff_bh), mat_idx=0, chip=True, subdiv=2)
+        lx_c = -half_w + f_w * 0.5
+        add_box((lx_c, 0.0, b_cz), (cur_fw, depth, eff_bh), mat_idx=0, chip=False, subdiv=1)
         # 左柱前面モールディング段差
-        add_box((lx_c, half_d + 0.02 + y_jit, b_cz), (cur_fw * 0.5, 0.035, eff_bh), mat_idx=0, chip=True, subdiv=1)
+        add_box((lx_c, half_d + 0.015, b_cz), (cur_fw * 0.5, 0.03, eff_bh), mat_idx=0, chip=False, subdiv=1)
 
         # 右柱ブロック
-        rx_c = half_w - f_w * 0.5 + x_jit
-        add_box((rx_c, y_jit, b_cz), (cur_fw, cur_dp, eff_bh), mat_idx=0, chip=True, subdiv=2)
+        rx_c = half_w - f_w * 0.5
+        add_box((rx_c, 0.0, b_cz), (cur_fw, depth, eff_bh), mat_idx=0, chip=False, subdiv=1)
         # 右柱前面モールディング段差
-        add_box((rx_c, half_d + 0.02 + y_jit, b_cz), (cur_fw * 0.5, 0.035, eff_bh), mat_idx=0, chip=True, subdiv=1)
+        add_box((rx_c, half_d + 0.015, b_cz), (cur_fw * 0.5, 0.03, eff_bh), mat_idx=0, chip=False, subdiv=1)
 
-    # 開口部側の段差面取りリブ（Reveal Chamfer）
-    in_chamfer_w = f_w * 0.25
-    add_box((-r_in - in_chamfer_w * 0.5, half_d * 0.15, sill_h + jamb_h * 0.5), (in_chamfer_w, depth * 0.65, jamb_h), mat_idx=0, chip=False, subdiv=1)
-    add_box((r_in + in_chamfer_w * 0.5, half_d * 0.15, sill_h + jamb_h * 0.5), (in_chamfer_w, depth * 0.65, jamb_h), mat_idx=0, chip=False, subdiv=1)
+    # 開口部側の内枠面取りリブ（Reveal Chamfer）
+    in_chamfer_w = f_w * 0.22
+    add_box((-r_in - in_chamfer_w * 0.5, half_d * 0.1, sill_h + jamb_h * 0.5), (in_chamfer_w, depth * 0.65, jamb_h), mat_idx=0, chip=False, subdiv=1)
+    add_box((r_in + in_chamfer_w * 0.5, half_d * 0.1, sill_h + jamb_h * 0.5), (in_chamfer_w, depth * 0.65, jamb_h), mat_idx=0, chip=False, subdiv=1)
 
-    # 3. 柱頭・インポスト台座 (Impost Capital Block)
-    imp_h = 0.065
+    # 3. 柱頭インポスト台座 (Classical Impost Capital: 参考画像3準拠の多段水平コーニス)
+    imp_h = 0.07
     imp_cz = spring_z - imp_h * 0.5
-    add_box((-half_w + f_w * 0.5, half_d * 0.08, imp_cz), (f_w * 1.18, depth * 1.08, imp_h), mat_idx=0, chip=True, subdiv=2)
-    add_box((half_w - f_w * 0.5, half_d * 0.08, imp_cz), (f_w * 1.18, depth * 1.08, imp_h), mat_idx=0, chip=True, subdiv=2)
+    # 下段幅狭
+    add_box((-half_w + f_w * 0.5, half_d * 0.05, imp_cz - 0.01), (f_w * 1.10, depth * 1.05, imp_h * 0.6), mat_idx=0, chip=False, subdiv=1)
+    add_box((half_w - f_w * 0.5, half_d * 0.05, imp_cz - 0.01), (f_w * 1.10, depth * 1.05, imp_h * 0.6), mat_idx=0, chip=False, subdiv=1)
+    # 上段せり出し笠板
+    add_box((-half_w + f_w * 0.5, half_d * 0.08, imp_cz + 0.02), (f_w * 1.22, depth * 1.10, imp_h * 0.4), mat_idx=0, chip=False, subdiv=1)
+    add_box((half_w - f_w * 0.5, half_d * 0.08, imp_cz + 0.02), (f_w * 1.22, depth * 1.10, imp_h * 0.4), mat_idx=0, chip=False, subdiv=1)
 
     # 4. 上部コーニス天板 (Top Cornice Beam)
     top_beam_h = max(0.12, f_w)
-    add_box((0.0, 0.0, total_h - top_beam_h * 0.5), (total_w, depth, top_beam_h), mat_idx=0, chip=True, subdiv=2)
+    add_box((0.0, 0.0, total_h - top_beam_h * 0.5), (total_w, depth, top_beam_h), mat_idx=0, chip=False, subdiv=1)
     if has_hood:
-        hood_w = total_w + 0.16
-        add_box((0.0, half_d + 0.03, total_h - top_beam_h * 0.5), (hood_w, 0.07, top_beam_h * 1.15), mat_idx=0, chip=True, subdiv=1)
+        hood_w = total_w + 0.14
+        add_box((0.0, half_d + 0.025, total_h - top_beam_h * 0.5), (hood_w, 0.06, top_beam_h * 1.12), mat_idx=0, chip=False, subdiv=1)
 
-    # 5. 上枠・スパンドレル壁 & 滑らかなアーキボルト
+    # 5. 上枠・スパンドレル壁（完全ソリッド平面壁：階段状スライスの完全撤廃）
     top_limit = total_h - top_beam_h
     if frame_style == 'RECTANGLE':
         mid_h = top_limit - spring_z
         if mid_h > 0.01:
-            add_box((0.0, 0.0, spring_z + mid_h * 0.5), (total_w, depth, mid_h), mat_idx=0, chip=True)
+            add_box((0.0, 0.0, spring_z + mid_h * 0.5), (total_w, depth, mid_h), mat_idx=0, chip=False, subdiv=1)
     else:
-        # アーチ両脇の直立壁ブロック
+        # アーチ両脇の完全直立壁（左右柱の上部延長）
         side_wall_h = top_limit - spring_z
         side_wall_cz = spring_z + side_wall_h * 0.5
-        add_box((-half_w + f_w * 0.5, 0.0, side_wall_cz), (f_w, depth, side_wall_h), mat_idx=0, chip=True)
-        add_box((half_w - f_w * 0.5, 0.0, side_wall_cz), (f_w, depth, side_wall_h), mat_idx=0, chip=True)
+        add_box((-half_w + f_w * 0.5, 0.0, side_wall_cz), (f_w, depth, side_wall_h), mat_idx=0, chip=False, subdiv=1)
+        add_box((half_w - f_w * 0.5, 0.0, side_wall_cz), (f_w, depth, side_wall_h), mat_idx=0, chip=False, subdiv=1)
 
         # 中央上部（アーチ頂点から天板コーニスまで）の矩形壁
         apex_z = get_arch_z(0.0)
         apex_gap = top_limit - apex_z
-        if apex_gap > 0.02:
-            add_box((0.0, 0.0, apex_z + apex_gap * 0.5), (inner_w, depth, apex_gap), mat_idx=0, chip=True)
+        if apex_gap > 0.005:
+            add_box((0.0, 0.0, apex_z + apex_gap * 0.5), (2.0 * r_in, depth, apex_gap), mat_idx=0, chip=False, subdiv=1)
 
-        # 左右スパンドレル（肩部分）の三角隙間を滑らかな垂直ブロックで充填
-        n_span_seg = 24
-        dx = inner_w / float(n_span_seg)
-        for i in range(n_span_seg):
-            x_m = -r_in + (i + 0.5) * dx
-            arch_top = get_arch_z(x_m)
-            wall_bot = arch_top + 0.035
-            wall_top = max(wall_bot + 0.005, min(top_limit, apex_z))
-            if wall_top > wall_bot:
-                h_seg = wall_top - wall_bot
-                cz_seg = wall_bot + h_seg * 0.5
-                add_box((x_m, 0.0, cz_seg), (dx * 1.02, depth, h_seg), mat_idx=0, chip=False)
+        # 左右スパンドレル壁面（三角形の隙間を塞ぐ正面・背面ソリッド板）
+        n_w_seg = 24
+        arch_pts = []
+        for i in range(n_w_seg + 1):
+            xp = -r_in + (2.0 * r_in) * (i / float(n_w_seg))
+            zp = get_arch_z(xp)
+            arch_pts.append((xp, zp))
 
-        # 6. 高精細アーキボルト（Archivolt: 滑らかな2段迫石モールディング）
-        n_arc_seg = 32 # 32分割で極めて滑らかなアーチ曲面
-        arc_pts = []
-        for i in range(n_arc_seg + 1):
-            xv = -r_in + (2.0 * r_in) * (i / float(n_arc_seg))
-            zv = get_arch_z(xv)
-            arc_pts.append((xv, zv))
+        # 正面壁・背面壁・内周天井面
+        vf_list = [bm.verts.new((xp, half_d, zp)) for xp, zp in arch_pts]
+        vb_list = [bm.verts.new((xp, -half_d, zp)) for xp, zp in arch_pts]
 
-        for k in range(len(arc_pts) - 1):
-            x1, z1 = arc_pts[k]
-            x2, z2 = arc_pts[k+1]
-            seg_len = math.hypot(x2 - x1, z2 - z1)
-            cx = (x1 + x2) * 0.5
-            cz = (z1 + z2) * 0.5
-            ang = math.atan2(z2 - z1, x2 - x1)
+        # 内周天井面（Intrados）
+        for k in range(n_w_seg):
+            f_ceil = bm.faces.new([vf_list[k], vf_list[k+1], vb_list[k+1], vb_list[k]])
+            f_ceil.material_index = 0
 
-            # 内段迫石リブ（出幅 0.03m, 厚み 0.05m）
-            res1 = bmesh.ops.create_cube(
-                bm, size=1.0,
-                matrix=mathutils.Matrix.Translation((cx, half_d * 0.3, cz + 0.025)) @
-                       mathutils.Matrix.Rotation(-ang, 4, 'Y') @
-                       mathutils.Matrix.Diagonal((seg_len * 1.02, depth * 0.7, 0.05, 1.0))
-            )
-            for f in bm.faces:
-                if all(v in res1['verts'] for v in f.verts):
-                    f.material_index = 0
+        # 正面・背面の左右肩スパンドレル（アーチ曲線から top_limit への四角形/三角形フィル）
+        v_top_f = [bm.verts.new((xp, half_d, apex_z)) for xp, zp in arch_pts]
+        v_top_b = [bm.verts.new((xp, -half_d, apex_z)) for xp, zp in arch_pts]
+        for k in range(n_w_seg):
+            f_sf = bm.faces.new([vf_list[k], vf_list[k+1], v_top_f[k+1], v_top_f[k]])
+            f_sf.material_index = 0
+            f_sb = bm.faces.new([vb_list[k+1], vb_list[k], v_top_b[k], v_top_b[k+1]])
+            f_sb.material_index = 0
 
-            # 外段前面装飾モールディング（出幅 0.025m, 厚み 0.04m）
-            res2 = bmesh.ops.create_cube(
-                bm, size=1.0,
-                matrix=mathutils.Matrix.Translation((cx, half_d + 0.02, cz + 0.035)) @
-                       mathutils.Matrix.Rotation(-ang, 4, 'Y') @
-                       mathutils.Matrix.Diagonal((seg_len * 1.02, 0.04, 0.04, 1.0))
-            )
-            for f in bm.faces:
-                if all(v in res2['verts'] for v in f.verts):
+        # 6. スタイリッシュ・アーチ額縁（MOLDED_FRENCH vs RADIAL_ASHLAR）
+        if arch_style == 'MOLDED_FRENCH':
+            # 🏛️ 洋館風多段額縁モールディング（参考画像4, 5準拠：連続Quad Stripによる100%滑らかな同心円面）
+            n_m_seg = 32
+            tier_w1 = f_w * 0.35 # 第1段幅
+            tier_w2 = f_w * 0.30 # 第2段幅
+            d_proj1 = 0.030      # 第1段突出厚
+            d_proj2 = 0.018      # 第2段突出厚
+
+            # 共通モールディング帯生成関数
+            def build_molding_tier(r_start, r_end, y_proj):
+                yf_out = half_d + y_proj
+                pts_in_f = []
+                pts_out_f = []
+                pts_in_b = []
+                pts_out_b = []
+
+                for i in range(n_m_seg + 1):
+                    t = i / float(n_m_seg)
+                    ang = math.pi * (1.0 - t)
+                    if frame_style == 'GOTHIC_POINTED':
+                        # 尖頭アーチの左右円弧
+                        xc = -r_in + 2.0 * r_in * t
+                        zc = get_arch_z(xc)
+                        # 法線方向にオフセット
+                        norm_factor = (zc - spring_z) / max(0.01, math.hypot(xc, zc - spring_z))
+                        x_in = xc * (r_start / r_in)
+                        z_in = spring_z + (zc - spring_z) * (r_start / r_in)
+                        x_out = xc * (r_end / r_in)
+                        z_out = spring_z + (zc - spring_z) * (r_end / r_in)
+                    else:
+                        x_in = r_start * math.cos(ang)
+                        z_in = spring_z + r_start * math.sin(ang)
+                        x_out = r_end * math.cos(ang)
+                        z_out = spring_z + r_end * math.sin(ang)
+
+                    v_inf = bm.verts.new((x_in, yf_out, z_in))
+                    v_outf = bm.verts.new((x_out, yf_out, z_out))
+                    v_inb = bm.verts.new((x_in, half_d, z_in))
+                    v_outb = bm.verts.new((x_out, half_d, z_out))
+
+                    pts_in_f.append(v_inf)
+                    pts_out_f.append(v_outf)
+                    pts_in_b.append(v_inb)
+                    pts_out_b.append(v_outb)
+
+                for i in range(n_m_seg):
+                    # 前面フェイス
+                    f1 = bm.faces.new([pts_in_f[i], pts_out_f[i], pts_out_f[i+1], pts_in_f[i+1]])
+                    f1.material_index = 0
+                    # 外周エッジフェイス
+                    f2 = bm.faces.new([pts_out_f[i], pts_out_b[i], pts_out_b[i+1], pts_out_f[i+1]])
+                    f2.material_index = 0
+                    # 内周エッジフェイス
+                    f3 = bm.faces.new([pts_in_f[i+1], pts_in_b[i+1], pts_in_b[i], pts_in_f[i]])
+                    f3.material_index = 0
+
+            # 第1段モールディング
+            build_molding_tier(r_in, r_in + tier_w1, d_proj1)
+            # 第2段モールディング
+            build_molding_tier(r_in + tier_w1, r_in + tier_w1 + tier_w2, d_proj2)
+
+        else: # RADIAL_ASHLAR
+            # 🧱 真の放射状迫石＆要石（参考画像3準拠：本物の楔形台形切石ブロック群）
+            n_voussoirs = 15 # 奇数個で真上に堂々たる要石
+            v_thick = f_w * 0.92
+            gap_ang = 0.008 # 迫石同士の目地スリット (Grout Joint)
+
+            for vi in range(n_voussoirs):
+                is_keystone = (vi == n_voussoirs // 2)
+                k_scale = 1.38 if (is_keystone and has_keystone) else 1.0
+                k_proj = 0.045 if (is_keystone and has_keystone) else 0.020
+
+                t_start = vi / float(n_voussoirs)
+                t_end = (vi + 1) / float(n_voussoirs)
+                ang_start = math.pi * (1.0 - t_start) - gap_ang
+                ang_end = math.pi * (1.0 - t_end) + gap_ang
+
+                r1 = r_in
+                r2 = r_in + v_thick * k_scale
+                yf = half_d + k_proj
+                yb = -half_d - k_proj
+
+                # 前面4頂点
+                vf1 = bm.verts.new((r1 * math.cos(ang_start), yf, spring_z + r1 * math.sin(ang_start)))
+                vf2 = bm.verts.new((r2 * math.cos(ang_start), yf, spring_z + r2 * math.sin(ang_start)))
+                vf3 = bm.verts.new((r2 * math.cos(ang_end), yf, spring_z + r2 * math.sin(ang_end)))
+                vf4 = bm.verts.new((r1 * math.cos(ang_end), yf, spring_z + r1 * math.sin(ang_end)))
+
+                # 背面4頂点
+                vb1 = bm.verts.new((r1 * math.cos(ang_start), yb, spring_z + r1 * math.sin(ang_start)))
+                vb2 = bm.verts.new((r2 * math.cos(ang_start), yb, spring_z + r2 * math.sin(ang_start)))
+                vb3 = bm.verts.new((r2 * math.cos(ang_end), yb, spring_z + r2 * math.sin(ang_end)))
+                vb4 = bm.verts.new((r1 * math.cos(ang_end), yb, spring_z + r1 * math.sin(ang_end)))
+
+                # 6面を生成
+                f_front = bm.faces.new([vf1, vf2, vf3, vf4])
+                f_back = bm.faces.new([vb4, vb3, vb2, vb1])
+                f_top = bm.faces.new([vf2, vb2, vb3, vf3])
+                f_bot = bm.faces.new([vf4, vb4, vb1, vf1])
+                f_left = bm.faces.new([vf1, vb1, vb2, vf2])
+                f_right = bm.faces.new([vf3, vb3, vb4, vf4])
+
+                for f in (f_front, f_back, f_top, f_bot, f_left, f_right):
                     f.material_index = 0
 
     # ── B. 透過ガラス板 (Glass Pane) [mat_idx = 1] ──
-    # アーチ開口部の輪郭に沿った正確な透過ガラス多面体
     glass_th = 0.008
     n_g_samples = 32
     g_pts_2d = []
@@ -1795,7 +1852,7 @@ def build_western_window_mesh(
         f_side.material_index = 1
 
     # ── C. 格子・針金 (Grille / Wire / Mullion) [mat_idx = 2] ──
-    wire_y = half_d * 0.12 # ガラスの前面
+    wire_y = half_d * 0.10 # ガラスの直前面
     w_th = max(0.004, wire_thickness)
     w_dp = w_th * 1.5
 
@@ -1819,22 +1876,60 @@ def build_western_window_mesh(
             if all(v in res['verts'] for v in f.verts):
                 f.material_index = mat_index
 
-    if grille_style == 'CROSS':
+    if grille_style == 'SUNBURST':
+        # ── ☀️ 洋館サンバースト・ファンライト (参考画像4, 5準拠：西洋建築の決定版) ──
+        # 1. 水平トランサム（スプリングラインの区切り横桟）
+        add_wire_segment((-r_in - 0.02, spring_z), (r_in + 0.02, spring_z), w_th * 2.2, w_dp * 1.5)
+
+        # 2. 下部サッシグリッド（端正な縦横格子）
+        # 垂直中央マリオン
+        add_wire_segment((0.0, sill_h - 0.01), (0.0, spring_z), w_th * 2.2, w_dp * 1.5)
+        # 左右の垂直小桟
+        for sign in (-0.5, 0.5):
+            add_wire_segment((r_in * sign, sill_h - 0.01), (r_in * sign, spring_z), w_th * 1.5, w_dp * 1.2)
+        # 水平小桟（2〜3段）
+        h_sub = spring_z - sill_h
+        for frac in (0.33, 0.66):
+            tz = sill_h + h_sub * frac
+            add_wire_segment((-r_in - 0.01, tz), (r_in + 0.01, tz), w_th * 1.5, w_dp * 1.2)
+
+        # 3. 上部ファンライト（同心半円アーチ ＋ 放射状スポーク）
+        # 同心円アーチ（半径 0.55 * r_in）
+        sub_arc_r = r_in * 0.55
+        n_sa = 20
+        sa_pts = []
+        for s in range(n_sa + 1):
+            ang = math.pi * (1.0 - s / float(n_sa))
+            sx = sub_arc_r * math.cos(ang)
+            sz = spring_z + sub_arc_r * math.sin(ang)
+            sa_pts.append((sx, sz))
+        for k in range(len(sa_pts) - 1):
+            add_wire_segment(sa_pts[k], sa_pts[k+1], w_th * 1.8, w_dp * 1.3)
+
+        # 放射状スポーク（中央から同心円、および同心円から外周アーチへ）
+        n_spokes = 5
+        for sp in range(n_spokes):
+            sp_ang = math.pi * (sp + 1) / float(n_spokes + 1)
+            # 内側スポーク（中心から同心円まで）
+            p_center = (0.0, spring_z)
+            p_inner = (sub_arc_r * math.cos(sp_ang), spring_z + sub_arc_r * math.sin(sp_ang))
+            # 外側スポーク（同心円から外枠アーチまで）
+            p_outer = (r_in * 0.98 * math.cos(sp_ang), spring_z + r_in * 0.98 * math.sin(sp_ang))
+            add_wire_segment(p_center, p_inner, w_th * 1.6, w_dp * 1.2)
+            add_wire_segment(p_inner, p_outer, w_th * 1.6, w_dp * 1.2)
+
+    elif grille_style == 'CROSS':
         # ── ✝️ 十字の窓枠・十字棧 (Cross Mullion) ──
-        # 1. 垂直方立 (Mullion): 下端からアーチ頂点まで貫通
         top_z = get_arch_z(0.0) + 0.015
         add_wire_segment((0.0, sill_h - 0.015), (0.0, top_z), w_th * 2.8, w_dp * 1.8)
-
-        # 2. 水平棧 (Transom): 左右の枠の奥まで貫通
         t_z = sill_h + (spring_z - sill_h) * 0.52
         add_wire_segment((-r_in - 0.02, t_z), (r_in + 0.02, t_z), w_th * 2.8, w_dp * 1.8)
 
     elif grille_style == 'DIAMOND_WIRE':
         # ── 🔷 X字の針金・菱形鉛線ガラス (Diamond Leaded Glass) ──
-        # 枠内深く（embed = 25mm）まで貫通させ、途切れ・隙間を完全根絶！
         n_wires = max(3, int(wire_density))
         grid_step = inner_w / float(n_wires)
-        embed = 0.025 # 25mm枠内に食い込ませる
+        embed = 0.025
         
         def trace_and_add_lines(m_slope):
             z_min = sill_h
@@ -1844,7 +1939,6 @@ def build_western_window_mesh(
 
             for c_idx in range(c_min, c_max + 1):
                 c_val = c_idx * grid_step
-                # 200サンプルの高密度探索
                 samples = 200
                 valid_pts = []
                 x_start = -r_in - embed
@@ -1863,9 +1957,7 @@ def build_western_window_mesh(
                     p_end = valid_pts[-1]
                     add_wire_segment(p_start, p_end, w_th, w_dp)
 
-        # +45度方向 (m = 1.0)
         trace_and_add_lines(1.0)
-        # -45度方向 (m = -1.0)
         trace_and_add_lines(-1.0)
 
     elif grille_style == 'IRON_BARS':
@@ -1879,7 +1971,6 @@ def build_western_window_mesh(
             top_z = get_arch_z(bx) + 0.015
             add_wire_segment((bx, sill_h - 0.015), (bx, top_z), b_rad, b_rad)
 
-        # 水平留め帯 (Tie Bands)
         h_range = spring_z - sill_h
         for frac in (0.25, 0.70):
             tz = sill_h + h_range * frac
@@ -1887,10 +1978,7 @@ def build_western_window_mesh(
 
     elif grille_style == 'GOTHIC_TRACERY':
         # ── 🌹 ゴシック窓飾り (Gothic Lancet & Trefoil) ──
-        # 1. 中央垂直方立 (Mullion)
         add_wire_segment((0.0, sill_h - 0.015), (0.0, spring_z + 0.01), w_th * 2.5, w_dp * 1.6)
-
-        # 2. 2連小尖頭アーチ (Double Lancet Ribs)
         sub_r = r_in * 0.5
         n_sub = 16
         for side in (-sub_r, sub_r):
@@ -1903,7 +1991,6 @@ def build_western_window_mesh(
             for k in range(len(sub_pts) - 1):
                 add_wire_segment(sub_pts[k], sub_pts[k+1], w_th * 1.8, w_dp * 1.4)
 
-        # 3. 頭上三つ葉飾り (Trefoil Medallion)
         tref_cz = spring_z + arch_rise * 0.62
         tref_r = sub_r * 0.45
         n_t = 20
@@ -1916,12 +2003,12 @@ def build_western_window_mesh(
         for k in range(len(tref_pts) - 1):
             add_wire_segment(tref_pts[k], tref_pts[k+1], w_th * 1.6, w_dp * 1.4)
 
-    # ── D. プロシージャル 3D Displace 変位（石材表面の物理立体凹凸化） ──
-    # 単なるCubeのフラットな面を、ノミ削り痕と自然な起伏を持った本物の石肌に変貌させる
+    # ── D. プロシージャル微細チゼル変位（石材表面の適正質感化） ──
+    # マシュマロ化を防ぎ、シャープな建築エッジを保ったまま微細なノミ痕（2mm）のみを付与
     bm.verts.ensure_lookup_table()
     bm.normal_update()
 
-    disp_strength = 0.012 # 12mmの物理凹凸変位
+    disp_strength = 0.0025 # 2.5mmの微細ノミ痕（建築プロポーションを厳密保持）
     s_seed = (seed % 1000) * 17.31
     stone_verts_set = set()
     for f in bm.faces:
@@ -1930,15 +2017,13 @@ def build_western_window_mesh(
                 stone_verts_set.add(v)
 
     for v in stone_verts_set:
-        # 壁接合用の背面（y == -half_d）はスナップ面のため変位をゼロにする
         if abs(v.co.y - (-half_d)) < 0.005:
             continue
 
         x, y, z = v.co.x, v.co.y, v.co.z
-        f1 = math.sin(x * 9.0 + s_seed) * math.cos(z * 8.0 + s_seed * 1.3)
-        f2 = math.sin(y * 14.0 + z * 12.0 + s_seed * 2.1) * 0.5
-        f3 = math.cos(x * 25.0 + y * 18.0 + z * 22.0 + s_seed * 3.7) * 0.25
-        disp_val = (f1 + f2 + f3) / 1.75
+        f1 = math.sin(x * 12.0 + s_seed) * math.cos(z * 11.0 + s_seed * 1.3)
+        f2 = math.sin(y * 18.0 + z * 16.0 + s_seed * 2.1) * 0.5
+        disp_val = (f1 + f2) / 1.5
 
         vn = v.normal
         if vn.length > 0.1:

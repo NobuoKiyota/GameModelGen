@@ -314,7 +314,9 @@ def resolve_prop_parameters(props):
         "relief_custom_image": getattr(props, 'relief_custom_image', ""),
         # Western Window parameters
         "window_frame_style": getattr(props, 'window_frame_style', 'GOTHIC_POINTED'),
-        "window_grille_style": getattr(props, 'window_grille_style', 'DIAMOND_WIRE'),
+        "window_grille_style": getattr(props, 'window_grille_style', 'SUNBURST'),
+        "window_arch_style": getattr(props, 'window_arch_style', 'MOLDED_FRENCH'),
+        "window_has_keystone": getattr(props, 'window_has_keystone', True),
         "window_wire_density": getattr(props, 'window_wire_density', 6),
         "window_wire_thickness": getattr(props, 'window_wire_thickness', 0.012),
         "window_frame_width": getattr(props, 'window_frame_width', 0.18),
@@ -713,7 +715,9 @@ def generate_procedural_prop_mesh(
         build_western_window_mesh(
             bm, size_x, size_y, size_z,
             frame_style=kwargs.get('window_frame_style', 'GOTHIC_POINTED'),
-            grille_style=kwargs.get('window_grille_style', 'DIAMOND_WIRE'),
+            grille_style=kwargs.get('window_grille_style', 'SUNBURST'),
+            arch_style=kwargs.get('window_arch_style', 'MOLDED_FRENCH'),
+            has_keystone=kwargs.get('window_has_keystone', True),
             wire_density=kwargs.get('window_wire_density', 6),
             wire_thickness=kwargs.get('window_wire_thickness', 0.012),
             frame_width=kwargs.get('window_frame_width', 0.18),

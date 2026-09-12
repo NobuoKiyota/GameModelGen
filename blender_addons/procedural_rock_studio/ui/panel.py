@@ -688,6 +688,10 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 # 1. 窓枠形状 & 格子・針金様式
                 box_w_style = box_win.box()
                 box_w_style.prop(props, "window_frame_style", text="窓枠形状")
+                if props.window_frame_style in ('ROUND_ARCH', 'POINTED_ARCH'):
+                    box_w_style.prop(props, "window_arch_style", text="アーチ様式")
+                    if props.window_arch_style == 'RADIAL_ASHLAR':
+                        box_w_style.prop(props, "window_has_keystone", text="中央要石 (Keystone)")
                 box_w_style.prop(props, "window_grille_style", text="格子・針金様式")
 
                 # 2. 格子・針金ディテール

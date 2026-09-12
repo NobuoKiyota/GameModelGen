@@ -1668,13 +1668,27 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     window_grille_style: bpy.props.EnumProperty(
         name="格子・針金様式 (Grille / Wire)",
         items=[
+            ('SUNBURST', "☀️ 洋館サンバースト・ファンライト (Sunburst Fanlight)", "半円アーチの同心円リブ＋放射スポークと端正な格子（洋館・フレンチスタイル）"),
             ('CROSS', "✝️ 十字の窓枠・十字棧 (Cross Mullion)", "中央で十字に交差する伝統的な4分割窓枠"),
             ('DIAMOND_WIRE', "🔷 X字の針金・菱形鉛線ガラス (Diamond Leaded Glass)", "斜め45度に交差するX字針金・菱形鉛線ステンドグラス"),
             ('IRON_BARS', "⛓️ 縦鉄格子 (Iron Bars)", "防犯・牢獄・城壁用の頑丈な鍛鉄バー"),
             ('GOTHIC_TRACERY', "🌹 ゴシック窓飾り (Gothic Tracery)", "尖頭2連アーチと三つ葉飾り（Trefoil）の彫刻枠"),
             ('PLAIN', "🪟 格子なし・大判ガラス (Plain Glass)", "装飾格子のないすっきりした透過ガラス")
         ],
-        default='DIAMOND_WIRE'
+        default='SUNBURST'
+    )
+    window_arch_style: bpy.props.EnumProperty(
+        name="アーチ様式 (Arch Style)",
+        items=[
+            ('MOLDED_FRENCH', "🏛️ 洋館・多段額縁モールディング (Smooth French / Georgian)", "参考画像準拠：滑らかな同心円段差モールディング（スタイリッシュ洋館）"),
+            ('RADIAL_ASHLAR', "🧱 放射状迫石＆要石 (Radial Voussoirs & Keystone)", "参考画像準拠：中心から放射状に広がる楔形石材と中央キーストーン（重厚石造）")
+        ],
+        default='MOLDED_FRENCH'
+    )
+    window_has_keystone: bpy.props.BoolProperty(
+        name="🏛️ 中央要石 (Keystone)",
+        default=True,
+        description="アーチ頂点に堂々と突出する迫力あるキーストーンを配置"
     )
     window_wire_density: bpy.props.IntProperty(
         name="針金・格子密度 (Wire Density)",
