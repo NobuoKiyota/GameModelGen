@@ -206,7 +206,15 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_pillar.label(text="Pillar Settings (柱・列柱設定):", icon='MOD_SOLIDIFY')
                 box_pillar.prop(props, "pillar_type", text="様式タイプ")
                 box_pillar.prop(props, "pillar_mat_type", text="石材マテリアル")
-                if props.pillar_type == 'GOTHIC_CLUSTERED':
+                if props.pillar_type == 'COURTYARD_CLASSIC':
+                    box_pillar.prop(props, "pillar_flutes", text="縦溝の数 (Flutes)")
+                    row_ped = box_pillar.row(align=True)
+                    row_ped.prop(props, "pillar_pedestal_width", text="台座幅")
+                    row_ped.prop(props, "pillar_pedestal_height", text="台座高")
+                    box_pillar.prop(props, "pillar_include_railing", text="🏛️ 接続手すり・小支柱 (Balustrade)")
+                    if props.pillar_include_railing:
+                        box_pillar.prop(props, "pillar_railing_length", text="手すりの長さ (m)")
+                elif props.pillar_type == 'GOTHIC_CLUSTERED':
                     box_pillar.prop(props, "pillar_colonnettes", text="小柱の数 (Colonnettes)")
                 elif props.pillar_type == 'CLASSIC_FLUTED':
                     box_pillar.prop(props, "pillar_flutes", text="縦溝の数 (Flutes)")

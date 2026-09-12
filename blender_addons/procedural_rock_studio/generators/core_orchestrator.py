@@ -241,6 +241,10 @@ def resolve_prop_parameters(props):
         "pillar_colonnettes": props.pillar_colonnettes,
         "pillar_flutes": props.pillar_flutes,
         "pillar_entasis": props.pillar_entasis,
+        "pillar_include_railing": getattr(props, "pillar_include_railing", True),
+        "pillar_railing_length": getattr(props, "pillar_railing_length", 1.6),
+        "pillar_pedestal_width": getattr(props, "pillar_pedestal_width", 0.72),
+        "pillar_pedestal_height": getattr(props, "pillar_pedestal_height", 1.05),
         "telescope_style": props.telescope_style,
         "telescope_elevation": props.telescope_elevation_angle,
         "telescope_azimuth": props.telescope_azimuth_angle,
@@ -563,16 +567,22 @@ def generate_procedural_prop_mesh(
                 bpy.data.objects.remove(target_obj, do_unlink=True)
             except Exception:
                 pass
+        h_val = pillar_height if pillar_height > 0.5 else (size_z if size_z > 1.0 else 3.8)
+        r_val = pillar_radius if pillar_radius > 0.05 else (min(size_x, size_y) * 0.35 if min(size_x, size_y) > 0.3 else 0.26)
         obj = create_procedural_pillar(
             context=context,
             name=name,
             pillar_type=pillar_type,
-            height=size_z if size_z > 1.0 else pillar_height,
-            radius=min(size_x, size_y) * 0.35 if min(size_x, size_y) > 0.3 else pillar_radius,
+            height=h_val,
+            radius=r_val,
             colonnettes=pillar_colonnettes,
             flutes=pillar_flutes,
             entasis=pillar_entasis,
             mat_type=pillar_mat_type,
+            include_railing=kwargs.get('pillar_include_railing', True),
+            railing_length=kwargs.get('pillar_railing_length', 1.6),
+            pedestal_width=kwargs.get('pillar_pedestal_width', 0.72),
+            pedestal_height=kwargs.get('pillar_pedestal_height', 1.05),
             seed=seed
         )
         mat = create_procedural_pillar_shader(f"{name}_{pillar_mat_type}_Mat", mat_type=pillar_mat_type, seed=seed)

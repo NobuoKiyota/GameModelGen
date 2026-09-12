@@ -782,13 +782,14 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     pillar_type: bpy.props.EnumProperty(
         name="Pillar Type",
         items=[
+            ('COURTYARD_CLASSIC', "🏛️ 洋風中庭の古典柱 (Courtyard Classic)", "YouTube動画準拠のベベルU字縦溝・彫り込み台座・手すり付きクラシカル柱"),
             ('CLASSIC_FLUTED', "🏛️ 神殿円柱 (Classic Fluted)", "16~24本フルーティング縦溝彫り＋エンタシス胴張り＋クラシック柱頭＆基壇"),
             ('GOTHIC_CLUSTERED', "⛪ ゴシック束ね柱 (Gothic Clustered)", "中央主柱＋小柱Colonnettes束ね構造＋結束リング"),
             ('STONE_DRUM', "🪨 ドラム石積み柱 (Stone Drum)", "円盤状の石ブロック積み重ね＋深い目地溝＋風化ジッター"),
             ('TWISTED_SOLOMONIC', "🌀 ソロモン螺旋柱 (Twisted Solomonic)", "バロック様式の優美な螺旋ねじれ装飾柱"),
             ('SQUARE_MONUMENT', "🏛️ 西洋角柱・モニュメント (Square Monument)", "面取り多段角柱＋コーニス天頂装飾")
         ],
-        default='CLASSIC_FLUTED'
+        default='COURTYARD_CLASSIC'
     )
     pillar_mat_type: bpy.props.EnumProperty(
         name="Pillar Material",
@@ -800,11 +801,11 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default='MARBLE'
     )
     pillar_height: bpy.props.FloatProperty(
-        name="Height (柱の高さ)", default=4.0, min=1.0, max=20.0,
+        name="Height (柱の高さ)", default=3.8, min=1.0, max=20.0,
         description="柱の全高 (m)"
     )
     pillar_radius: bpy.props.FloatProperty(
-        name="Radius (柱の太さ)", default=0.4, min=0.1, max=3.0,
+        name="Radius (柱の太さ)", default=0.26, min=0.1, max=3.0,
         description="主柱の半径 (m)"
     )
     pillar_colonnettes: bpy.props.IntProperty(
@@ -813,11 +814,27 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     )
     pillar_flutes: bpy.props.IntProperty(
         name="縦溝の数 (Flutes)", default=16, min=8, max=32,
-        description="神殿円柱の縦溝（フルーティング）数"
+        description="柱身の縦溝（フルーティング）数"
     )
     pillar_entasis: bpy.props.FloatProperty(
         name="エンタシス (Entasis)", default=0.08, min=0.0, max=0.25,
         description="柱中央の滑らかな膨らみ度"
+    )
+    pillar_include_railing: bpy.props.BoolProperty(
+        name="手すりを付属 (Include Railing)", default=True,
+        description="柱の横に繋がる手すり（笠木・バラスター小支柱・底板）を生成"
+    )
+    pillar_railing_length: bpy.props.FloatProperty(
+        name="手すりの長さ (m)", default=1.6, min=0.5, max=5.0,
+        description="付属手すりの長さ"
+    )
+    pillar_pedestal_width: bpy.props.FloatProperty(
+        name="台座の幅 (m)", default=0.72, min=0.3, max=2.5,
+        description="彫り込み台座の幅・奥行き"
+    )
+    pillar_pedestal_height: bpy.props.FloatProperty(
+        name="台座の高さ (m)", default=1.05, min=0.4, max=3.0,
+        description="彫り込み台座の全高"
     )
 
     # ── TELESCOPE Properties ──
