@@ -37,11 +37,17 @@ def update_category_preset(self, context):
         'CASTLE_WALL': "Castle_Wall",
         'CAVE': "Cave_Dungeon",
         'CAVE_FLOOR': "Cave_Floor",
-        'RELIEF_WALL': "Relief_Wall_Modular"
+        'RELIEF_WALL': "Relief_Wall_Modular",
+        'WINDOW': "Western_Window"
     }
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
-    if cat == "RELIEF_WALL":
+    if cat == "WINDOW":
+        props.size_x = 1.6
+        props.size_y = 0.35
+        props.size_z = 2.5
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "RELIEF_WALL":
         props.size_x = 3.0
         props.size_y = 0.4
         props.size_z = 3.5
@@ -165,6 +171,7 @@ def update_category_preset(self, context):
         'BEAM': r"Z:\MeshCreator\textures\Wood",
         'BEAM_ARCH': r"Z:\MeshCreator\textures\Wall",
         'RELIEF_WALL': r"Z:\MeshCreator\textures\Wall",
+        'WINDOW': r"Z:\MeshCreator\textures\Wall",
         'GRASS': r"Z:\MeshCreator\textures\Grass",
         'WATER': r"Z:\MeshCreator\textures\Floor",
         'BOOKSHELF': r"Z:\MeshCreator\textures\Wood",
@@ -348,7 +355,8 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('PILLAR', "🏛️ 柱・石柱 (Pillar / Column)", "textures/Pillar/ と自動連動"),
             ('BEAM', "🪵 梁・丸太支柱 (Timber Log Beam)", "textures/Wood/ と自動連動（シリンダー丸太梁）"),
             ('BEAM_ARCH', "🏛️ 建築アーチ・回廊 (Stone Arch / Colonnade)", "ローマ半円/ゴシック尖頭・要石・多段モールディング・連続列廊・ヴォールト天井"),
-            ('RELIEF_WALL', "🏛️ モジュラー・レリーフ壁 (Relief Wall)", "付け柱ピラスター・額縁モールディング・多種レリーフ彫刻（薔薇ロゼット/神殿フリーズ/ルーン文字）・風化汚し・連数指定")
+            ('RELIEF_WALL', "🏛️ モジュラー・レリーフ壁 (Relief Wall)", "付け柱ピラスター・額縁モールディング・多種レリーフ彫刻（薔薇ロゼット/神殿フリーズ/ルーン文字）・風化汚し・連数指定"),
+            ('WINDOW', "🪟 リアル西洋窓 (Western Window)", "十字の窓枠・X字菱形針金/鉛線ガラス・縦鉄格子・三つ葉飾り・ゴシック/半円/四角枠・透過ガラス＆風化石枠")
         ],
         default='WATER',
         update=update_category_preset
@@ -1645,5 +1653,71 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default="",
         description="浮き彫りとして使用する白黒ハイトマップ画像"
     )
+
+    # ── WESTERN WINDOW Properties ──
+    window_frame_style: bpy.props.EnumProperty(
+        name="窓枠形状 (Frame Shape)",
+        items=[
+            ('GOTHIC_POINTED', "🏛️ ゴシック尖頭アーチ (Gothic Pointed)", "大聖堂・教会・中世洋館の尖頭アーチ窓"),
+            ('ROMAN_ROUND', "🏛️ ローマ半円アーチ (Roman Round)", "古代神殿・修道院・ルネサンスの半円アーチ窓"),
+            ('TUDOR', "🏰 チューダー扁平アーチ (Tudor Arch)", "中世後期の城塞・要塞・邸宅の扁平アーチ窓"),
+            ('RECTANGLE', "🧱 クラシック矩形・四角窓 (Rectangle)", "洋館・宿屋・酒場の四角い石枠窓")
+        ],
+        default='GOTHIC_POINTED'
+    )
+    window_grille_style: bpy.props.EnumProperty(
+        name="格子・針金様式 (Grille / Wire)",
+        items=[
+            ('CROSS', "✝️ 十字の窓枠・十字棧 (Cross Mullion)", "中央で十字に交差する伝統的な4分割窓枠"),
+            ('DIAMOND_WIRE', "🔷 X字の針金・菱形鉛線ガラス (Diamond Leaded Glass)", "斜め45度に交差するX字針金・菱形鉛線ステンドグラス"),
+            ('IRON_BARS', "⛓️ 縦鉄格子 (Iron Bars)", "防犯・牢獄・城壁用の頑丈な鍛鉄バー"),
+            ('GOTHIC_TRACERY', "🌹 ゴシック窓飾り (Gothic Tracery)", "尖頭2連アーチと三つ葉飾り（Trefoil）の彫刻枠"),
+            ('PLAIN', "🪟 格子なし・大判ガラス (Plain Glass)", "装飾格子のないすっきりした透過ガラス")
+        ],
+        default='DIAMOND_WIRE'
+    )
+    window_wire_density: bpy.props.IntProperty(
+        name="針金・格子密度 (Wire Density)",
+        default=6, min=3, max=16,
+        description="X字針金の分割数・格子の本数"
+    )
+    window_wire_thickness: bpy.props.FloatProperty(
+        name="針金・格子の太さ (Wire Thickness)",
+        default=0.012, min=0.004, max=0.04,
+        unit='LENGTH',
+        description="格子枠や針金の断面の太さ・直径 (m)"
+    )
+    window_frame_width: bpy.props.FloatProperty(
+        name="外枠フレーム幅 (Frame Width)",
+        default=0.18, min=0.06, max=0.4,
+        unit='LENGTH',
+        description="窓を取り囲む石造/木製外枠の幅 (m)"
+    )
+    window_has_sill: bpy.props.BoolProperty(
+        name="🏛️ 窓台 (Window Sill)",
+        default=True,
+        description="窓の下部に前方にせり出す水切り窓台を配置"
+    )
+    window_has_hood: bpy.props.BoolProperty(
+        name="🧱 水切りコーニス (Dripstone Hood)",
+        default=True,
+        description="アーチ上部に雨水除けの装飾コーニス帯を配置"
+    )
+    window_damage: bpy.props.FloatProperty(
+        name="経年欠け・チッピング (Damage)",
+        default=0.30, min=0.0, max=1.0,
+        description="石枠の角欠け・ノミ削り・エッジ摩耗"
+    )
+    window_weathering: bpy.props.FloatProperty(
+        name="汚し・風化 (Weathering)",
+        default=0.50, min=0.0, max=1.0,
+        description="目地やくびれのAO黒ずみ・雨垂れ水垢"
+    )
+    window_moss_amount: bpy.props.FloatProperty(
+        name="足元・窓台の苔 (Sill Moss)",
+        default=0.25, min=0.0, max=1.0,
+        description="窓台や下部に生える自然な苔と湿気"
+    )
+
 
 

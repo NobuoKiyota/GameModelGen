@@ -1506,3 +1506,367 @@ def build_modular_relief_wall_mesh(
 
     return bm.verts[:]
 
+
+def build_western_window_mesh(
+    bm,
+    size_x=1.6,
+    size_y=0.35,
+    size_z=2.5,
+    frame_style='GOTHIC_POINTED',
+    grille_style='DIAMOND_WIRE',
+    wire_density=6,
+    wire_thickness=0.012,
+    frame_width=0.18,
+    has_sill=True,
+    has_hood=True,
+    damage=0.30,
+    seed=0,
+    **kwargs
+):
+    """
+    Builds an architecturally authentic Western Classical / Gothic Window:
+    - Multi-material face indexing:
+        * 0: Stone / Wood Outer Frame (Surround, Sill, Hood)
+        * 1: Transparent Refractive Glass Pane
+        * 2: Wrought Iron / Lead Caming (Cross Mullions, Diamond X-Wire, Iron Bars, Tracery)
+    - Arch frame styles: Gothic Pointed, Roman Round, Tudor Arch, Classic Rectangle.
+    - Grille / Glazing styles:
+        * CROSS: Classical cross mullion & transom divider.
+        * DIAMOND_WIRE: 45-degree diagonal intersecting X-wire / leaded diaper diamond grid.
+        * IRON_BARS: Heavy fortress / prison vertical iron security bars with tie-bands.
+        * GOTHIC_TRACERY: Double lancet sub-arches crowned with trefoil rosette tracery.
+        * PLAIN: Clear uninterrupted glass pane.
+    - Full architectural casing: Projecting sloping window sill (water shed) and dripstone hood molding.
+    - Procedural edge chipping and aging wear on exposed stone faces.
+    """
+    import mathutils
+    import random
+    import math
+
+    rng = random.Random(seed)
+
+    total_w = max(0.8, float(size_x))
+    depth = max(0.15, float(size_y))
+    total_h = max(1.2, float(size_z))
+    f_w = max(0.08, min(frame_width, total_w * 0.28))
+    half_w = total_w * 0.5
+    half_d = depth * 0.5
+    inner_w = total_w - f_w * 2.0
+    r_in = inner_w * 0.5
+
+    sill_h = total_h * 0.08 if has_sill else 0.0
+    sill_proj = depth * 0.35
+
+    # 1. 開口部とスプリングラインの幾何学計算
+    if frame_style == 'RECTANGLE':
+        spring_z = total_h - f_w
+        arch_rise = 0.0
+        opening_h = spring_z - sill_h
+    elif frame_style == 'ROMAN_ROUND':
+        arch_rise = r_in
+        spring_z = max(sill_h + 0.4, total_h - f_w - arch_rise)
+        opening_h = total_h - f_w - sill_h
+    elif frame_style == 'TUDOR':
+        arch_rise = r_in * 0.55
+        spring_z = max(sill_h + 0.4, total_h - f_w - arch_rise)
+        opening_h = total_h - f_w - sill_h
+    else: # GOTHIC_POINTED
+        arch_rise = r_in * 1.35
+        spring_z = max(sill_h + 0.4, total_h - f_w - arch_rise)
+        opening_h = total_h - f_w - sill_h
+
+    # ボックス作成ヘルパー（マテリアルインデックス＆チッピング対応）
+    def add_box(center, size, mat_idx=0, chip=True):
+        cx, cy, cz = center
+        sx, sy, sz = size
+        v_res = bmesh.ops.create_cube(
+            bm, size=1.0,
+            matrix=mathutils.Matrix.Translation((cx, cy, cz)) @ mathutils.Matrix.Diagonal((sx, sy, sz, 1.0))
+        )['verts']
+
+        # 面にマテリアルインデックスを割り当て
+        for f in bm.faces:
+            if all(v in v_res for v in f.verts):
+                f.material_index = mat_idx
+
+        if damage > 0.05 and chip and mat_idx == 0:
+            noise_amt = damage * 0.010
+            for v in v_res:
+                if abs(v.co.y - (-half_d)) > 1e-4 and v.co.z > 0.01:
+                    v.co.x += rng.uniform(-noise_amt, noise_amt)
+                    v.co.y += rng.uniform(-noise_amt, noise_amt)
+                    v.co.z += rng.uniform(-noise_amt, noise_amt)
+        return v_res
+
+    # ── A. 外枠（石造フレーム / 窓台 / 上部コーニス） [mat_idx = 0] ──
+    # 1. 窓台 (Window Sill)
+    if has_sill:
+        # 傾斜水切り台座
+        add_box(
+            (0.0, sill_proj * 0.5, sill_h * 0.5),
+            (total_w + 0.12, depth + sill_proj, sill_h),
+            mat_idx=0, chip=True
+        )
+
+    # 2. 左右の縦枠 (Jambs)
+    jamb_h = spring_z - sill_h
+    jamb_cz = sill_h + jamb_h * 0.5
+    # 左枠
+    add_box((-half_w + f_w * 0.5, 0.0, jamb_cz), (f_w, depth, jamb_h), mat_idx=0, chip=True)
+    # 右枠
+    add_box((half_w - f_w * 0.5, 0.0, jamb_cz), (f_w, depth, jamb_h), mat_idx=0, chip=True)
+
+    # 前面モールディング段差
+    # ── アーチ高さ関数 ──
+    def get_arch_z(x):
+        """任意X座標におけるアーチ開口部の上端Z高さを返す"""
+        x_c = max(-r_in, min(r_in, x))
+        if frame_style == 'RECTANGLE':
+            return spring_z
+        elif frame_style == 'GOTHIC_POINTED':
+            d_c = r_in * 0.42
+            R = r_in + d_c
+            if x_c <= 0:
+                rad_sq = max(0.0, R**2 - (x_c - d_c)**2)
+            else:
+                rad_sq = max(0.0, R**2 - (x_c + d_c)**2)
+            return spring_z + math.sqrt(rad_sq)
+        elif frame_style == 'TUDOR':
+            t = math.sqrt(max(0.0, 1.0 - (x_c / r_in)**2))
+            return spring_z + arch_rise * t
+        else: # ROMAN_ROUND
+            rad_sq = max(0.0, r_in**2 - x_c**2)
+            return spring_z + math.sqrt(rad_sq)
+
+    # ── A. 外枠（石造フレーム / 窓台 / 上部コーニス） [mat_idx = 0] ──
+    # 1. 窓台 (Window Sill)
+    if has_sill:
+        add_box(
+            (0.0, sill_proj * 0.5, sill_h * 0.5),
+            (total_w + 0.12, depth + sill_proj, sill_h),
+            mat_idx=0, chip=True
+        )
+
+    # 2. 左右の縦枠 (Jambs)
+    jamb_h = spring_z - sill_h
+    jamb_cz = sill_h + jamb_h * 0.5
+    # 左枠
+    add_box((-half_w + f_w * 0.5, 0.0, jamb_cz), (f_w, depth, jamb_h), mat_idx=0, chip=True)
+    # 右枠
+    add_box((half_w - f_w * 0.5, 0.0, jamb_cz), (f_w, depth, jamb_h), mat_idx=0, chip=True)
+
+    # 前面モールディング段差
+    add_box((-half_w + f_w * 0.5, half_d + 0.02, jamb_cz), (f_w * 0.6, 0.04, jamb_h), mat_idx=0, chip=True)
+    add_box((half_w - f_w * 0.5, half_d + 0.02, jamb_cz), (f_w * 0.6, 0.04, jamb_h), mat_idx=0, chip=True)
+
+    # 3. 上部コーニス天板 (Top Cornice Beam)
+    top_beam_h = max(0.12, f_w)
+    add_box((0.0, 0.0, total_h - top_beam_h * 0.5), (total_w, depth, top_beam_h), mat_idx=0, chip=True)
+    if has_hood:
+        hood_w = total_w + 0.16
+        add_box((0.0, half_d + 0.03, total_h - top_beam_h * 0.5), (hood_w, 0.07, top_beam_h * 1.15), mat_idx=0, chip=True)
+
+    # 4. 上枠・スパンドレル壁 & アーチリング (開口部をくり抜いた左右の肩壁)
+    if frame_style == 'RECTANGLE':
+        mid_h = (total_h - top_beam_h) - spring_z
+        if mid_h > 0.01:
+            add_box((0.0, 0.0, spring_z + mid_h * 0.5), (total_w, depth, mid_h), mat_idx=0, chip=True)
+    else:
+        # アーチ両脇の直立壁
+        side_wall_w = f_w
+        side_wall_h = (total_h - top_beam_h) - spring_z
+        side_wall_cz = spring_z + side_wall_h * 0.5
+        add_box((-half_w + side_wall_w * 0.5, 0.0, side_wall_cz), (side_wall_w, depth, side_wall_h), mat_idx=0, chip=True)
+        add_box((half_w - side_wall_w * 0.5, 0.0, side_wall_cz), (side_wall_w, depth, side_wall_h), mat_idx=0, chip=True)
+
+        # アーチの肩部分（スパンドレル）をスライスブロックで充填
+        n_spandrel = 14
+        dx = inner_w / float(n_spandrel)
+        arch_ring_th = f_w * 0.75
+        top_y_limit = total_h - top_beam_h
+
+        inner_pts = []
+        for i in range(n_spandrel + 1):
+            x = -r_in + i * dx
+            z_arch = get_arch_z(x)
+            inner_pts.append((x, z_arch))
+            if i < n_spandrel:
+                x_mid = x + dx * 0.5
+                z_mid_arch = get_arch_z(x_mid)
+                bot_z = z_mid_arch + arch_ring_th * 0.8
+                span_h = top_y_limit - bot_z
+                if span_h > 0.02:
+                    add_box((x_mid, 0.0, bot_z + span_h * 0.5), (dx * 1.02, depth, span_h), mat_idx=0, chip=True)
+
+        # アーチ迫石リング装飾 (Arch Voussoirs Ring)
+        for i in range(len(inner_pts) - 1):
+            x1, z1 = inner_pts[i]
+            x2, z2 = inner_pts[i+1]
+            seg_cx = (x1 + x2) * 0.5
+            seg_cz = (z1 + z2) * 0.5
+            seg_len = math.hypot(x2 - x1, z2 - z1)
+            ang = math.atan2(z2 - z1, x2 - x1)
+
+            res = bmesh.ops.create_cube(
+                bm, size=1.0,
+                matrix=mathutils.Matrix.Translation((seg_cx, half_d * 0.4, seg_cz + arch_ring_th * 0.4)) @
+                       mathutils.Matrix.Rotation(-ang, 4, 'Y') @
+                       mathutils.Matrix.Diagonal((seg_len * 1.05, depth * 0.6, arch_ring_th, 1.0))
+            )
+            for f in bm.faces:
+                if all(v in res['verts'] for v in f.verts):
+                    f.material_index = 0
+
+    # ── B. 透過ガラス板 (Glass Pane) [mat_idx = 1] ──
+    # 開口部に沿ったアーチ形状のガラス多面体
+    glass_th = 0.008
+    n_g_samples = 24
+    g_pts_2d = []
+    g_pts_2d.append((-r_in * 0.99, sill_h))
+    g_pts_2d.append((r_in * 0.99, sill_h))
+    for i in range(n_g_samples, -1, -1):
+        x = -r_in * 0.99 + (2.0 * r_in * 0.99) * (i / float(n_g_samples))
+        z = get_arch_z(x) - 0.005
+        g_pts_2d.append((x, z))
+
+    # ガラスの前面頂点と背面頂点を作成して側面と前後面を構成
+    v_front = [bm.verts.new((x, glass_th * 0.5, z)) for x, z in g_pts_2d]
+    v_back = [bm.verts.new((x, -glass_th * 0.5, z)) for x, z in g_pts_2d]
+    f_front = bm.faces.new(v_front)
+    f_front.material_index = 1
+    f_back = bm.faces.new(list(reversed(v_back)))
+    f_back.material_index = 1
+    # 側面
+    n_pts = len(g_pts_2d)
+    for i in range(n_pts):
+        next_i = (i + 1) % n_pts
+        f_side = bm.faces.new([v_front[i], v_front[next_i], v_back[next_i], v_back[i]])
+        f_side.material_index = 1
+
+    # ── C. 格子・針金 (Grille / Wire / Mullion) [mat_idx = 2] ──
+    wire_y = half_d * 0.12 # ガラスの前面
+    w_th = max(0.004, wire_thickness)
+    w_dp = w_th * 1.5
+
+    def add_wire_segment(p1, p2, thickness, depth_dim, mat_index=2):
+        """2点間を結ぶ角柱バーを生成"""
+        dx = p2[0] - p1[0]
+        dz = p2[1] - p1[1]
+        length = math.hypot(dx, dz)
+        if length < 0.01:
+            return
+        cx = (p1[0] + p2[0]) * 0.5
+        cz = (p1[1] + p2[1]) * 0.5
+        ang = math.atan2(dz, dx)
+        res = bmesh.ops.create_cube(
+            bm, size=1.0,
+            matrix=mathutils.Matrix.Translation((cx, wire_y, cz)) @
+                   mathutils.Matrix.Rotation(-ang, 4, 'Y') @
+                   mathutils.Matrix.Diagonal((length, depth_dim, thickness, 1.0))
+        )
+        for f in bm.faces:
+            if all(v in res['verts'] for v in f.verts):
+                f.material_index = mat_index
+
+    if grille_style == 'CROSS':
+        # ── ✝️ 十字の窓枠・十字棧 (Cross Mullion) ──
+        # 1. 垂直方立 (Mullion): 下端からアーチ頂点まで貫通
+        top_z = get_arch_z(0.0)
+        add_wire_segment((0.0, sill_h), (0.0, top_z), w_th * 2.8, w_dp * 1.8)
+
+        # 2. 水平棧 (Transom)
+        t_z = sill_h + (spring_z - sill_h) * 0.52
+        add_wire_segment((-r_in * 0.98, t_z), (r_in * 0.98, t_z), w_th * 2.8, w_dp * 1.8)
+
+    elif grille_style == 'DIAMOND_WIRE':
+        # ── 🔷 X字の針金・菱形鉛線ガラス (Diamond Leaded Glass) ──
+        # 窓枠・アーチ開口部内に完全にクランプされた45度斜めワイヤー
+        n_wires = max(3, int(wire_density))
+        grid_step = inner_w / float(n_wires)
+        
+        # 斜め線 z = m * x + c をサンプリングして、開口部内部の区間だけを生成
+        def trace_and_add_lines(m_slope):
+            # c の範囲: 開口部をカバーする範囲
+            z_min = sill_h
+            z_max = get_arch_z(0.0)
+            c_min = int((z_min - m_slope * r_in) / grid_step) - 2
+            c_max = int((z_max + abs(m_slope) * r_in) / grid_step) + 2
+
+            for c_idx in range(c_min, c_max + 1):
+                c_val = c_idx * grid_step
+                # x を 80 サンプルして、開口部内に入る連続区間を探す
+                samples = 80
+                valid_pts = []
+                for si in range(samples + 1):
+                    x = -r_in * 0.98 + (2.0 * r_in * 0.98) * (si / float(samples))
+                    z = m_slope * x + c_val
+                    arch_z = get_arch_z(x)
+                    if (sill_h + 0.005) <= z <= (arch_z - 0.005):
+                        valid_pts.append((x, z))
+
+                if len(valid_pts) >= 2:
+                    p_start = valid_pts[0]
+                    p_end = valid_pts[-1]
+                    add_wire_segment(p_start, p_end, w_th, w_dp)
+
+        # +45度方向 (m = 1.0)
+        trace_and_add_lines(1.0)
+        # -45度方向 (m = -1.0)
+        trace_and_add_lines(-1.0)
+
+    elif grille_style == 'IRON_BARS':
+        # ── ⛓️ 縦鉄格子 (Vertical Iron Bars) ──
+        n_bars = max(3, int(wire_density))
+        bar_spacing = inner_w / float(n_bars + 1)
+        b_rad = w_th * 1.8
+
+        for i in range(n_bars):
+            bx = -r_in + (i + 1) * bar_spacing
+            top_z = get_arch_z(bx) - 0.01
+            add_wire_segment((bx, sill_h), (bx, top_z), b_rad, b_rad)
+
+        # 水平留め帯 (Tie Bands)
+        h_range = spring_z - sill_h
+        for frac in (0.25, 0.70):
+            tz = sill_h + h_range * frac
+            add_wire_segment((-r_in * 0.98, tz), (r_in * 0.98, tz), b_rad * 0.9, b_rad * 1.4)
+
+    elif grille_style == 'GOTHIC_TRACERY':
+        # ── 🌹 ゴシック窓飾り (Gothic Lancet & Trefoil) ──
+        # 1. 中央垂直方立 (Mullion)
+        add_wire_segment((0.0, sill_h), (0.0, spring_z), w_th * 2.5, w_dp * 1.6)
+
+        # 2. 2連小尖頭アーチ (Double Lancet Ribs)
+        sub_r = r_in * 0.5
+        n_sub = 10
+        for side in (-sub_r, sub_r):
+            sub_pts = []
+            for s in range(n_sub + 1):
+                ang = math.pi * (1.0 - s / float(n_sub))
+                xv = side + sub_r * 0.95 * math.cos(ang)
+                zv = spring_z - 0.05 + (arch_rise * 0.55) * math.sin(ang)
+                sub_pts.append((xv, zv))
+            for k in range(len(sub_pts) - 1):
+                add_wire_segment(sub_pts[k], sub_pts[k+1], w_th * 1.8, w_dp * 1.4)
+
+        # 3. 頭上三つ葉飾り (Trefoil Medallion)
+        tref_cz = spring_z + arch_rise * 0.60
+        tref_r = sub_r * 0.45
+        n_t = 16
+        tref_pts = []
+        for s in range(n_t + 1):
+            ang = (s / float(n_t)) * math.pi * 2.0
+            rx = math.cos(ang) * tref_r
+            rz = tref_cz + math.sin(ang) * tref_r
+            tref_pts.append((rx, rz))
+        for k in range(len(tref_pts) - 1):
+            add_wire_segment(tref_pts[k], tref_pts[k+1], w_th * 1.6, w_dp * 1.4)
+
+    bm.verts.ensure_lookup_table()
+    bm.normal_update()
+    for f in bm.faces:
+        f.smooth = False
+
+    return bm.verts[:]
+
+

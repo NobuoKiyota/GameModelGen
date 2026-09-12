@@ -680,6 +680,44 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_rw_hint.label(text="💡 モジュラー設計: 左右端の半幅ピラスターが並べた瞬間に合体します", icon='INFO')
                 box_rw_hint.label(text="   X境界は完全フラットスナップ面を維持し、継ぎ目が完全に隠れます")
 
+            # Realistic Western Window Preset Specific
+            elif props.prop_category == 'WINDOW':
+                box_win = layout.box()
+                box_win.label(text="🪟 リアル西洋窓 (Western Architectural Window):", icon='MOD_BUILD')
+
+                # 1. 窓枠形状 & 格子・針金様式
+                box_w_style = box_win.box()
+                box_w_style.prop(props, "window_frame_style", text="窓枠形状")
+                box_w_style.prop(props, "window_grille_style", text="格子・針金様式")
+
+                # 2. 格子・針金ディテール
+                if props.window_grille_style != 'PLAIN':
+                    box_w_grille = box_win.box()
+                    box_w_grille.label(text="格子・針金ディテール (Grille & Wire):", icon='SNAP_VOLUME')
+                    row_wg = box_w_grille.row(align=True)
+                    row_wg.prop(props, "window_wire_density", text="針金密度/本数")
+                    row_wg.prop(props, "window_wire_thickness", text="線の太さ (m)")
+
+                # 3. 外枠石枠 & コーニス・窓台
+                box_w_frame = box_win.box()
+                box_w_frame.label(text="石枠・窓台・コーニス (Frame & Sill):", icon='MESH_CUBE')
+                box_w_frame.prop(props, "window_frame_width", text="外枠の幅 (m)")
+                row_wf = box_w_frame.row(align=True)
+                row_wf.prop(props, "window_has_sill", text="🏛️ 窓台 (Stone Sill)", toggle=True)
+                row_wf.prop(props, "window_has_hood", text="🏛️ 水切りコーニス (Hood)", toggle=True)
+
+                # 4. 経年風化・汚し & 欠け設定
+                box_w_weath = box_win.box()
+                box_w_weath.label(text="経年風化・汚し & 欠け (Aging & Wear):", icon='BRUSH_DATA')
+                box_w_weath.prop(props, "window_damage", text="🧱 経年欠け・チッピング", slider=True)
+                box_w_weath.prop(props, "window_weathering", text="🌧️ 汚し・風化 (AO/雨垂れ)", slider=True)
+                box_w_weath.prop(props, "window_moss_amount", text="🌿 窓台の苔・湿気", slider=True)
+
+                # 特徴ヒント
+                box_w_hint = box_win.box()
+                box_w_hint.label(text="💡 物理透過ガラス(IOR 1.52)＋鍛鉄/鉛線＋風化石枠の3マテリアル分離構成", icon='INFO')
+                box_w_hint.label(text="   十字棧(Cross)やX字交差針金(Diamond Wire)など中世〜近世様式に対応")
+
             # Dimensions Box
             box_dim = layout.box()
             row_dh = box_dim.row(align=True)

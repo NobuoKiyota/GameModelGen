@@ -14,8 +14,12 @@ from ..materials.nature_shaders import (
     create_procedural_pillar_shader,
     create_procedural_cobblestone_shader
 )
-from ..materials.furniture_shaders import create_procedural_pbr_material
-from ..materials.image_shaders import apply_image_texture_material, apply_weathered_stone_arch_material
+from ..materials.image_shaders import (
+    apply_image_texture_material,
+    apply_weathered_stone_arch_material,
+    create_window_glass_material,
+    create_window_iron_material
+)
 from ..utils.texture_utils import get_textures_from_folder, find_pbr_texture_set
 from ..utils.mesh_utils import apply_geometry_displacement
 
@@ -27,7 +31,8 @@ from .architecture_gen import (
     build_beam_base,
     build_beam_arch_base,
     build_procedural_stone_arch_bmesh,
-    build_modular_relief_wall_mesh
+    build_modular_relief_wall_mesh,
+    build_western_window_mesh
 )
 from .furniture_gen import (
     build_chair_base,
@@ -129,6 +134,10 @@ def resolve_prop_parameters(props):
             final_sx = round(random.uniform(2.8, 3.6), 2)
             final_sy = round(random.uniform(0.35, 0.45), 2)
             final_sz = round(random.uniform(3.2, 4.0), 2)
+        elif cat == "WINDOW":
+            final_sx = round(random.uniform(1.2, 2.0), 2)
+            final_sy = round(random.uniform(0.28, 0.40), 2)
+            final_sz = round(random.uniform(2.0, 3.0), 2)
         elif cat == "PILLAR":
             final_sx = round(random.uniform(0.8, 1.6), 2)
             final_sy = round(random.uniform(0.8, 1.6), 2)
@@ -303,6 +312,17 @@ def resolve_prop_parameters(props):
         "relief_weathering": getattr(props, 'relief_weathering', 0.50),
         "relief_moss_amount": getattr(props, 'relief_moss_amount', 0.30),
         "relief_custom_image": getattr(props, 'relief_custom_image', ""),
+        # Western Window parameters
+        "window_frame_style": getattr(props, 'window_frame_style', 'GOTHIC_POINTED'),
+        "window_grille_style": getattr(props, 'window_grille_style', 'DIAMOND_WIRE'),
+        "window_wire_density": getattr(props, 'window_wire_density', 6),
+        "window_wire_thickness": getattr(props, 'window_wire_thickness', 0.012),
+        "window_frame_width": getattr(props, 'window_frame_width', 0.18),
+        "window_has_sill": getattr(props, 'window_has_sill', True),
+        "window_has_hood": getattr(props, 'window_has_hood', True),
+        "window_damage": getattr(props, 'window_damage', 0.30),
+        "window_weathering": getattr(props, 'window_weathering', 0.50),
+        "window_moss_amount": getattr(props, 'window_moss_amount', 0.25),
     }
 
 
@@ -689,6 +709,19 @@ def generate_procedural_prop_mesh(
             custom_image=kwargs.get('relief_custom_image', ""),
             seed=seed
         )
+    elif category == "WINDOW":
+        build_western_window_mesh(
+            bm, size_x, size_y, size_z,
+            frame_style=kwargs.get('window_frame_style', 'GOTHIC_POINTED'),
+            grille_style=kwargs.get('window_grille_style', 'DIAMOND_WIRE'),
+            wire_density=kwargs.get('window_wire_density', 6),
+            wire_thickness=kwargs.get('window_wire_thickness', 0.012),
+            frame_width=kwargs.get('window_frame_width', 0.18),
+            has_sill=kwargs.get('window_has_sill', True),
+            has_hood=kwargs.get('window_has_hood', True),
+            damage=kwargs.get('window_damage', 0.30),
+            seed=seed
+        )
     elif category == "CRAG":
         build_crag_base(bm, size_x, size_y, size_z, style=style, chisel_cuts=big_chunk_cuts * 3 + 4, seed=seed)
     else: # ROCK (丸岩・巨石)
@@ -952,15 +985,24 @@ def generate_procedural_prop_mesh(
             pbr_set = find_pbr_texture_set(full_tex_path)
             disp_img = pbr_set.get('displacement') or full_tex_path
 
-            if category in ("BEAM_ARCH", "RELIEF_WALL"):
-                w_val = kwargs.get('relief_weathering' if category == 'RELIEF_WALL' else 'arch_weathering', 0.50)
-                m_val = kwargs.get('relief_moss_amount' if category == 'RELIEF_WALL' else 'arch_moss_amount', 0.30)
+            if category in ("BEAM_ARCH", "RELIEF_WALL", "WINDOW"):
+                if category == 'RELIEF_WALL':
+                    w_val = kwargs.get('relief_weathering', 0.50)
+                    m_val = kwargs.get('relief_moss_amount', 0.30)
+                elif category == 'WINDOW':
+                    w_val = kwargs.get('window_weathering', 0.50)
+                    m_val = kwargs.get('window_moss_amount', 0.25)
+                else:
+                    w_val = kwargs.get('arch_weathering', 0.50)
+                    m_val = kwargs.get('arch_moss_amount', 0.30)
+
                 apply_weathered_stone_arch_material(
                     obj, full_tex_path,
                     weathering=w_val,
                     moss_amount=m_val,
                     scale=1.0 if uv_mode == "FIT" else tex_tiling,
-                    bump_strength=0.45
+                    bump_strength=0.45,
+                    slot_index=0
                 )
             else:
                 apply_image_texture_material(
@@ -979,6 +1021,18 @@ def generate_procedural_prop_mesh(
             else:
                 mat = create_procedural_pbr_material(name + "_Mat", seed, is_grass=False)
             obj.data.materials.append(mat)
+
+        # 🪟 WINDOW Multi-material assignments (Slot 1: Glass, Slot 2: Iron)
+        if category == "WINDOW":
+            mat_glass = create_window_glass_material(f"{name}_Glass_Mat")
+            mat_iron = create_window_iron_material(f"{name}_Iron_Mat")
+            while len(obj.data.materials) < 2:
+                obj.data.materials.append(None)
+            obj.data.materials[1] = mat_glass
+
+            while len(obj.data.materials) < 3:
+                obj.data.materials.append(None)
+            obj.data.materials[2] = mat_iron
 
         if enable_disp and disp_strength > 0.001 and category in ("WALL", "FLOOR", "PILLAR", "BEAM", "TABLE", "PC_DESK", "CHEST", "GRASS"):
             apply_geometry_displacement(

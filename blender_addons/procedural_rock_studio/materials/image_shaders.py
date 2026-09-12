@@ -345,3 +345,82 @@ def apply_weathered_stone_arch_material(obj, image_path, weathering=0.5, moss_am
 
     return mat
 
+
+def create_window_glass_material(name="Window_Glass", tint=(0.92, 0.96, 0.98, 1.0)):
+    """Creates a transparent refractive glass shader with subtle antique surface waviness."""
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (300, 0)
+
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (0, 0)
+    node_bsdf.inputs['Base Color'].default_value = tint
+    node_bsdf.inputs['Transmission'].default_value = 0.95
+    node_bsdf.inputs['Roughness'].default_value = 0.05
+    node_bsdf.inputs['IOR'].default_value = 1.52
+
+    node_coord = nodes.new(type='ShaderNodeTexCoord')
+    node_coord.location = (-600, -200)
+
+    node_noise = nodes.new(type='ShaderNodeTexNoise')
+    node_noise.location = (-400, -200)
+    node_noise.inputs['Scale'].default_value = 12.0
+    node_noise.inputs['Detail'].default_value = 2.0
+    links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
+
+    node_bump = nodes.new(type='ShaderNodeBump')
+    node_bump.location = (-200, -200)
+    node_bump.inputs['Strength'].default_value = 0.02
+    links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    mat.blend_method = 'BLEND'
+    mat.shadow_method = 'HASHED'
+    if hasattr(mat, 'use_screen_refraction'):
+        mat.use_screen_refraction = True
+    return mat
+
+
+def create_window_iron_material(name="Window_Iron"):
+    """Creates an antique forged dark iron / lead caming metal shader."""
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (300, 0)
+
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (0, 0)
+    node_bsdf.inputs['Base Color'].default_value = (0.08, 0.08, 0.09, 1.0)
+    node_bsdf.inputs['Metallic'].default_value = 0.85
+    node_bsdf.inputs['Roughness'].default_value = 0.40
+
+    node_coord = nodes.new(type='ShaderNodeTexCoord')
+    node_coord.location = (-600, -200)
+
+    node_noise = nodes.new(type='ShaderNodeTexNoise')
+    node_noise.location = (-400, -200)
+    node_noise.inputs['Scale'].default_value = 25.0
+    node_noise.inputs['Detail'].default_value = 4.0
+    links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
+
+    node_bump = nodes.new(type='ShaderNodeBump')
+    node_bump.location = (-200, -200)
+    node_bump.inputs['Strength'].default_value = 0.06
+    links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+    return mat
+
+
