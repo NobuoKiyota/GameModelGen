@@ -1589,14 +1589,28 @@ def build_western_window_mesh(
             if all(v in v_res for v in f.verts):
                 f.material_index = mat_idx
 
-        if damage > 0.05 and chip and mat_idx == 0:
-            # 微細なチッピング（過剰な変形によるローポリ崩壊を防ぎ、シャープな建築ラインを維持）
-            noise_amt = damage * 0.003
-            for v in v_res:
-                if abs(v.co.y - (-half_d)) > 1e-4 and v.co.z > 0.01:
-                    v.co.x += rng.uniform(-noise_amt, noise_amt)
-                    v.co.y += rng.uniform(-noise_amt, noise_amt)
-                    v.co.z += rng.uniform(-noise_amt, noise_amt)
+    def add_box(center, size, mat_idx=0, chip=True, subdiv=0):
+        """直方体ブロックを生成し、マテリアルと微細ジッターを適用"""
+        cx, cy, cz = center
+        sx, sy, sz = size
+        res = bmesh.ops.create_cube(
+            bm, size=1.0,
+            matrix=mathutils.Matrix.Translation((cx, cy, cz)) @ mathutils.Matrix.Diagonal((sx, sy, sz, 1.0))
+        )
+        v_res = res['verts']
+
+        if subdiv > 0:
+            edges_to_sub = [e for e in bm.edges if all(v in v_res for v in e.verts)]
+            if edges_to_sub:
+                sub_res = bmesh.ops.subdivide_edges(bm, edges=edges_to_sub, cuts=subdiv, use_grid_fill=True)
+                new_verts = [g for g in sub_res.get('geom_inner', []) if isinstance(g, bmesh.types.BMVert)]
+                v_res = list(set(v_res + new_verts))
+
+        # 面にマテリアルインデックスを割り当て
+        for f in bm.faces:
+            if any(v in v_res for v in f.verts):
+                f.material_index = mat_idx
+
         return v_res
 
     # ── アーチ高さ関数 ──
@@ -1627,43 +1641,64 @@ def build_western_window_mesh(
         add_box(
             (0.0, sill_proj * 0.4, sill_h * 0.35),
             (total_w + 0.16, depth + sill_proj * 0.8, sill_h * 0.7),
-            mat_idx=0, chip=True
+            mat_idx=0, chip=True, subdiv=2
         )
         # 上段の傾斜天板（Sill Nose）
         add_box(
             (0.0, sill_proj * 0.5, sill_h * 0.85),
             (total_w + 0.12, depth + sill_proj, sill_h * 0.3),
-            mat_idx=0, chip=True
+            mat_idx=0, chip=True, subdiv=2
         )
 
-    # 2. 左右の縦枠 (Jambs) & クラシック多段モールディング
+    # 2. 左右の縦枠 (Jambs) - 本格的な長短切石（Ashlar Quoin Stones）ブロック段積み
     jamb_h = spring_z - sill_h
-    jamb_cz = sill_h + jamb_h * 0.5
-    # 主枠柱
-    add_box((-half_w + f_w * 0.5, 0.0, jamb_cz), (f_w, depth, jamb_h), mat_idx=0, chip=True)
-    add_box((half_w - f_w * 0.5, 0.0, jamb_cz), (f_w, depth, jamb_h), mat_idx=0, chip=True)
-    # 前面飾りモールディング（2段の段差で立体感を付与）
-    m_step_w = f_w * 0.5
-    add_box((-half_w + f_w * 0.5, half_d + 0.025, jamb_cz), (m_step_w, 0.04, jamb_h), mat_idx=0, chip=True)
-    add_box((half_w - f_w * 0.5, half_d + 0.025, jamb_cz), (m_step_w, 0.04, jamb_h), mat_idx=0, chip=True)
+    n_blocks = max(4, min(10, int(jamb_h / 0.28)))
+    block_h = jamb_h / float(n_blocks)
+    grout = 0.007 # 7mmの深い目地溝スリット
+
+    for bi in range(n_blocks):
+        b_cz = sill_h + (bi + 0.5) * block_h
+        eff_bh = block_h - grout
+        is_long = (bi % 2 == 0)
+        
+        # 偶数段は長石（Quoin Long）、奇数段は短石（Quoin Short）
+        w_factor = 1.12 if is_long else 0.94
+        d_factor = rng.uniform(0.98, 1.03)
+        y_jit = rng.uniform(-0.004, 0.004)
+        x_jit = rng.uniform(-0.003, 0.003)
+
+        cur_fw = f_w * w_factor
+        cur_dp = depth * d_factor
+
+        # 左柱ブロック
+        lx_c = -half_w + f_w * 0.5 + x_jit
+        add_box((lx_c, y_jit, b_cz), (cur_fw, cur_dp, eff_bh), mat_idx=0, chip=True, subdiv=2)
+        # 左柱前面モールディング段差
+        add_box((lx_c, half_d + 0.02 + y_jit, b_cz), (cur_fw * 0.5, 0.035, eff_bh), mat_idx=0, chip=True, subdiv=1)
+
+        # 右柱ブロック
+        rx_c = half_w - f_w * 0.5 + x_jit
+        add_box((rx_c, y_jit, b_cz), (cur_fw, cur_dp, eff_bh), mat_idx=0, chip=True, subdiv=2)
+        # 右柱前面モールディング段差
+        add_box((rx_c, half_d + 0.02 + y_jit, b_cz), (cur_fw * 0.5, 0.035, eff_bh), mat_idx=0, chip=True, subdiv=1)
+
     # 開口部側の段差面取りリブ（Reveal Chamfer）
-    in_chamfer_w = f_w * 0.3
-    add_box((-r_in - in_chamfer_w * 0.5, half_d * 0.2, jamb_cz), (in_chamfer_w, depth * 0.7, jamb_h), mat_idx=0, chip=False)
-    add_box((r_in + in_chamfer_w * 0.5, half_d * 0.2, jamb_cz), (in_chamfer_w, depth * 0.7, jamb_h), mat_idx=0, chip=False)
+    in_chamfer_w = f_w * 0.25
+    add_box((-r_in - in_chamfer_w * 0.5, half_d * 0.15, sill_h + jamb_h * 0.5), (in_chamfer_w, depth * 0.65, jamb_h), mat_idx=0, chip=False, subdiv=1)
+    add_box((r_in + in_chamfer_w * 0.5, half_d * 0.15, sill_h + jamb_h * 0.5), (in_chamfer_w, depth * 0.65, jamb_h), mat_idx=0, chip=False, subdiv=1)
 
     # 3. 柱頭・インポスト台座 (Impost Capital Block)
-    # アーチの付け根（スプリングライン）に格式ある飾りブロックを配置
     imp_h = 0.065
     imp_cz = spring_z - imp_h * 0.5
-    add_box((-half_w + f_w * 0.5, half_d * 0.08, imp_cz), (f_w * 1.15, depth * 1.08, imp_h), mat_idx=0, chip=True)
-    add_box((half_w - f_w * 0.5, half_d * 0.08, imp_cz), (f_w * 1.15, depth * 1.08, imp_h), mat_idx=0, chip=True)
+    add_box((-half_w + f_w * 0.5, half_d * 0.08, imp_cz), (f_w * 1.18, depth * 1.08, imp_h), mat_idx=0, chip=True, subdiv=2)
+    add_box((half_w - f_w * 0.5, half_d * 0.08, imp_cz), (f_w * 1.18, depth * 1.08, imp_h), mat_idx=0, chip=True, subdiv=2)
 
     # 4. 上部コーニス天板 (Top Cornice Beam)
     top_beam_h = max(0.12, f_w)
-    add_box((0.0, 0.0, total_h - top_beam_h * 0.5), (total_w, depth, top_beam_h), mat_idx=0, chip=True)
+    add_box((0.0, 0.0, total_h - top_beam_h * 0.5), (total_w, depth, top_beam_h), mat_idx=0, chip=True, subdiv=2)
     if has_hood:
         hood_w = total_w + 0.16
-        add_box((0.0, half_d + 0.03, total_h - top_beam_h * 0.5), (hood_w, 0.07, top_beam_h * 1.15), mat_idx=0, chip=True)
+        add_box((0.0, half_d + 0.03, total_h - top_beam_h * 0.5), (hood_w, 0.07, top_beam_h * 1.15), mat_idx=0, chip=True, subdiv=1)
 
     # 5. 上枠・スパンドレル壁 & 滑らかなアーキボルト
     top_limit = total_h - top_beam_h
@@ -1880,6 +1915,34 @@ def build_western_window_mesh(
             tref_pts.append((rx, rz))
         for k in range(len(tref_pts) - 1):
             add_wire_segment(tref_pts[k], tref_pts[k+1], w_th * 1.6, w_dp * 1.4)
+
+    # ── D. プロシージャル 3D Displace 変位（石材表面の物理立体凹凸化） ──
+    # 単なるCubeのフラットな面を、ノミ削り痕と自然な起伏を持った本物の石肌に変貌させる
+    bm.verts.ensure_lookup_table()
+    bm.normal_update()
+
+    disp_strength = 0.012 # 12mmの物理凹凸変位
+    s_seed = (seed % 1000) * 17.31
+    stone_verts_set = set()
+    for f in bm.faces:
+        if f.material_index == 0:
+            for v in f.verts:
+                stone_verts_set.add(v)
+
+    for v in stone_verts_set:
+        # 壁接合用の背面（y == -half_d）はスナップ面のため変位をゼロにする
+        if abs(v.co.y - (-half_d)) < 0.005:
+            continue
+
+        x, y, z = v.co.x, v.co.y, v.co.z
+        f1 = math.sin(x * 9.0 + s_seed) * math.cos(z * 8.0 + s_seed * 1.3)
+        f2 = math.sin(y * 14.0 + z * 12.0 + s_seed * 2.1) * 0.5
+        f3 = math.cos(x * 25.0 + y * 18.0 + z * 22.0 + s_seed * 3.7) * 0.25
+        disp_val = (f1 + f2 + f3) / 1.75
+
+        vn = v.normal
+        if vn.length > 0.1:
+            v.co += vn * (disp_val * disp_strength)
 
     bm.verts.ensure_lookup_table()
     bm.normal_update()
