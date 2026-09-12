@@ -1515,6 +1515,9 @@ def build_western_window_mesh(
     frame_style='ROMAN_ROUND',
     grille_style='SUNBURST',
     arch_style='MOLDED_FRENCH',
+    jamb_style='ENGAGED_FLUTED',
+    column_flutes=8,
+    column_pedestal=True,
     has_keystone=True,
     wire_density=6,
     wire_thickness=0.012,
@@ -1628,47 +1631,207 @@ def build_western_window_mesh(
             mat_idx=0, chip=False, subdiv=1
         )
 
-    # 2. 左右の縦枠 (Jambs) - 端正な西洋切石（Ashlar Quoin Stones）ブロック
+    # 2. 左右の縦枠・支柱 (Jambs & Columns)
     jamb_h = spring_z - sill_h
-    n_blocks = max(4, min(8, int(jamb_h / 0.32)))
-    block_h = jamb_h / float(n_blocks)
-    grout = 0.006 # 6mmのシャープな目地スリット
+    lx_c = -half_w + f_w * 0.5
+    rx_c = half_w - f_w * 0.5
 
-    for bi in range(n_blocks):
-        b_cz = sill_h + (bi + 0.5) * block_h
-        eff_bh = block_h - grout
-        is_long = (bi % 2 == 0)
-        
-        # 偶数段は長石（Quoin Long）、奇数段は短石（Quoin Short）
-        w_factor = 1.08 if is_long else 0.96
-        cur_fw = f_w * w_factor
+    if jamb_style == 'ENGAGED_FLUTED':
+        # 🏛️ 附設古典円柱 (Engaged Classical Fluted Column)
+        # カミワダ テル氏動画（0:20-1:30）準拠：U字フルート溝 + ベベルハイライト + アティックベース + クラシカル柱頭
+        col_r = f_w * 0.52
+        col_cy = half_d * 0.85 # 壁の前面近くを中心として、半円柱が前方に堂々と突出
 
-        # 左柱ブロック
-        lx_c = -half_w + f_w * 0.5
-        add_box((lx_c, 0.0, b_cz), (cur_fw, depth, eff_bh), mat_idx=0, chip=False, subdiv=1)
-        # 左柱前面モールディング段差
-        add_box((lx_c, half_d + 0.015, b_cz), (cur_fw * 0.5, 0.03, eff_bh), mat_idx=0, chip=False, subdiv=1)
+        # A. 台座（Pedestal / Plinth Base）
+        if column_pedestal:
+            ped_h = min(0.32, jamb_h * 0.16)
+            ped_w = f_w * 1.18
+            ped_d = depth * 0.80
+            for cx in (lx_c, rx_c):
+                # 壁から前方にせり出す台座
+                add_box((cx, col_cy - ped_d * 0.35, sill_h + ped_h * 0.25), (ped_w, ped_d, ped_h * 0.5), mat_idx=0, chip=False, subdiv=1)
+                add_box((cx, col_cy - ped_d * 0.35, sill_h + ped_h * 0.65), (ped_w * 0.90, ped_d * 0.90, ped_h * 0.3), mat_idx=0, chip=False, subdiv=1)
+                add_box((cx, col_cy - ped_d * 0.35, sill_h + ped_h * 0.90), (ped_w * 1.05, ped_d * 1.05, ped_h * 0.2), mat_idx=0, chip=False, subdiv=1)
+                # 正面の額縁彫り込みパネル段差
+                add_box((cx, col_cy + ped_d * 0.15 + 0.01, sill_h + ped_h * 0.5), (ped_w * 0.65, 0.02, ped_h * 0.45), mat_idx=0, chip=False, subdiv=1)
+            base_z = sill_h + ped_h
+        else:
+            base_z = sill_h
 
-        # 右柱ブロック
-        rx_c = half_w - f_w * 0.5
-        add_box((rx_c, 0.0, b_cz), (cur_fw, depth, eff_bh), mat_idx=0, chip=False, subdiv=1)
-        # 右柱前面モールディング段差
-        add_box((rx_c, half_d + 0.015, b_cz), (cur_fw * 0.5, 0.03, eff_bh), mat_idx=0, chip=False, subdiv=1)
+        # B. 柱頭インポスト（Capital & Impost）
+        cap_h = min(0.14, jamb_h * 0.11)
+        shaft_end_z = spring_z - cap_h
+
+        # C. アティックベース & 柱頭天板
+        attic_h = 0.05
+        for cx in (lx_c, rx_c):
+            # 四角形ベースプレート
+            add_box((cx, col_cy - 0.02, base_z + 0.015), (col_r * 2.3, col_r * 1.8, 0.03), mat_idx=0, chip=False, subdiv=1)
+            # 2段トーラスリング（円錐台座）
+            res_t1 = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=24,
+                radius1=col_r * 1.25, radius2=col_r * 1.15, depth=0.018,
+                matrix=mathutils.Matrix.Translation((cx, col_cy, base_z + 0.038))
+            )
+            for f in res_t1.get('faces', []): 
+                f.material_index = 0
+                f.smooth = True
+            res_t2 = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=24,
+                radius1=col_r * 1.12, radius2=col_r * 1.02, depth=0.012,
+                matrix=mathutils.Matrix.Translation((cx, col_cy, base_z + 0.052))
+            )
+            for f in res_t2.get('faces', []): 
+                f.material_index = 0
+                f.smooth = True
+
+            # 柱身後方の壁面ソリッドバック（奥側のみを埋めて円柱前面を邪魔しない）
+            back_d = depth * 0.60
+            add_box((cx, -half_d + back_d * 0.5, sill_h + jamb_h * 0.5), (f_w * 0.98, back_d, jamb_h), mat_idx=0, chip=False, subdiv=1)
+
+            # 柱頭（Capital: アストラガル首輪 + エキヌス曲面 + 多段アバクス天板）
+            res_ast = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=24,
+                radius1=col_r * 1.08, radius2=col_r * 1.02, depth=0.016,
+                matrix=mathutils.Matrix.Translation((cx, col_cy, shaft_end_z + 0.01))
+            )
+            for f in res_ast.get('faces', []): 
+                f.material_index = 0
+                f.smooth = True
+            res_ech = bmesh.ops.create_cone(
+                bm, cap_ends=True, cap_tris=False, segments=24,
+                radius1=col_r * 1.00, radius2=col_r * 1.35, depth=cap_h * 0.45,
+                matrix=mathutils.Matrix.Translation((cx, col_cy, shaft_end_z + cap_h * 0.35))
+            )
+            for f in res_ech.get('faces', []): 
+                f.material_index = 0
+                f.smooth = True
+            # 多段アバクス天板（スプリングライン直下でアーチを受ける）
+            add_box((cx, col_cy - 0.02, spring_z - cap_h * 0.25), (f_w * 1.20, f_w * 1.20, cap_h * 0.25), mat_idx=0, chip=False, subdiv=1)
+            add_box((cx, col_cy - 0.02, spring_z - cap_h * 0.06), (f_w * 1.32, f_w * 1.32, cap_h * 0.14), mat_idx=0, chip=False, subdiv=1)
+
+        shaft_start_z = base_z + attic_h
+
+        # D. 左右のU字フルート柱身（Fluted Shaft with Bevel）
+        def build_fluted_engaged_shaft(cx):
+            h_s = shaft_end_z - shaft_start_z
+            if h_s <= 0.05:
+                return
+            n_fl = max(4, min(14, column_flutes))
+            # 正面半円（0度から180度）
+            ang_start = 0.0
+            ang_end = math.pi
+            tot_ang = ang_end - ang_start
+            ang_step = tot_ang / float(n_fl)
+            fl_depth = (tot_ang * col_r / float(n_fl)) * 0.52
+
+            prof = []
+            for fi in range(n_fl):
+                a0 = ang_start + fi * ang_step
+                prof.append((math.cos(a0) * col_r, math.sin(a0) * col_r))
+                t1 = a0 + ang_step * 0.22
+                t2 = a0 + ang_step * 0.50
+                t3 = a0 + ang_step * 0.78
+                r_sh = col_r - fl_depth * 0.40
+                r_bt = col_r - fl_depth
+                prof.append((math.cos(t1) * r_sh, math.sin(t1) * r_sh))
+                prof.append((math.cos(t2) * r_bt, math.sin(t2) * r_bt))
+                prof.append((math.cos(t3) * r_sh, math.sin(t3) * r_sh))
+            prof.append((math.cos(ang_end) * col_r, math.sin(ang_end) * col_r))
+            
+            # 壁面への閉鎖アンカー（Y=0方向へ直角に落とす）
+            prof.append((math.cos(ang_end) * col_r, -0.04))
+            prof.append((math.cos(ang_start) * col_r, -0.04))
+
+            n_pts = len(prof)
+            n_zc = 12
+            rings = []
+            for zi in range(n_zc + 1):
+                zf = zi / float(n_zc)
+                zc = shaft_start_z + h_s * zf
+                ent = 1.0 + 0.02 * math.sin(math.pi * zf) - 0.04 * (zf ** 1.5)
+                r_verts = [bm.verts.new((cx + px * ent, col_cy + py * ent, zc)) for px, py in prof]
+                rings.append(r_verts)
+
+            for zi in range(n_zc):
+                r0 = rings[zi]
+                r1 = rings[zi + 1]
+                for pi in range(n_pts):
+                    p_next = (pi + 1) % n_pts
+                    # 外向き（+Y正面）のワインディング順序
+                    f = bm.faces.new([r0[pi], r1[pi], r1[p_next], r0[p_next]])
+                    f.material_index = 0
+                    f.smooth = True
+
+        build_fluted_engaged_shaft(lx_c)
+        build_fluted_engaged_shaft(rx_c)
+
+        # 全メッシュの法線を外向きに統一再計算
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
+    elif jamb_style == 'PILASTER_PANEL':
+        # 🏛️ 額縁彫り込みピラスター (Recessed Inset Panel Pilaster)
+        p_thick = 0.045 # 壁からの突出量
+        p_front_y = half_d + p_thick
+
+        if column_pedestal:
+            ped_h = min(0.32, jamb_h * 0.16)
+            for cx in (lx_c, rx_c):
+                add_box((cx, p_front_y * 0.5, sill_h + ped_h * 0.25), (f_w * 1.15, depth + p_thick * 1.5, ped_h * 0.5), mat_idx=0, chip=False, subdiv=1)
+                add_box((cx, p_front_y * 0.5, sill_h + ped_h * 0.70), (f_w * 0.98, depth + p_thick * 1.2, ped_h * 0.4), mat_idx=0, chip=False, subdiv=1)
+                add_box((cx, p_front_y * 0.5, sill_h + ped_h * 0.92), (f_w * 1.10, depth + p_thick * 1.4, ped_h * 0.16), mat_idx=0, chip=False, subdiv=1)
+            body_start_z = sill_h + ped_h
+        else:
+            body_start_z = sill_h
+
+        cap_h = min(0.12, jamb_h * 0.10)
+        body_end_z = spring_z - cap_h
+        body_h = body_end_z - body_start_z
+        body_cz = body_start_z + body_h * 0.5
+
+        for cx in (lx_c, rx_c):
+            # 主柱身（壁から突出）
+            add_box((cx, p_front_y * 0.5, body_cz), (f_w, depth + p_thick, body_h), mat_idx=0, chip=False, subdiv=1)
+            # 正面額縁外枠段差
+            add_box((cx, p_front_y + 0.015, body_cz), (f_w * 0.88, 0.03, body_h * 0.96), mat_idx=0, chip=False, subdiv=1)
+            # 正面額縁インセット彫り込みパネル（一段奥まったリブ）
+            add_box((cx, p_front_y + 0.005, body_cz), (f_w * 0.62, 0.02, body_h * 0.86), mat_idx=0, chip=False, subdiv=1)
+            # 柱頭インポストコーニス
+            add_box((cx, p_front_y * 0.5, spring_z - cap_h * 0.35), (f_w * 1.18, depth + p_thick * 1.4, cap_h * 0.3), mat_idx=0, chip=False, subdiv=1)
+            add_box((cx, p_front_y * 0.5, spring_z - cap_h * 0.10), (f_w * 1.28, depth + p_thick * 1.6, cap_h * 0.2), mat_idx=0, chip=False, subdiv=1)
+
+    else: # ASHLAR_QUOIN
+        # 🧱 従来の切石ブロック (Ashlar Quoin Stones)
+        n_blocks = max(4, min(8, int(jamb_h / 0.32)))
+        block_h = jamb_h / float(n_blocks)
+        grout = 0.006
+
+        for bi in range(n_blocks):
+            b_cz = sill_h + (bi + 0.5) * block_h
+            eff_bh = block_h - grout
+            is_long = (bi % 2 == 0)
+            w_factor = 1.08 if is_long else 0.96
+            cur_fw = f_w * w_factor
+
+            # 左柱
+            add_box((lx_c, 0.0, b_cz), (cur_fw, depth, eff_bh), mat_idx=0, chip=False, subdiv=1)
+            add_box((lx_c, half_d + 0.015, b_cz), (cur_fw * 0.5, 0.03, eff_bh), mat_idx=0, chip=False, subdiv=1)
+            # 右柱
+            add_box((rx_c, 0.0, b_cz), (cur_fw, depth, eff_bh), mat_idx=0, chip=False, subdiv=1)
+            add_box((rx_c, half_d + 0.015, b_cz), (cur_fw * 0.5, 0.03, eff_bh), mat_idx=0, chip=False, subdiv=1)
+
+        # 柱頭インポスト台座
+        imp_h = 0.07
+        imp_cz = spring_z - imp_h * 0.5
+        add_box((lx_c, half_d * 0.05, imp_cz - 0.01), (f_w * 1.10, depth * 1.05, imp_h * 0.6), mat_idx=0, chip=False, subdiv=1)
+        add_box((rx_c, half_d * 0.05, imp_cz - 0.01), (f_w * 1.10, depth * 1.05, imp_h * 0.6), mat_idx=0, chip=False, subdiv=1)
+        add_box((lx_c, half_d * 0.08, imp_cz + 0.02), (f_w * 1.22, depth * 1.10, imp_h * 0.4), mat_idx=0, chip=False, subdiv=1)
+        add_box((rx_c, half_d * 0.08, imp_cz + 0.02), (f_w * 1.22, depth * 1.10, imp_h * 0.4), mat_idx=0, chip=False, subdiv=1)
 
     # 開口部側の内枠面取りリブ（Reveal Chamfer）
     in_chamfer_w = f_w * 0.22
     add_box((-r_in - in_chamfer_w * 0.5, half_d * 0.1, sill_h + jamb_h * 0.5), (in_chamfer_w, depth * 0.65, jamb_h), mat_idx=0, chip=False, subdiv=1)
     add_box((r_in + in_chamfer_w * 0.5, half_d * 0.1, sill_h + jamb_h * 0.5), (in_chamfer_w, depth * 0.65, jamb_h), mat_idx=0, chip=False, subdiv=1)
-
-    # 3. 柱頭インポスト台座 (Classical Impost Capital: 参考画像3準拠の多段水平コーニス)
-    imp_h = 0.07
-    imp_cz = spring_z - imp_h * 0.5
-    # 下段幅狭
-    add_box((-half_w + f_w * 0.5, half_d * 0.05, imp_cz - 0.01), (f_w * 1.10, depth * 1.05, imp_h * 0.6), mat_idx=0, chip=False, subdiv=1)
-    add_box((half_w - f_w * 0.5, half_d * 0.05, imp_cz - 0.01), (f_w * 1.10, depth * 1.05, imp_h * 0.6), mat_idx=0, chip=False, subdiv=1)
-    # 上段せり出し笠板
-    add_box((-half_w + f_w * 0.5, half_d * 0.08, imp_cz + 0.02), (f_w * 1.22, depth * 1.10, imp_h * 0.4), mat_idx=0, chip=False, subdiv=1)
-    add_box((half_w - f_w * 0.5, half_d * 0.08, imp_cz + 0.02), (f_w * 1.22, depth * 1.10, imp_h * 0.4), mat_idx=0, chip=False, subdiv=1)
 
     # 4. 上部コーニス天板 (Top Cornice Beam)
     top_beam_h = max(0.12, f_w)

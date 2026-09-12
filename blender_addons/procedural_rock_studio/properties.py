@@ -1702,6 +1702,25 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         ],
         default='MOLDED_FRENCH'
     )
+    window_jamb_style: bpy.props.EnumProperty(
+        name="側枠・支柱様式 (Jamb Style)",
+        items=[
+            ('ENGAGED_FLUTED', "🏛️ 附設古典円柱 (Engaged Fluted Column)", "半円周U字フルート溝＋ベベルハイライト＋クラシック柱頭＆台座（パラーディオ・ルネサンス洋館）"),
+            ('PILASTER_PANEL', "🏛️ 額縁彫り込み角柱 (Recessed Panel Pilaster)", "額縁段差とインセット押し込みパネル＋多段ベベルモールディング（クラシカル邸宅）"),
+            ('ASHLAR_QUOIN', "🧱 西洋切石ブロック (Ashlar Quoin Stones)", "交互に並ぶ長短クオイン切石ブロック（重厚城壁・石造）")
+        ],
+        default='ENGAGED_FLUTED'
+    )
+    window_column_flutes: bpy.props.IntProperty(
+        name="円柱溝数 (Flute Count)",
+        default=8, min=4, max=14,
+        description="附設円柱（半周）の縦溝彫りの本数"
+    )
+    window_column_pedestal: bpy.props.BoolProperty(
+        name="独立台座 (Column Pedestal)",
+        default=True,
+        description="支柱の下部に多段モールディング付きのクラシカル台座を配置"
+    )
     window_has_keystone: bpy.props.BoolProperty(
         name="🏛️ 中央要石 (Keystone)",
         default=True,

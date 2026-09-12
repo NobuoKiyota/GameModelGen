@@ -320,6 +320,9 @@ def resolve_prop_parameters(props):
         "window_frame_style": getattr(props, 'window_frame_style', 'GOTHIC_POINTED'),
         "window_grille_style": getattr(props, 'window_grille_style', 'SUNBURST'),
         "window_arch_style": getattr(props, 'window_arch_style', 'MOLDED_FRENCH'),
+        "window_jamb_style": getattr(props, 'window_jamb_style', 'ENGAGED_FLUTED'),
+        "window_column_flutes": getattr(props, 'window_column_flutes', 8),
+        "window_column_pedestal": getattr(props, 'window_column_pedestal', True),
         "window_has_keystone": getattr(props, 'window_has_keystone', True),
         "window_wire_density": getattr(props, 'window_wire_density', 6),
         "window_wire_thickness": getattr(props, 'window_wire_thickness', 0.012),
@@ -727,6 +730,9 @@ def generate_procedural_prop_mesh(
             frame_style=kwargs.get('window_frame_style', 'GOTHIC_POINTED'),
             grille_style=kwargs.get('window_grille_style', 'SUNBURST'),
             arch_style=kwargs.get('window_arch_style', 'MOLDED_FRENCH'),
+            jamb_style=kwargs.get('window_jamb_style', 'ENGAGED_FLUTED'),
+            column_flutes=kwargs.get('window_column_flutes', 8),
+            column_pedestal=kwargs.get('window_column_pedestal', True),
             has_keystone=kwargs.get('window_has_keystone', True),
             wire_density=kwargs.get('window_wire_density', 6),
             wire_thickness=kwargs.get('window_wire_thickness', 0.012),
@@ -1032,8 +1038,10 @@ def generate_procedural_prop_mesh(
                 mat = create_procedural_cobblestone_shader(name + "_Cobble_Mat", seed=seed, tile_scale=tile_sc)
             elif category == "PILLAR":
                 mat = create_procedural_pillar_shader(name + "_Pillar_Mat", mat_type=pillar_mat_type, seed=seed)
+            elif category in ("BEAM_ARCH", "RELIEF_WALL", "WINDOW"):
+                mat = create_procedural_pillar_shader(name + "_Stone_Mat", mat_type="SANDSTONE", seed=seed)
             else:
-                mat = create_procedural_pbr_material(name + "_Mat", seed, is_grass=False)
+                mat = build_procedural_rock_material(name + "_Mat", seed)
             obj.data.materials.append(mat)
 
         # 🪟 WINDOW Multi-material assignments (Slot 1: Glass, Slot 2: Iron)

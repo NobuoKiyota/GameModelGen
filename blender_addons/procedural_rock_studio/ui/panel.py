@@ -693,14 +693,25 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_win = layout.box()
                 box_win.label(text="🪟 リアル西洋窓 (Western Architectural Window):", icon='MOD_BUILD')
 
-                # 1. 窓枠形状 & 格子・針金様式
+                # 1. 窓枠形状 & アーチ様式
                 box_w_style = box_win.box()
                 box_w_style.prop(props, "window_frame_style", text="窓枠形状")
-                if props.window_frame_style in ('ROUND_ARCH', 'POINTED_ARCH'):
+                if props.window_frame_style in ('GOTHIC_POINTED', 'ROMAN_ROUND', 'TUDOR', 'ROUND_ARCH', 'POINTED_ARCH'):
                     box_w_style.prop(props, "window_arch_style", text="アーチ様式")
                     if props.window_arch_style == 'RADIAL_ASHLAR':
                         box_w_style.prop(props, "window_has_keystone", text="中央要石 (Keystone)")
                 box_w_style.prop(props, "window_grille_style", text="格子・針金様式")
+
+                # 2. 側枠・支柱スタイル (Jamb & Column)
+                box_w_jamb = box_win.box()
+                box_w_jamb.label(text="🏛️ 側枠・支柱スタイル (Jamb & Column):", icon='SNAP_VOLUME')
+                box_w_jamb.prop(props, "window_jamb_style", text="支柱様式")
+                if props.window_jamb_style == 'ENGAGED_FLUTED':
+                    row_fl = box_w_jamb.row(align=True)
+                    row_fl.prop(props, "window_column_flutes", text="縦溝の数 (Flutes)")
+                    row_fl.prop(props, "window_column_pedestal", text="クラシック台座")
+                elif props.window_jamb_style == 'PILASTER_PANEL':
+                    box_w_jamb.prop(props, "window_column_pedestal", text="クラシック台座")
 
                 # 2. 格子・針金ディテール
                 if props.window_grille_style != 'PLAIN':
