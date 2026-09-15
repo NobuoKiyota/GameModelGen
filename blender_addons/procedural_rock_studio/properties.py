@@ -38,14 +38,138 @@ def update_category_preset(self, context):
         'CAVE': "Cave_Dungeon",
         'CAVE_FLOOR': "Cave_Floor",
         'RELIEF_WALL': "Relief_Wall_Modular",
-        'WINDOW': "Western_Window"
+        'WINDOW': "Western_Window",
+        'DICTIONARY': "Neutral_Dictionary",
+        'BOOK_STACK': "Book_Stack",
+        'DOCUMENT_STACK': "Document_Stack",
+        'CURTAIN': "Curtain_Studio",
+        'CANDLE_STAND': "Antique_Candle_Stand",
+        'HOUSEPLANT': "Houseplant_Studio",
+        'SPIRAL_STAIRS': "Spiral_Stairs_Asset",
+        'STONE_STAIRS': "Stone_Stairs_Asset"
     }
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
-    if cat == "WINDOW":
+    if cat == "STONE_STAIRS":
+        props.size_x = 1.8
+        props.size_y = 4.2
+        props.size_z = 2.16
+        props.stone_stairs_style = 'CLASSICAL_BALUSTRADE'
+        props.stone_stairs_step_count = 12
+        props.stone_stairs_width = 1.8
+        props.stone_stairs_step_depth = 0.32
+        props.stone_stairs_step_height = 0.18
+        props.stone_stairs_rail_placement = 'BOTH_SIDES'
+        props.stone_stairs_wear_amount = 0.35
+        props.stone_stairs_damage = 0.40
+        props.stone_stairs_moss = 0.30
+        props.stone_stairs_material = 'AGED_COBBLE'
+        props.stone_stairs_include_landing = True
+        props.stone_stairs_combine = True
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "SPIRAL_STAIRS":
+        props.size_x = 2.4
+        props.size_y = 2.4
+        props.size_z = 3.6
+        props.spiral_stairs_style = 'CLASSIC_WOOD'
+        props.spiral_stairs_step_count = 20
+        props.spiral_stairs_radius = 1.2
+        props.spiral_stairs_inner_radius = 0.20
+        props.spiral_stairs_step_height = 0.18
+        props.spiral_stairs_step_angle = 18.0
+        props.spiral_stairs_baluster_style = 'ORNATE_TURNED'
+        props.spiral_stairs_has_pillar = True
+        props.spiral_stairs_has_handrail = True
+        props.spiral_stairs_tread_material = 'DARK_WALNUT'
+        props.spiral_stairs_metal_material = 'CAST_IRON'
+        props.spiral_stairs_combine = True
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "HOUSEPLANT":
+        props.size_x = 0.50
+        props.size_y = 0.50
+        props.size_z = 0.85
+        props.houseplant_style = 'HANGING_MACRAME'
+        props.houseplant_leaf_shape = 'AUTO'
+        props.houseplant_density = 'MEDIUM'
+        props.houseplant_pot_material = 'TERRACOTTA'
+        props.houseplant_leaf_color = 'VIBRANT_GREEN'
+        props.houseplant_variegated = False
+        props.houseplant_combine = True
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "CANDLE_STAND":
+        props.size_x = 0.65
+        props.size_y = 0.65
+        props.size_z = 0.85
+        props.candle_stand_style = 'HANGING_CHANDELIER'
+        props.candle_count = 6
+        props.candle_melt_level = 0.50
+        props.candle_has_flame = True
+        props.candle_add_lights = True
+        props.candle_holder_material = 'FORGED_IRON'
+        props.candle_wax_material = 'IVORY_BEESWAX'
+        props.candle_combine = True
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "CURTAIN":
+        props.size_x = 1.80
+        props.size_y = 2.20
+        props.size_z = 0.08
+        props.curtain_style = 'DOUBLE_OPEN'
+        props.curtain_pleats = 12
+        props.curtain_fabric_type = 'SHEER_LACE'
+        props.curtain_rod_style = 'BRASS'
+        props.curtain_include_rod = True
+        props.curtain_simulate_wind = True
+        props.curtain_wind_strength = 45.0
+        props.curtain_bake_static = True
+        props.curtain_combine = True
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "DOCUMENT_STACK":
+        props.size_x = 0.21
+        props.size_y = 0.297
+        props.size_z = 0.14
+        props.doc_layer_count = 26
+        props.doc_messiness = 0.65
+        props.doc_include_folders = True
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "BOOK_STACK":
+        props.size_x = 0.16
+        props.size_y = 0.23
+        props.size_z = 0.024
+        props.book_stack_count = 5
+        props.book_stack_style = 'MESSY'
+        props.book_stack_scatter_radius = 0.08
+        props.book_stack_drop_dynamics = 0.65
+        props.book_stack_include_ground = False
+        props.book_stack_combine = True
+        props.book_stack_mix_styles = True
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "DICTIONARY":
+        props.size_x = 0.16
+        props.size_y = 0.23
+        props.size_z = 0.065
+        props.dictionary_rib_count = 4
+        props.dictionary_color_preset = 'NAVY'
+        props.dictionary_has_ribbon = True
+        props.dictionary_page_aging = 0.65
+        props.dictionary_has_runes = True
+        props.dictionary_rune_intensity = 0.85
+        props.dictionary_foil_style = 'GOLD'
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "WINDOW":
         props.size_x = 1.6
         props.size_y = 0.35
         props.size_z = 2.5
+        props.window_frame_style = 'ROMAN_ROUND'
+        props.window_grille_style = 'SUNBURST'
+        props.window_arch_style = 'MOLDED_FRENCH'
+        props.window_jamb_style = 'ENGAGED_FLUTED'
+        props.window_sash_mode = 'DOUBLE_CASEMENT'
+        props.window_open_angle = 0.0
+        props.window_open_direction = 'OUTWARD'
+        props.window_has_handle = True
+        props.window_has_hinges = True
+        props.window_sash_material = 'DARK_WOOD'
+        props.window_combine = False
         props.uv_mapping_mode = 'FIT'
     elif cat == "RELIEF_WALL":
         props.size_x = 3.0
@@ -136,7 +260,10 @@ def update_category_preset(self, context):
     elif cat == "FLOOR":
         props.size_x = 2.0
         props.size_y = 2.0
-        props.size_z = 0.2
+        props.size_z = 0.05
+        props.enable_displacement = True
+        props.disp_strength = 0.02
+        props.disp_midlevel = 0.5
         props.uv_mapping_mode = 'FIT'
     elif cat == "WALL":
         props.size_x = 3.0
@@ -180,7 +307,8 @@ def update_category_preset(self, context):
         'CHEST': r"Z:\MeshCreator\textures\Wood",
         'BED': r"Z:\MeshCreator\textures\Wood",
         'FENCE': r"Z:\MeshCreator\textures\Wood",
-        'BUSH': r"Z:\MeshCreator\textures\Grass"
+        'BUSH': r"Z:\MeshCreator\textures\Grass",
+        'STONE_STAIRS': r"Z:\MeshCreator\textures\Floor"
     }
     
     target_folder = folder_map.get(cat, r"Z:\MeshCreator\textures\Rock")
@@ -327,6 +455,14 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
+            ('STONE_STAIRS', "🪨 年季の入った石畳の地下階段 (Dungeon / Cellar Stone Stairs)", "動画準拠のクラシカル壺型バラスター・彫刻親柱・斜め笠木・長年の歩行による中央すり減り・苔・風化チッピング"),
+            ('SPIRAL_STAIRS', "🪜 手すり付き螺旋階段 (Spiral Stairs)", "完全パラメトリック螺旋階段（扇形ステップ・センター支柱・連続螺旋手すり・バラスター装飾）"),
+            ('HOUSEPLANT', "🌿 観葉植物・鉢植え (Houseplant / Potted Foliage)", "マクラメ吊り下げハンギング鉢・脚付き聖杯鉢・床置き大型ヤシ・サンスベリア・アイビー・モンステラ"),
+            ('CANDLE_STAND', "🕯️ アンティーク蝋燭立て (Antique Candle Stand / Chandelier)", "吊り下げホイールシャンデリア・卓上多灯燭台・手持ち燭台・壁掛け燭台・蝋だれ・炎・PointLight"),
+            ('CURTAIN', "🪟 カーテン・ドレープ布地 (Curtain & Drapes)", "左右両開き/片開き・プリーツ・レール金具・UE風揺れ頂点カラー・横風シミュレーション"),
+            ('DICTIONARY', "📖 辞書・大型書籍 (Dictionary / Book)", "中性的な辞書（ランダムな大きさ・厚さ・丸背・背リブ・小口窪み・しおり紐）"),
+            ('BOOK_STACK', "📚 本の山・積読 (Book Stack / Messy Pile)", "乱雑・生活感のある本の積み重ね・斜めズレ・物理演算シミュレーション塊"),
+            ('DOCUMENT_STACK', "📄 書類の束・紙の山 (Document / Paper Stack)", "乱雑に積み重なり端が不揃いに飛び出ためくれたリアルな書類束"),
             ('SPEAKER', "🔊 スタジオモニター・スピーカー (Audio Speaker)", "DTM/3Dオーディオ・ベベルキャビネット・ウーファー・ツイーター・LED・グリル"),
             ('CLOCK', "🕰️ ローマ数字・壁掛け時計 (Wall Clock)", "モールディング外枠・3Dローマ数字立体刻印・時刻連動回転針・風防ガラス"),
             ('FLASK', "🧪 魔法フラスコ・ポーション (Potion Flask)", "透過屈折ガラス容器・色変更・表面波歪み・傾き水平追従液体"),
@@ -497,6 +633,370 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('KING', "キング (King: 2.0m)", "幅 2.0m の広々ベッド")
         ],
         default='SINGLE'
+    )
+
+    # Dictionary specific
+    dictionary_rib_count: bpy.props.IntProperty(
+        name="Raised Bands (背リブ本数)",
+        default=4,
+        min=0,
+        max=8,
+        description="背表紙の立体横帯リブの本数 (3~5本が辞書に最適)"
+    )
+    dictionary_color_preset: bpy.props.EnumProperty(
+        name="Cover Color (表紙色)",
+        items=[
+            ('NAVY', "Oxford Navy (ディープネイビー)", "知的で格調高い濃紺・金箔フレーム"),
+            ('BURGUNDY', "Royal Burgundy (ワインバーガンディ)", "重厚な深紅・金箔フレーム"),
+            ('FOREST', "Archive Forest (フォレストグリーン)", "書庫風の深緑・金箔フレーム"),
+            ('CHARCOAL', "Slate Charcoal (スレートチャコール)", "中性的でモダンな濃灰・銀箔フレーム"),
+            ('AMBER', "Vintage Amber (アンバーレザー)", "落ち着いた琥珀本革調・金箔フレーム")
+        ],
+        default='NAVY',
+        description="中性的で落ち着いた辞書表紙のカラーパレット"
+    )
+    dictionary_has_ribbon: bpy.props.BoolProperty(
+        name="Ribbon Bookmark (しおり紐)",
+        default=True,
+        description="ページの間から垂れる布製しおり紐"
+    )
+    dictionary_spine_curvature: bpy.props.FloatProperty(
+        name="Spine Curvature (背の丸み)",
+        default=0.22,
+        min=0.05,
+        max=0.5,
+        description="厚みに連動する背表紙のアーチ丸み度合い"
+    )
+    dictionary_fore_edge_hollow: bpy.props.FloatProperty(
+        name="Fore-edge Hollow (小口の窪み)",
+        default=0.14,
+        min=0.0,
+        max=0.4,
+        description="背の丸みに連動して内側に凹む小口のカーブ量"
+    )
+    dictionary_page_aging: bpy.props.FloatProperty(
+        name="Page Aging (紙の年季・黄ばみ度)",
+        default=0.65,
+        min=0.0,
+        max=1.0,
+        description="紙の酸化・黄ばみ・日焼け・経年ムラの度合い (0.0: 清潔な生成り ~ 1.0: 重厚アンティーク古辞書)"
+    )
+    dictionary_has_runes: bpy.props.BoolProperty(
+        name="Mysterious Runes (謎文字・古代グリフ刻印)",
+        default=True,
+        description="表紙および背表紙に古代文字・謎テキストの箔押し・エンボス模様を刻印"
+    )
+    dictionary_rune_intensity: bpy.props.FloatProperty(
+        name="Rune Intensity (刻印の鮮明度)",
+        default=0.85,
+        min=0.0,
+        max=1.0,
+        description="謎文字の箔押しコントラストとエンボス凹凸強度"
+    )
+    dictionary_foil_style: bpy.props.EnumProperty(
+        name="Foil Style (箔押し様式)",
+        items=[
+            ('GOLD', "アンティーク金箔 (Antique Gold Foil)", "格調高い金箔押し刻印"),
+            ('SILVER', "ミスティック銀箔 (Mystic Silver Foil)", "神秘的な銀箔押し刻印"),
+            ('DEBOSS', "素押し・空押し (Blind Deboss)", "箔なしの渋い革型押し凹み刻印")
+        ],
+        default='GOLD',
+        description="謎文字刻印の質感（金箔 / 銀箔 / 型押し凹み）"
+    )
+    # Book Stack specific
+    book_stack_count: bpy.props.IntProperty(
+        name="Book Count (冊数)",
+        default=5,
+        min=2,
+        max=30,
+        description="積み重ね・散乱させる本の冊数 (2 ~ 30冊)"
+    )
+    book_stack_style: bpy.props.EnumProperty(
+        name="Stack Style (積み様式)",
+        items=[
+            ('MESSY', "📚 乱雑・積読 (Messy Pile)", "地面への衝突・転がり・斜め寄りかかりによるリアルな生活感スタック（めり込みゼロ）"),
+            ('TOWER', "🏢 垂直タワー (Vertical Tower)", "整然と垂直に積まれた本の山（微小なズレ・めり込みゼロ）"),
+            ('SHELF_ROW', "📖 本棚・横並び (Shelf Row)", "背表紙を手前に向け横一列に整列・一部傾き倒れ寄りかかり"),
+            ('DESK_SCATTER', "🎲 机上・床面の散乱 (Desk Scatter)", "平面上に平置き・斜め重ね・小山が散乱する生活感クラスター"),
+            ('PHYSICS', "⚡ 物理演算落下 (Physics Drop & Roll)", "剛体物理シミュレーションによる地面激突・転がり・崩れ・寄りかかり塊")
+        ],
+        default='MESSY',
+        description="本の積み重ね・横並び・散乱の配置アルゴリズム"
+    )
+    book_stack_scatter_radius: bpy.props.FloatProperty(
+        name="Scatter Radius (乱雑・散乱半径)",
+        default=0.08,
+        min=0.01,
+        max=0.45,
+        description="乱雑スタックや物理落下時の水平オフセット・散乱の広がり (m)"
+    )
+    book_stack_drop_dynamics: bpy.props.FloatProperty(
+        name="Drop Dynamics (転がり・乱雑落下度)",
+        default=0.65,
+        min=0.10,
+        max=1.00,
+        description="物理落下のダイナミクス度（値が大きいほど上空から転がり落ちて大胆に倒れ・寄りかかる）"
+    )
+    book_stack_include_ground: bpy.props.BoolProperty(
+        name="Include Ground Plane (地面を含める)",
+        default=False,
+        description="本が落下・接地した地面（木製デスク天板/床）をアセットに含めて結合する"
+    )
+    book_stack_combine: bpy.props.BoolProperty(
+        name="Combine to Single Mesh (1メッシュ結合)",
+        default=True,
+        description="積み重なった全本を1つのStatic Meshに結合（UE/Unityゲーム向け最適化）"
+    )
+    book_stack_mix_styles: bpy.props.BoolProperty(
+        name="Mix Colors & Aging (色・年季の個別ランダム化)",
+        default=True,
+        description="本ごとに12色の表紙色や5種の柄装飾（ルーン/格子/枠線/縞/無地）、紙の黄ばみ・箔押し様式を自動でバラバラにする"
+    )
+    # Curtain specific
+    curtain_style: bpy.props.EnumProperty(
+        name="Curtain Style (カーテン様式)",
+        items=[
+            ('DOUBLE_OPEN', "🪟 左右両開き (Double Open)", "中央スリットで左右に分かれた2枚パネル"),
+            ('SINGLE_LEFT', "◀ 左片開き (Single Left)", "左側から右へ広がる1枚パネル"),
+            ('SINGLE_RIGHT', "▶ 右片開き (Single Right)", "右側から左へ広がる1枚パネル")
+        ],
+        default='DOUBLE_OPEN',
+        description="カーテンの開閉様式（両開き / 片開き）"
+    )
+    curtain_pleats: bpy.props.IntProperty(
+        name="Pleats per Panel (ヒダ数/枚)",
+        default=12,
+        min=4,
+        max=32,
+        description="パネル1枚あたりのプリーツ・波打ち数 (4 ~ 32ヒダ)"
+    )
+    curtain_fabric_type: bpy.props.EnumProperty(
+        name="Fabric Type (布地素材)",
+        items=[
+            ('SHEER_LACE', "✨ 透け感レース (Sheer Lace)", "光を透かす半透明レース生地"),
+            ('HEAVY_VELVET', "👑 重厚ベルベット (Royal Velvet)", "光沢と高級感のある厚手ワインレッド暗幕"),
+            ('NATURAL_LINEN', "🌿 ナチュラルリネン (Natural Linen)", "爽やかな麻・織り目テクスチャの生成り生地"),
+            ('SILK_SATIN', "💎 シルクサテン (Silk Satin)", "光沢と滑らかさを持つエレガントなサテン生地")
+        ],
+        default='SHEER_LACE',
+        description="カーテン布地のPBRマテリアル質感"
+    )
+    curtain_rod_style: bpy.props.EnumProperty(
+        name="Hardware Style (金具素材)",
+        items=[
+            ('BRASS', "🥇 アンティーク真鍮 (Antique Brass)", "真鍮ゴールド"),
+            ('MATTE_BLACK', "🖤 つや消しアイアン (Matte Black)", "インダストリアル黒鉄"),
+            ('CHROME_SILVER', "🥈 クロームシルバー (Chrome)", "光沢シルバー")
+        ],
+        default='BRASS',
+        description="カーテンレールおよびリング金具の素材"
+    )
+    curtain_include_rod: bpy.props.BoolProperty(
+        name="Include Rod & Rings (レール・金具を含める)",
+        default=True,
+        description="カーテンロッド、フィニアル、ブラケット金具を含める"
+    )
+    curtain_simulate_wind: bpy.props.BoolProperty(
+        name="Simulate Wind Force (横風シミュレーション)",
+        default=True,
+        description="Blender内でCloth+風力場により窓からの横風を受けて膨らむ動きをシミュレート"
+    )
+    curtain_wind_strength: bpy.props.FloatProperty(
+        name="Wind Strength (風の強さ)",
+        default=45.0,
+        min=5.0,
+        max=120.0,
+        description="窓から吹き込む横風の強さ"
+    )
+    curtain_bake_static: bpy.props.BoolProperty(
+        name="Bake to Static Mesh (風の膨らみを確定)",
+        default=True,
+        description="風で膨らんだ瞬間を静止メッシュとして確定フリーズ（UE/Unity向け最適化）"
+    )
+    curtain_combine: bpy.props.BoolProperty(
+        name="Combine to Single Mesh (1メッシュ結合)",
+        default=True,
+        description="布地とレール金具を1つのStatic Meshに結合"
+    )
+    curtain_open_amount: bpy.props.FloatProperty(
+        name="Open Amount (開閉度)",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+        description="カーテンの開き具合 (0.0: 閉じる, 1.0: 全開)"
+    )
+    curtain_tied_back: bpy.props.BoolProperty(
+        name="Tied-back Tassels (タッセルで束ねる)",
+        default=False,
+        description="外側の壁際でタッセル（帯紐・房掛け金具）でキュッと束ねる"
+    )
+    curtain_generate_shapekey: bpy.props.BoolProperty(
+        name="Generate Shape Key (UE5モーフターゲット出力)",
+        default=True,
+        description="Basis(閉)とOpen(開)のシェーダーキーをメッシュに埋め込み、UE5で開閉アニメーション可能にする"
+    )
+    curtain_smoothness: bpy.props.EnumProperty(
+        name="Pleat Smoothness (ヒダの丸み・柔らかさ)",
+        items=[
+            ('LOW', "軽量 (Low - 6分割)", "ゲーム背景用軽量メッシュ (1ヒダあたり6分割)"),
+            ('MEDIUM', "標準スムーズ (Medium - 12分割)", "滑らかで柔らかい布地ドレープ (1ヒダあたり12分割)"),
+            ('HIGH', "ハイポリ美麗 (High - 18分割)", "映画・シネマティック用極上滑らかメッシュ (1ヒダあたり18分割)")
+        ],
+        default='MEDIUM',
+        description="カーテンのヒダ（プリーツ）の丸み・細分割クオリティ。角張りをなくし柔らかい布の曲面を表現"
+    )
+
+    # Houseplant specific
+    houseplant_style: bpy.props.EnumProperty(
+        name="Houseplant Style (観葉植物様式)",
+        items=[
+            ('HANGING_MACRAME', "🪢 マクラメ吊り下げハンギング鉢 (Hanging Macrame)", "天井吊りロープ・菱形編みネット・フリンジ房・下垂アイビー（参考画像1スタイル）"),
+            ('PEDESTAL_URN', "🏛️ 脚付き聖杯石鉢・サンスベリア (Pedestal Urn & Snake Plant)", "クラシック脚付き台座・聖杯型石鉢・直立V字剣状葉（参考画像2スタイル）"),
+            ('FLOOR_PALM', "🌴 床置き大型アレカヤシ (Floor Palm)", "床置き陶器鉢・水受け皿・しなやかなアーチ茎・羽状複葉（参考画像3スタイル）"),
+            ('MONSTERA_DESK', "🪴 卓上モンステラ・広葉鉢 (Desk Monstera)", "円筒陶器鉢・ハート型切れ込み広葉")
+        ],
+        default='HANGING_MACRAME',
+        description="インテリア観葉植物・プランターの設置様式"
+    )
+    houseplant_leaf_shape: bpy.props.EnumProperty(
+        name="Leaf Shape (葉の形状パターン)",
+        items=[
+            ('AUTO', "🌿 スタイル標準 (Auto)", "選択した鉢の様式に合わせた標準形状"),
+            ('HEART', "💚 ハート型ポトス (Heart Pothos)", "基部が丸く心臓型、先端が尖る滑らかな二重曲面葉"),
+            ('IVY_LOBED', "🍁 3裂イングリッシュアイビー (3-Lobed Ivy)", "中央が長く伸び、左右にシャープな角が飛び出すクラシック洋館ツタ葉"),
+            ('PEARLS', "🟢 グリーンネックレス (String of Pearls)", "エンドウ豆のような丸い多肉ビーズ玉が数珠つなぎに連なる独特の多肉植物"),
+            ('FERN', "🌿 ボストンファーン・シダ (Boston Fern)", "茎の両側に細かく波打つフリル小葉がぎっしり密生するシダ葉"),
+            ('COIN', "🪙 ユーカリ・コイン葉 (Eucalyptus Coin)", "茎を挟んで向かい合って生える平たく丸い円形コイン状の対生葉"),
+            ('FIDDLE', "🎻 カシワバ・バイオリン葉 (Fiddle Leaf Fig)", "縁が大きくうねり、基部がくびれて先端が広がるバイオリン型ワイド大葉")
+        ],
+        default='AUTO',
+        description="葉の幾何形状・品種シルエットのバリエーション"
+    )
+    houseplant_density: bpy.props.EnumProperty(
+        name="Leaf Density (葉のボリューム・密度)",
+        items=[
+            ('LOW', "すっきり (Low)", "軽快で控えめな葉数"),
+            ('MEDIUM', "標準ふんわり (Medium)", "自然なバランスの美しいボリューム"),
+            ('HIGH', "鬱蒼・密集 (High)", "存在感のある生い茂った葉数")
+        ],
+        default='MEDIUM',
+        description="つるの本数・葉の繁茂ボリューム"
+    )
+    houseplant_pot_material: bpy.props.EnumProperty(
+        name="Pot Material (鉢の素材)",
+        items=[
+            ('TERRACOTTA', "🧱 素焼きテラコッタ (Terracotta)", "温かみのある赤褐色素焼き鉢"),
+            ('ANTIQUE_STONE', "🏛️ アンティーク石造り (Antique Stone)", "風化大理石・彫刻石鉢"),
+            ('GLAZED_CERAMIC', "⚪ 釉薬ホワイト陶器 (Glazed Ceramic)", "滑らかな光沢ホワイト陶器"),
+            ('AGED_BRONZE', "🥉 古色ブロンズ (Aged Bronze)", "アンティーク金属鉢")
+        ],
+        default='TERRACOTTA',
+        description="植木鉢のPBRプロシージャル質感"
+    )
+    houseplant_leaf_color: bpy.props.EnumProperty(
+        name="Leaf Color (葉の色調)",
+        items=[
+            ('VIBRANT_GREEN', "🌱 鮮やかな若葉 (Vibrant Green)", "瑞々しい黄緑〜明るいグリーン"),
+            ('DEEP_FOREST', "🌲 落ち着いた深緑 (Deep Forest)", "シックな濃緑・日陰葉"),
+            ('JADE_OLIVE', "🫒 オリーブグリーン (Jade Olive)", "上品な翡翠・オリーブ色")
+        ],
+        default='VIBRANT_GREEN',
+        description="葉の基本カラーとSSS散乱光"
+    )
+    houseplant_variegated: bpy.props.BoolProperty(
+        name="Variegated (斑入り葉)",
+        default=False,
+        description="サンスベリアやポトスの外縁にクリーム黄色の斑（ふ）を入れる"
+    )
+    houseplant_combine: bpy.props.BoolProperty(
+        name="Combine Mesh (1つに結合)",
+        default=True,
+        description="UE5 / Unity向けに1つのStatic Meshとして最適化結合"
+    )
+
+    # Candle Stand specific
+    candle_stand_style: bpy.props.EnumProperty(
+        name="Candle Style (燭台様式)",
+        items=[
+            ('HANGING_CHANDELIER', "🏰 吊り下げホイール・シャンデリア (Hanging Chandelier)", "天井吊り下げ・円形アイアンホイール・複数灯・中央上段灯（参考画像スタイル）"),
+            ('TABLE_CANDELABRA', "🪑 卓上枝分かれ多灯燭台 (Tabletop Candelabra)", "S字湾曲アーム・ろくろ挽き台座・3〜5灯"),
+            ('CHAMBERSTICK', "🕯️ 手持ち受け皿付き単灯燭台 (Chamberstick)", "洋館ホラー・リング取手・幅広受け皿・1灯"),
+            ('WALL_SCONCE', "🧱 壁掛けブラケット燭台 (Wall Sconce)", "壁面プレート・前方湾曲アーム・1〜2灯")
+        ],
+        default='HANGING_CHANDELIER',
+        description="アンティーク燭台の構造・設置スタイル"
+    )
+    candle_count: bpy.props.IntProperty(
+        name="Candle Count (蝋燭本数)",
+        default=6,
+        min=1,
+        max=16,
+        description="配置する蝋燭の本数（シャンデリア時は外周配置、卓上時はアーム数に連動）"
+    )
+    candle_melt_level: bpy.props.FloatProperty(
+        name="Melt & Drips (蝋の溶け・垂れ度)",
+        default=0.50,
+        min=0.0,
+        max=1.0,
+        description="蝋燭の溶け崩れ具合および側面に垂れる立体的な「蝋だれ（Wax Drips）」の量"
+    )
+    candle_has_flame: bpy.props.BoolProperty(
+        name="Show Flame Mesh (炎を点灯)",
+        default=True,
+        description="涙滴型の炎メッシュ（青〜橙〜黄グラデーション発光シェーダー）を表示"
+    )
+    candle_add_lights: bpy.props.BoolProperty(
+        name="Add Point Lights (実体Point Lightを配置)",
+        default=True,
+        description="炎の各位置に暖色（2200K〜2500K）のBlender Point Lightを自動配置して親子付け"
+    )
+    candle_holder_material: bpy.props.EnumProperty(
+        name="Holder Material (燭台金具素材)",
+        items=[
+            ('FORGED_IRON', "🖤 鍛造黒鉄 (Forged Iron)", "重厚な黒皮鉄・アンティークアイアン（参考画像スタイル）"),
+            ('ANTIQUE_BRASS', "🥇 古色真鍮 (Antique Brass)", "渋いブロンズゴールド・緑青"),
+            ('TARNISHED_SILVER', "🥈 燻し銀 (Tarnished Silver)", "貴族の館の銀食器風・黒ずみ"),
+            ('RUSTY_IRON', "🟫 錆びた鉄 (Rusty Iron)", "ダンジョン・廃墟風の赤錆")
+        ],
+        default='FORGED_IRON',
+        description="燭台・フレームのPBRプロシージャル金属素材"
+    )
+    candle_wax_material: bpy.props.EnumProperty(
+        name="Wax Material (蝋燭素材)",
+        items=[
+            ('IVORY_BEESWAX', "🍯 蜜蝋アイボリー (Beeswax)", "温かみのある半透明感・古色蜜蝋"),
+            ('ANTIQUE_WHITE', "⚪ 古色白蝋 (Antique White)", "クラシックな白蝋"),
+            ('BLOOD_RED', "🍷 深紅・ゴシック (Blood Red)", "儀式・吸血鬼・ダークファンタジー"),
+            ('BLACK_WAX', "🖤 漆黒蝋 (Black Wax)", "オカルト・ブラックキャンドル")
+        ],
+        default='IVORY_BEESWAX',
+        description="蝋燭の半透明（Subsurface Scattering）PBRシェーダー素材"
+    )
+    candle_combine: bpy.props.BoolProperty(
+        name="Combine Mesh (1つに結合)",
+        default=True,
+        description="UE5 / Unity向けに1つのStatic Meshとして最適化結合"
+    )
+
+    # Document Stack specific
+    doc_layer_count: bpy.props.IntProperty(
+        name="Paper Layers (紙層数)",
+        default=26,
+        min=8,
+        max=50,
+        description="重なる紙束の層数 (8 ~ 50層)"
+    )
+    doc_messiness: bpy.props.FloatProperty(
+        name="Messiness (乱雑・飛び出し度)",
+        default=0.65,
+        min=0.0,
+        max=1.0,
+        description="紙の回転ズレ・端の飛び出し・角のカール度合い"
+    )
+    doc_include_folders: bpy.props.BoolProperty(
+        name="Include Folders (フォルダー混在)",
+        default=True,
+        description="クラフト紙・マニラフォルダー・色付き厚紙をランダムに混入させる"
     )
 
     # Bookshelf specific
@@ -699,9 +1199,9 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         description="リアルジオメトリ凹凸のための細分化レベル"
     )
     apply_disp_to_mesh: bpy.props.BoolProperty(
-        name="メッシュへベイク (Apply to Mesh)",
-        default=True,
-        description="Displace モディファイアを適用してUnity/FBXエクスポート可能な実メッシュにする"
+        name="生成時にメッシュへ即時適用 (Apply to Mesh)",
+        default=False,
+        description="オフの場合、DisplaceやBevel等のモディファイアを残して後から微調整可能にします（FBX出力時に最後の一発で自動適用されます）"
     )
 
     bake_resolution: bpy.props.EnumProperty(
@@ -1353,6 +1853,12 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default=0.14, min=0.0, max=0.45,
         description="土台メッシュ自体の波打ち・傾き・荒削りな出っ張りの度合い"
     )
+    castle_wall_combine: bpy.props.BoolProperty(
+        name="🎮 1つのStatic Meshに結合",
+        default=True,
+        description="Geometry Nodesの石材インスタンスを実体化し、モルタル芯材と結合してゲームエンジン向け単一メッシュとして確定"
+    )
+
 
     # ── CAVE (Dungeon / Cave System) Properties ──
     # ── CAVE Path & Rock Style Properties ──
@@ -1768,6 +2274,220 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default=0.25, min=0.0, max=1.0,
         description="窓台や下部に生える自然な苔と湿気"
     )
+    window_sash_mode: bpy.props.EnumProperty(
+        name="開閉サッシュ方式 (Sash Mode)",
+        items=[
+            ('DOUBLE_CASEMENT', "🚪 両開き窓 (French Casement)", "左右2枚の窓障子が外側にパカッと開く洋館・伝統建築の王道スタイル"),
+            ('SINGLE_LEFT', "🚪 左片開き (Single Left)", "左側の蝶番を中心に開く片開き窓"),
+            ('SINGLE_RIGHT', "🚪 右片開き (Single Right)", "右側の蝶番を中心に開く片開き窓"),
+            ('FIXED', "🧱 固定窓 (Fixed Sash)", "開閉しない固定窓")
+        ],
+        default='DOUBLE_CASEMENT'
+    )
+    window_open_angle: bpy.props.FloatProperty(
+        name="開閉角度 (Open Angle)",
+        default=0.0, min=0.0, max=90.0,
+        unit='ROTATION',
+        description="窓の開閉角度（0度で閉、90度で全開。UE側でもこのヒンジ回転軸で開閉します）"
+    )
+    window_open_direction: bpy.props.EnumProperty(
+        name="開閉方向 (Open Direction)",
+        items=[
+            ('OUTWARD', "外開き (Outward)", "外側に向かって開く（ヨーロッパ標準）"),
+            ('INWARD', "内開き (Inward)", "内側に向かって開く")
+        ],
+        default='OUTWARD'
+    )
+    window_has_handle: bpy.props.BoolProperty(
+        name="🗝️ クレモン錠・ハンドル (Espagnolette Handle)",
+        default=True,
+        description="中央に真鍮/アンティーク鍛鉄の縦ロッドと開閉レバーハンドルを配置"
+    )
+    window_has_hinges: bpy.props.BoolProperty(
+        name="🔩 蝶番金具 (Hinges)",
+        default=True,
+        description="枠とサッシュの間にリアルな回転蝶番金具を配置"
+    )
+    window_sash_material: bpy.props.EnumProperty(
+        name="サッシュ材質 (Sash Material)",
+        items=[
+            ('DARK_WOOD', "🪵 深色木製 (Dark Walnut / Oak)", "重厚で温かみのあるアンティーク木製サッシュ"),
+            ('WHITE_WOOD', "⚪ 白塗装木製 (White Painted Wood)", "フレンチ・カントリー洋館スタイルの白塗装木製"),
+            ('WROUGHT_IRON', "⚙️ 黒鍛鉄 (Wrought Iron)", "中世城塞・ゴシック・インダストリアル風の黒鍛鉄"),
+            ('BRONZE', "🥉 アンティーク青銅 (Aged Bronze)", "クラシカルな緑青・ブロンズサッシュ")
+        ],
+        default='DARK_WOOD'
+    )
+    window_combine: bpy.props.BoolProperty(
+        name="単一メッシュ結合 (Combine into 1 Mesh)",
+        default=False,
+        description="オフの場合、UE開閉用にFrameとSashが正確なヒンジピボット付き親子階層で出力されます"
+    )
+
+    # Spiral Stairs Properties
+    spiral_stairs_style: bpy.props.EnumProperty(
+        name="階段スタイル (Style)",
+        items=[
+            ('CLASSIC_WOOD', "🪵 クラシック・ウッド (Classic Wood)", "重厚なウォールナット木製踏み板と黒鍛鉄の手すり・支柱"),
+            ('CAST_IRON', "⚙️ ヴィクトリアン鋳鉄 (Victorian Cast Iron)", "優雅な透かし彫り・黒塗装または緑青の完全鋳鉄製螺旋階段"),
+            ('CASTLE_STONE', "🏰 古城の石造階段 (Castle Stone)", "風化した重厚な石段と武骨なアイアン手すり"),
+            ('MODERN_STEEL', "🏢 モダン・スチール (Modern Minimal)", "洗練されたステンレス/スチール製スリムデザイン")
+        ],
+        default='CLASSIC_WOOD'
+    )
+    spiral_stairs_step_count: bpy.props.IntProperty(
+        name="段数 (Step Count)",
+        default=20, min=6, max=60,
+        description="螺旋階段の段数"
+    )
+    spiral_stairs_radius: bpy.props.FloatProperty(
+        name="外径半径 (Outer Radius)",
+        default=1.2, min=0.6, max=3.5,
+        unit='LENGTH',
+        description="中心軸から踏み板先端・手すりまでの外側半径 (m)"
+    )
+    spiral_stairs_inner_radius: bpy.props.FloatProperty(
+        name="中心支柱半径 (Center Radius)",
+        default=0.15, min=0.05, max=0.6,
+        unit='LENGTH',
+        description="センターピラー（支柱）の半径 (m)"
+    )
+    spiral_stairs_step_height: bpy.props.FloatProperty(
+        name="段高・蹴上げ (Step Height)",
+        default=0.18, min=0.10, max=0.30,
+        unit='LENGTH',
+        description="1段あたりの垂直高さ・蹴上げ (m)"
+    )
+    spiral_stairs_step_angle: bpy.props.FloatProperty(
+        name="1段の回転角 (Step Angle)",
+        default=18.0, min=10.0, max=36.0,
+        description="1段ごとに回転する角度 (度)"
+    )
+    spiral_stairs_baluster_style: bpy.props.EnumProperty(
+        name="手すり子装飾 (Baluster Style)",
+        items=[
+            ('ORNATE_TURNED', "⚜️ 旋盤飾り球・古典 (Ornate Turned)", "くびれと球体の飾りがあるアンティーク調バラスター"),
+            ('SIMPLE_ROUND', "⚪ シンプル丸棒 (Round Bar)", "すっきりとした円形断面バー"),
+            ('SQUARE_BAR', "⬛ 角柱バー (Square Bar)", "頑丈な正方形断面バー")
+        ],
+        default='ORNATE_TURNED'
+    )
+    spiral_stairs_has_pillar: bpy.props.BoolProperty(
+        name="🏛️ センター支柱 (Center Pillar)",
+        default=True,
+        description="中央に支柱ポールを配置するか"
+    )
+    spiral_stairs_has_handrail: bpy.props.BoolProperty(
+        name="〰️ 螺旋手すり (Spiral Handrail)",
+        default=True,
+        description="滑らかに連続する螺旋手すりと手すり子を配置するか"
+    )
+    spiral_stairs_tread_material: bpy.props.EnumProperty(
+        name="踏み板マテリアル (Tread Material)",
+        items=[
+            ('DARK_WALNUT', "🪵 ウォールナット (Dark Walnut)", "重厚で深みのある木目"),
+            ('OAK', "🪵 ナチュラルオーク (Natural Oak)", "明るい木目"),
+            ('CAST_IRON', "⚙️ 黒鋳鉄 (Cast Iron)", "ざらついたブラックメタル"),
+            ('STONE', "🏰 風化石材 (Aged Stone)", "古城風の石肌")
+        ],
+        default='DARK_WALNUT'
+    )
+    spiral_stairs_metal_material: bpy.props.EnumProperty(
+        name="金属部マテリアル (Metal Material)",
+        items=[
+            ('CAST_IRON', "⚙️ 黒鍛鉄 (Forged Iron)", "伝統的な黒皮鉄"),
+            ('BRASS', "✨ 真鍮・アンティークゴールド (Aged Brass)", "経年変化した高級真鍮"),
+            ('STAINLESS', "🔘 つや消しスチール (Brushed Steel)", "近代的なヘアライン金属")
+        ],
+        default='CAST_IRON'
+    )
+    spiral_stairs_combine: bpy.props.BoolProperty(
+        name="🔗 1つのオブジェクトに結合 (Combine Mesh)",
+        default=True,
+        description="踏み板・手すり・支柱を1つのメッシュオブジェクトに結合（パーツごとにマルチマテリアル割り当て）"
+    )
+
+    # Stone Stairs Properties
+    stone_stairs_style: bpy.props.EnumProperty(
+        name="階段・欄干様式 (Stair Style)",
+        items=[
+            ('CLASSICAL_BALUSTRADE', "🏛️ クラシカル石造欄干 (Classical Balustrade)", "動画準拠の壺型バラスター・彫刻親柱・モールディング笠木"),
+            ('DUNGEON_FORGED_IRON', "⛓️ 地下ダンジョン黒鍛鉄 (Dungeon Forged Iron)", "年季の入った地下室・ワインセラー風の武骨な黒鍛鉄パイプ手すり"),
+            ('MEDIEVAL_STONE_WALL', "🏰 古城・カタコンベ石積み袖壁 (Medieval Stone Wall)", "厚みのある重厚な低い石壁と笠石"),
+            ('SIMPLE_STEPS', "🪨 欄干なし石段のみ (Bare Stone Steps)", "自然な風化石畳の階段単体")
+        ],
+        default='CLASSICAL_BALUSTRADE'
+    )
+    stone_stairs_step_count: bpy.props.IntProperty(
+        name="段数 (Step Count)",
+        default=12, min=3, max=40,
+        description="階段の段数"
+    )
+    stone_stairs_width: bpy.props.FloatProperty(
+        name="階段幅 (Stair Width)",
+        default=1.8, min=0.8, max=6.0,
+        unit='LENGTH',
+        description="階段の横幅 (m)"
+    )
+    stone_stairs_step_depth: bpy.props.FloatProperty(
+        name="踏み面奥行き (Step Depth)",
+        default=0.32, min=0.20, max=0.60,
+        unit='LENGTH',
+        description="1段あたりの水平奥行き (m)"
+    )
+    stone_stairs_step_height: bpy.props.FloatProperty(
+        name="蹴上げ高さ (Step Height)",
+        default=0.18, min=0.10, max=0.30,
+        unit='LENGTH',
+        description="1段あたりの垂直高さ (m)"
+    )
+    stone_stairs_rail_placement: bpy.props.EnumProperty(
+        name="手すり配置 (Railing Placement)",
+        items=[
+            ('BOTH_SIDES', "左右両側 (Both Sides)", "両側に手すり・欄干を配置（大階段風）"),
+            ('LEFT_ONLY', "左側のみ (Left Side)", "左側のみに手すりを配置（右側が壁の地下階段等）"),
+            ('RIGHT_ONLY', "右側のみ (Right Side)", "右側のみに手すりを配置（左側が壁の地下階段等）"),
+            ('NONE', "なし (None)", "手すりを配置しない")
+        ],
+        default='BOTH_SIDES'
+    )
+    stone_stairs_wear_amount: bpy.props.FloatProperty(
+        name="中央のすり減り (Tread Wear)",
+        default=0.35, min=0.0, max=1.0,
+        description="長年の歩行による石段中央のくぼみ・摩耗凹み"
+    )
+    stone_stairs_damage: bpy.props.FloatProperty(
+        name="角欠け・チッピング (Edge Damage)",
+        default=0.40, min=0.0, max=1.0,
+        description="経年劣化による石材エッジの欠け・ノミ削り不揃い"
+    )
+    stone_stairs_moss: bpy.props.FloatProperty(
+        name="苔・湿気 (Moss & Moisture)",
+        default=0.30, min=0.0, max=1.0,
+        description="隅や足元に生える湿った苔と経年黒ずみ"
+    )
+    stone_stairs_material: bpy.props.EnumProperty(
+        name="石材マテリアル (Stone Material)",
+        items=[
+            ('AGED_COBBLE', "🪨 風化石畳 (Aged Cobble / Cellar)", "湿り気と目地黒ずみのあるクラシック地下石畳"),
+            ('DARK_FLAGSTONE', "⬛ 暗黒石・スレート (Dark Flagstone)", "カタコンベ・地下ダンジョン風のダークストーン"),
+            ('MEDIEVAL_SANDSTONE', "🏰 中世砂岩 (Medieval Sandstone)", "古城や修道院の温かみのあるライムストーン"),
+            ('ANCIENT_RUINS', "🏛️ 古代遺跡大理石 (Ancient Marble)", "白く風化したアンティークトラバーチン")
+        ],
+        default='AGED_COBBLE'
+    )
+    stone_stairs_include_landing: bpy.props.BoolProperty(
+        name="🏢 最下段の踊り場・地下フロア延長 (Bottom Landing)",
+        default=True,
+        description="最下段の先に地下フロアへ接続する石畳スラブを延長配置"
+    )
+    stone_stairs_combine: bpy.props.BoolProperty(
+        name="🔗 1つのオブジェクトに結合 (Combine Mesh)",
+        default=True,
+        description="石段・欄干手すり・親柱を1つのメッシュオブジェクトに結合"
+    )
+
+
 
 
 

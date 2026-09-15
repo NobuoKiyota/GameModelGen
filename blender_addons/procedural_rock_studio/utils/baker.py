@@ -1,4 +1,4 @@
-﻿import bpy
+import bpy
 import os
 
 def apply_baked_pbr_material(obj, baked_textures):
@@ -40,9 +40,12 @@ def apply_baked_pbr_material(obj, baked_textures):
         links.new(node_norm_tex.outputs['Color'], node_norm_map.inputs['Color'])
         links.new(node_norm_map.outputs['Normal'], node_bsdf.inputs['Normal'])
 
-    # オブジェクトのマテリアルを差し替え
+    # オブジェクトのマテリアルを差し替え (全ポリゴンをスロット0に統一)
     obj.data.materials.clear()
     obj.data.materials.append(mat)
+    if hasattr(obj.data, 'polygons'):
+        for p in obj.data.polygons:
+            p.material_index = 0
     return mat
 
 

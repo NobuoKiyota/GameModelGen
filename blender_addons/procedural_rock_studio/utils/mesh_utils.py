@@ -5,8 +5,13 @@ import random
 import os
 
 def apply_geometry_displacement(obj, disp_image_path=None, strength=0.15, midlevel=0.5,
-                               subdivisions=2, apply_modifier=True):
-    """Displace Modifier ＋ Subdivision Surface でメッシュ実ジオメトリを凸凹立体化"""
+                               subdivisions=2, apply_modifier=True, vertex_group=None,
+                               tex_type=None, tex_scale=0.35, texture_coords=None):
+    """Displace Modifier ＋ Subdivision Surface でメッシュ実ジオメトリを凸凹立体化
+    - vertex_group: 指定時は特定部位（例: 床天面 Top_Surface）のみに変位を限定
+    - tex_type: 'IMAGE', 'CLOUDS', 'VORONOI' 等
+    - texture_coords: 'UV', 'OBJECT', 'LOCAL' 等
+    """
     if not obj or obj.type != 'MESH':
         return
     
@@ -32,25 +37,37 @@ def apply_geometry_displacement(obj, disp_image_path=None, strength=0.15, midlev
                     pass
 
     # 2. ディスプレイスメントテクスチャ作成
-    tex_disp = bpy.data.textures.new(name=obj.name + "_GeoDispTex", type='IMAGE' if (disp_image_path and os.path.exists(disp_image_path)) else 'CLOUDS')
-    if disp_image_path and os.path.exists(disp_image_path):
+    chosen_type = tex_type
+    if not chosen_type:
+        chosen_type = 'IMAGE' if (disp_image_path and os.path.exists(disp_image_path)) else 'CLOUDS'
+
+    tex_disp = bpy.data.textures.new(name=obj.name + "_GeoDispTex", type=chosen_type)
+    if chosen_type == 'IMAGE' and disp_image_path and os.path.exists(disp_image_path):
         try:
             img = bpy.data.images.load(disp_image_path, check_existing=True)
             img.colorspace_settings.name = 'Non-Color'
             tex_disp.image = img
         except Exception:
             tex_disp.type = 'CLOUDS'
-            tex_disp.noise_scale = 0.35
+            tex_disp.noise_scale = tex_scale
+    elif chosen_type == 'VORONOI':
+        tex_disp.distance_metric = 'DISTANCE'
+        tex_disp.noise_scale = tex_scale
     else:
-        tex_disp.noise_scale = 0.35
+        tex_disp.noise_scale = tex_scale
         tex_disp.noise_depth = 3
 
     # 3. Displace Modifier 適用
     disp_mod = obj.modifiers.new(name="Disp_Geometry", type='DISPLACE')
     disp_mod.texture = tex_disp
-    disp_mod.texture_coords = 'UV' if len(obj.data.uv_layers) > 0 else 'LOCAL'
+    if texture_coords:
+        disp_mod.texture_coords = texture_coords
+    else:
+        disp_mod.texture_coords = 'UV' if len(obj.data.uv_layers) > 0 else 'LOCAL'
     disp_mod.strength = strength
     disp_mod.mid_level = midlevel
+    if vertex_group and vertex_group in obj.vertex_groups:
+        disp_mod.vertex_group = vertex_group
 
     if apply_modifier:
         try:

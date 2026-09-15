@@ -424,3 +424,72 @@ def create_window_iron_material(name="Window_Iron"):
     return mat
 
 
+def create_window_sash_material(name="Window_Sash", mat_type="DARK_WOOD"):
+    """Creates a realistic window sash material (Dark Walnut, White Paint, Wrought Iron, Bronze)."""
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (300, 0)
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (0, 0)
+
+    node_coord = nodes.new(type='ShaderNodeTexCoord')
+    node_coord.location = (-600, -200)
+    node_noise = nodes.new(type='ShaderNodeTexNoise')
+    node_noise.location = (-400, -200)
+    node_noise.inputs['Scale'].default_value = 24.0
+    node_noise.inputs['Detail'].default_value = 4.0
+    links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
+
+    node_bump = nodes.new(type='ShaderNodeBump')
+    node_bump.location = (-200, -200)
+    links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    if mat_type == 'WHITE_WOOD':
+        node_bsdf.inputs['Base Color'].default_value = (0.88, 0.86, 0.84, 1.0)
+        node_bsdf.inputs['Roughness'].default_value = 0.45
+        node_bump.inputs['Strength'].default_value = 0.03
+    elif mat_type == 'WROUGHT_IRON':
+        node_bsdf.inputs['Base Color'].default_value = (0.08, 0.08, 0.09, 1.0)
+        node_bsdf.inputs['Metallic'].default_value = 0.85
+        node_bsdf.inputs['Roughness'].default_value = 0.38
+        node_bump.inputs['Strength'].default_value = 0.06
+    elif mat_type == 'BRONZE':
+        node_bsdf.inputs['Base Color'].default_value = (0.45, 0.35, 0.22, 1.0)
+        node_bsdf.inputs['Metallic'].default_value = 0.80
+        node_bsdf.inputs['Roughness'].default_value = 0.35
+        node_bump.inputs['Strength'].default_value = 0.04
+    else: # DARK_WOOD
+        node_bsdf.inputs['Base Color'].default_value = (0.16, 0.10, 0.06, 1.0)
+        node_bsdf.inputs['Roughness'].default_value = 0.40
+        node_bump.inputs['Strength'].default_value = 0.05
+
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+    return mat
+
+
+def create_window_brass_material(name="Window_Brass"):
+    """Creates an antique polished brass material for window latch/handles and hinges."""
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (300, 0)
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (0, 0)
+    node_bsdf.inputs['Base Color'].default_value = (0.82, 0.65, 0.26, 1.0)
+    node_bsdf.inputs['Metallic'].default_value = 0.92
+    node_bsdf.inputs['Roughness'].default_value = 0.28
+
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+    return mat
+
+

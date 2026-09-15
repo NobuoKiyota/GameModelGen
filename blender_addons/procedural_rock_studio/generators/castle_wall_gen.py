@@ -429,6 +429,7 @@ def get_or_create_castle_stone_mat(mat_name):
     n_bsdf.inputs['Roughness'].default_value = 0.85
     return mat
 
+
 def get_or_create_castle_mortar_mat(mat_name):
     mat = bpy.data.materials.get(mat_name)
     if mat and mat.node_tree:
@@ -473,6 +474,88 @@ def get_or_create_castle_mortar_mat(mat_name):
     n_bsdf.inputs['Roughness'].default_value = 0.95
     return mat
 
+
+
+def cleanup_stone_assets(base_name):
+    """散布用の元石材アセットコレクションとオブジェクトを完全クリーンアップ"""
+    col_name = base_name + '_StoneAssets'
+    if col_name in bpy.data.collections:
+        old_col = bpy.data.collections[col_name]
+        for obj in list(old_col.objects):
+            mesh = obj.data if obj.type == 'MESH' else None
+            bpy.data.objects.remove(obj, do_unlink=True)
+            if mesh and mesh.users == 0:
+                bpy.data.meshes.remove(mesh)
+        bpy.data.collections.remove(old_col)
+
+
+def convert_castle_wall_to_game_mesh(context, wall_obj, mat_stone=None):
+    """
+    Geometry Nodesの石材散布インスタンスを実体化（Realize Instances）し、
+    モルタル芯材と結合して単一のゲームエンジン向けStatic Meshとしてモディファイアを確定・適用する
+    """
+    if not wall_obj or wall_obj.type != 'MESH':
+        return False
+    gn_mod = wall_obj.modifiers.get('CastleWallScatter')
+    if not gn_mod or gn_mod.type != 'NODES' or not gn_mod.node_group:
+        return False
+    tree = gn_mod.node_group
+
+    # Realize Instances ノードを探す、無ければ作成
+    n_real = None
+    for n in tree.nodes:
+        if n.type == 'GEOMETRY_NODE_REALIZE_INSTANCES' or 'RealizeInstances' in n.bl_idname:
+            n_real = n
+            break
+    if not n_real:
+        n_real = tree.nodes.new('GeometryNodeRealizeInstances')
+        n_real.location = (780, 100)
+
+    n_join = None
+    n_out = None
+    for n in tree.nodes:
+        if n.type == 'JOIN_GEOMETRY':
+            n_join = n
+        elif n.type == 'GROUP_OUTPUT':
+            n_out = n
+
+    if n_join and n_out:
+        tree.links.new(n_join.outputs['Geometry'], n_real.inputs['Geometry'])
+        tree.links.new(n_real.outputs['Geometry'], n_out.inputs['Geometry'])
+
+    # マテリアルスロット確認（石材マテリアルが不足していれば追加）
+    if mat_stone:
+        existing_mats = [m.name for m in wall_obj.data.materials if m]
+        if mat_stone.name not in existing_mats:
+            wall_obj.data.materials.append(mat_stone)
+
+    # モディファイア適用
+    context.view_layer.objects.active = wall_obj
+    wall_obj.select_set(True)
+    try:
+        bpy.ops.object.modifier_apply(modifier=gn_mod.name)
+    except Exception as e:
+        print(f"[Castle Wall] Modifier apply error: {e}")
+        return False
+
+    # ゲームエンジン・ベイク用のUVマップ自動生成
+    try:
+        if not wall_obj.data.uv_layers:
+            wall_obj.data.uv_layers.new(name="UVMap")
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.01)
+        bpy.ops.object.mode_set(mode='OBJECT')
+    except Exception as e:
+        print(f"[Castle Wall] UV unwrapping notice: {e}")
+        try:
+            bpy.ops.object.mode_set(mode='OBJECT')
+        except Exception:
+            pass
+
+    return True
+
+
 def create_castle_wall_scene(
     context,
     name='Castle_Wall',
@@ -491,7 +574,8 @@ def create_castle_wall_scene(
     jitter=0.04,
     batter=0.18,
     roughness=0.14,
-    target_obj=None
+    target_obj=None,
+    combine_mesh=True
 ):
     col = context.collection
     mat_stone = get_or_create_castle_stone_mat(name + '_Stone_Mat')
@@ -501,76 +585,53 @@ def create_castle_wall_scene(
         name, seed=seed, style=wall_style, aspect=stone_aspect,
         roundness=stone_roundness, chipping=stone_chipping, mat_stone=mat_stone
     )
-    wall_obj_name = name + '_Core'
 
+    # 既存オブジェクトの特定とクリーンアップ（再生成時の重複防止）
+    existing_names = [name, name + '_Core']
     if not target_obj:
         act = context.active_object
-        if act and act.type == 'MESH' and ('CastleWallScatter' in act.modifiers or '_Core' in act.name):
+        if act and act.type == 'MESH' and (act.name in existing_names or 'CastleWallScatter' in act.modifiers or '_Core' in act.name or 'Castle_Wall' in act.name):
             target_obj = act
 
-    if target_obj and target_obj.name in bpy.data.objects:
-        wall_obj = target_obj
-        bm = bmesh.new()
-        build_castle_wall_base_mesh(
-            bm, shape=wall_shape, length=length, height=height, thickness=thickness,
-            crenels=crenels, seed=seed, mat_mortar_idx=0,
-            batter=batter, roughness=roughness
-        )
-        bm.to_mesh(wall_obj.data)
-        bm.free()
-        wall_obj.data.update()
-    else:
-        if wall_obj_name in bpy.data.objects:
-            old_w = bpy.data.objects[wall_obj_name]
-            old_mesh = old_w.data if old_w.type == 'MESH' else None
-            bpy.data.objects.remove(old_w, do_unlink=True)
+    target_name = target_obj.name if target_obj else name
+    for obj_n in list(set([target_name, name, name + '_Core'])):
+        if obj_n in bpy.data.objects:
+            old_obj = bpy.data.objects[obj_n]
+            old_mesh = old_obj.data if old_obj.type == 'MESH' else None
+            bpy.data.objects.remove(old_obj, do_unlink=True)
             if old_mesh and old_mesh.users == 0:
                 bpy.data.meshes.remove(old_mesh)
 
-        bm = bmesh.new()
-        build_castle_wall_base_mesh(
-            bm, shape=wall_shape, length=length, height=height, thickness=thickness,
-            crenels=crenels, seed=seed, mat_mortar_idx=0,
-            batter=batter, roughness=roughness
-        )
-        mesh = bpy.data.meshes.new(wall_obj_name)
-        bm.to_mesh(mesh)
-        bm.free()
-        wall_obj = bpy.data.objects.new(wall_obj_name, mesh)
-        col.objects.link(wall_obj)
+    wall_obj_name = name if combine_mesh else (name + '_Core')
+
+    bm = bmesh.new()
+    build_castle_wall_base_mesh(
+        bm, shape=wall_shape, length=length, height=height, thickness=thickness,
+        crenels=crenels, seed=seed, mat_mortar_idx=0,
+        batter=batter, roughness=roughness
+    )
+    mesh = bpy.data.meshes.new(wall_obj_name)
+    bm.to_mesh(mesh)
+    bm.free()
+    wall_obj = bpy.data.objects.new(wall_obj_name, mesh)
+    col.objects.link(wall_obj)
 
     context.view_layer.objects.active = wall_obj
     wall_obj.select_set(True)
 
-    if wall_obj.data.materials:
-        wall_obj.data.materials[0] = mat_mortar
-    else:
-        wall_obj.data.materials.append(mat_mortar)
+    # マテリアル設定: スロット0にモルタル芯材、スロット1に石材ブロック
+    wall_obj.data.materials.append(mat_mortar)
+    wall_obj.data.materials.append(mat_stone)
 
-    gn_mod = wall_obj.modifiers.get('CastleWallScatter')
-    if not gn_mod or gn_mod.type != 'NODES':
-        gn_mod = wall_obj.modifiers.new('CastleWallScatter', 'NODES')
-
+    gn_mod = wall_obj.modifiers.new('CastleWallScatter', 'NODES')
     gn_tree = create_castle_wall_geometry_nodes(
         name + '_Scatter_GN', stone_col, seed=seed,
         density=density, min_dist=min_dist, jitter=jitter
     )
     gn_mod.node_group = gn_tree
-    return wall_obj, stone_col
 
-def convert_castle_wall_to_game_mesh(context, wall_obj):
-    if not wall_obj or wall_obj.type != 'MESH':
-        return False
-    gn_mod = wall_obj.modifiers.get('CastleWallScatter')
-    if not gn_mod or gn_mod.type != 'NODES' or not gn_mod.node_group:
-        return False
-    tree = gn_mod.node_group
-    n_real = tree.nodes.new('GeometryNodeRealizeInstances')
-    n_join = tree.nodes.get('Join Geometry')
-    n_out = tree.nodes.get('Group Output')
-    if n_join and n_out:
-        tree.links.new(n_join.outputs['Geometry'], n_real.inputs['Geometry'])
-        tree.links.new(n_real.outputs['Geometry'], n_out.inputs['Geometry'])
-    context.view_layer.objects.active = wall_obj
-    bpy.ops.object.modifier_apply(modifier=gn_mod.name)
-    return True
+    if combine_mesh:
+        convert_castle_wall_to_game_mesh(context, wall_obj, mat_stone=mat_stone)
+        cleanup_stone_assets(name)
+
+    return wall_obj, stone_col

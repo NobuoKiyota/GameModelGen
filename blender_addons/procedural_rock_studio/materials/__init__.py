@@ -11,6 +11,17 @@ from .nature_shaders import (
 )
 from .furniture_shaders import create_procedural_pbr_material
 from .image_shaders import apply_image_texture_material
+from .dictionary_mat import (
+    create_dictionary_cover_material,
+    create_dictionary_pages_material,
+    create_dictionary_ribbon_material,
+    DICTIONARY_COLOR_PALETTES
+)
+from .curtain_mat import (
+    create_curtain_fabric_material,
+    create_curtain_rod_material,
+    CURTAIN_MATERIAL_PRESETS
+)
 
 __all__ = [
     'get_mix_input',
@@ -24,5 +35,12 @@ __all__ = [
     'create_procedural_ground_terrain_shader',
     'create_procedural_cobblestone_shader',
     'create_procedural_pbr_material',
-    'apply_image_texture_material'
+    'apply_image_texture_material',
+    'create_dictionary_cover_material',
+    'create_dictionary_pages_material',
+    'create_dictionary_ribbon_material',
+    'DICTIONARY_COLOR_PALETTES',
+    'create_curtain_fabric_material',
+    'create_curtain_rod_material',
+    'CURTAIN_MATERIAL_PRESETS'
 ]

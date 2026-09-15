@@ -120,9 +120,9 @@ def build_cobblestone_floor_mesh(bm, size_x, size_y, size_z, seed=0,
     half_x = size_x * 0.5
     half_y = size_y * 0.5
     
-    # スラブ基底の厚みと石の突出高
-    base_h = size_z * 0.35
-    extrude_h_base = size_z * 0.65
+    # スラブ基底の厚みと石の突出高（床スラブとして適正な薄型比率）
+    base_h = size_z * 0.70
+    extrude_h_base = size_z * 0.30
     
     # ── 1. 不規則ジッター頂点グリッドの作成 ──────────────────
     grid_verts = []
@@ -157,10 +157,10 @@ def build_cobblestone_floor_mesh(bm, size_x, size_y, size_z, seed=0,
             cx = (v0.co.x + v1.co.x + v2.co.x + v3.co.x) * 0.25
             cy = (v0.co.y + v1.co.y + v2.co.y + v3.co.y) * 0.25
             
-            # 石ごとのランダム変位（高さ・チルト）
-            stone_h = extrude_h_base * rng.uniform(0.75, 1.25)
-            tilt_x = rng.uniform(-0.04, 0.04) * jitter
-            tilt_y = rng.uniform(-0.04, 0.04) * jitter
+            # 石ごとのランダム変位（平坦で歩行可能な踏面を保つ微小変形）
+            stone_h = extrude_h_base * rng.uniform(0.85, 1.15)
+            tilt_x = rng.uniform(-0.015, 0.015) * jitter
+            tilt_y = rng.uniform(-0.015, 0.015) * jitter
             
             # インセットされた石の底面頂点
             inset_pts = []
@@ -184,13 +184,13 @@ def build_cobblestone_floor_mesh(bm, size_x, size_y, size_z, seed=0,
             bm.faces.new((v2, v3, iv3, iv2))
             bm.faces.new((v3, v0, iv0, iv3))
             
-            # 石の天面頂点（押し出し＋チルト＋角丸め）
+            # 石の天面頂点（押し出し＋微小チルト）
             top_pts = []
             for ip in inset_pts:
                 tz = ip[2] + stone_h + (ip[0] - cx) * tilt_x + (ip[1] - cy) * tilt_y
-                # 表面の微小ノイズ
-                noise_z = rng.uniform(-0.01, 0.01) * stone_h
+                noise_z = rng.uniform(-0.002, 0.002) * stone_h
                 top_pts.append((ip[0], ip[1], tz + noise_z))
+
                 
             tv0 = bm.verts.new(top_pts[0])
             tv1 = bm.verts.new(top_pts[1])
@@ -322,28 +322,90 @@ def build_cobblestone_wall_mesh(bm, size_x, size_y, size_z, shape="STRAIGHT",
     return bm.verts[:]
 
 
+def build_displaced_cobblestone_slab(bm, size_x, size_y, size_z, subdivisions=32):
+    """アプローチA: テクスチャ完全連動型石畳のための薄型スラブメッシュ
+    - 天面のみ均等細分化グリッド（Displaceの受容面）
+    - 垂直な外周側面と平坦な底面（スラブ厚み size_z、波打ちや歪みを完全防止）
+    """
+    half_x = size_x * 0.5
+    half_y = size_y * 0.5
+    
+    # 1. 底面 (z = 0.0)
+    b0 = bm.verts.new((-half_x, -half_y, 0.0))
+    b1 = bm.verts.new(( half_x, -half_y, 0.0))
+    b2 = bm.verts.new(( half_x,  half_y, 0.0))
+    b3 = bm.verts.new((-half_x,  half_y, 0.0))
+    bm.faces.new((b0, b3, b2, b1))
+    
+    # 2. 天面細分化グリッド (z = size_z)
+    cols = max(8, subdivisions)
+    rows = max(8, subdivisions)
+    step_x = size_x / cols
+    step_y = size_y / rows
+    
+    top_grid = []
+    for r in range(rows + 1):
+        row = []
+        for c in range(cols + 1):
+            x = -half_x + c * step_x
+            y = -half_y + r * step_y
+            v = bm.verts.new((x, y, size_z))
+            row.append(v)
+        top_grid.append(row)
+        
+    for r in range(rows):
+        for c in range(cols):
+            bm.faces.new((top_grid[r][c], top_grid[r][c+1], top_grid[r+1][c+1], top_grid[r+1][c]))
+            
+    # 3. 外周側面（垂直スラブ壁）
+    for c in range(cols):
+        bv0 = bm.verts.new((top_grid[0][c].co.x, top_grid[0][c].co.y, 0.0))
+        bv1 = bm.verts.new((top_grid[0][c+1].co.x, top_grid[0][c+1].co.y, 0.0))
+        bm.faces.new((top_grid[0][c], top_grid[0][c+1], bv1, bv0))
+    for c in range(cols):
+        bv0 = bm.verts.new((top_grid[rows][c+1].co.x, top_grid[rows][c+1].co.y, 0.0))
+        bv1 = bm.verts.new((top_grid[rows][c].co.x, top_grid[rows][c].co.y, 0.0))
+        bm.faces.new((top_grid[rows][c+1], top_grid[rows][c], bv1, bv0))
+    for r in range(rows):
+        bv0 = bm.verts.new((top_grid[r+1][0].co.x, top_grid[r+1][0].co.y, 0.0))
+        bv1 = bm.verts.new((top_grid[r][0].co.x, top_grid[r][0].co.y, 0.0))
+        bm.faces.new((top_grid[r+1][0], top_grid[r][0], bv1, bv0))
+    for r in range(rows):
+        bv0 = bm.verts.new((top_grid[r][cols].co.x, top_grid[r][cols].co.y, 0.0))
+        bv1 = bm.verts.new((top_grid[r+1][cols].co.x, top_grid[r+1][cols].co.y, 0.0))
+        bm.faces.new((top_grid[r][cols], top_grid[r+1][cols], bv1, bv0))
+
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
+    for f in bm.faces:
+        f.smooth = True
+
+    bm.verts.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+    return bm.verts[:]
+
+
 def build_floor_base(bm, size_x, size_y, size_z, shape="SQUARE", seed=0,
                      stone_size=0.35, grout_depth=0.035, jitter=0.45):
     random.seed(seed)
-    if shape == "COBBLESTONE":
-        return build_cobblestone_floor_mesh(bm, size_x, size_y, size_z, seed=seed,
-                                            stone_size=stone_size, grout_depth=grout_depth, jitter=jitter)
+    if shape == "COBBLESTONE" or shape == "SQUARE":
+        # アプローチA: テクスチャ完全連動型石畳・床タイルのための天面細分化スラブ
+        subdiv_count = max(16, min(64, int(max(size_x, size_y) * 16)))
+        return build_displaced_cobblestone_slab(bm, size_x, size_y, size_z, subdivisions=subdiv_count)
     elif shape == "HEX_PAVER" or shape == "HEXAGON":
         bmesh.ops.create_cone(
             bm, cap_ends=True, cap_tris=False, segments=6,
             radius1=size_x * 0.5, radius2=size_x * 0.5, depth=size_z
         )
-        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=2, use_grid_fill=True)
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=4, use_grid_fill=True)
     elif shape == "CIRCLE":
         bmesh.ops.create_cone(
             bm, cap_ends=True, cap_tris=False, segments=32,
             radius1=size_x * 0.5, radius2=size_x * 0.5, depth=size_z
         )
-        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=2, use_grid_fill=True)
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=4, use_grid_fill=True)
     else:
-        verts = bmesh.ops.create_cube(bm, size=1.0)['verts']
-        bmesh.ops.scale(bm, vec=(size_x, size_y, size_z), verts=verts)
-        bmesh.ops.subdivide_edges(bm, edges=bm.edges, cuts=2, use_grid_fill=True)
+        subdiv_count = max(16, min(64, int(max(size_x, size_y) * 16)))
+        return build_displaced_cobblestone_slab(bm, size_x, size_y, size_z, subdivisions=subdiv_count)
     return bm.verts[:]
 
 
