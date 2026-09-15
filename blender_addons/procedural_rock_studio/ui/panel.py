@@ -19,8 +19,10 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
         # 🌟 2. Giant Top Action Bar
         box_act = layout.box()
         col_act = box_act.column(align=True)
-        col_act.scale_y = 1.4
-        col_act.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='FILE_REFRESH')
+        col_act.scale_y = 1.35
+        row_main = col_act.row(align=True)
+        row_main.operator("mesh.update_selected_prop", text="🔄 選択中を反映・更新 (In-Place)", icon='FILE_REFRESH')
+        row_main.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
         
         row_sub_act = col_act.row(align=True)
         row_sub_act.operator("mesh.create_new_prop", text="➕ 新規作成", icon='ADD')
@@ -29,6 +31,13 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
         col_exp = box_act.column(align=True)
         col_exp.scale_y = 1.3
         col_exp.operator("mesh.export_selected_fbx", text="📦 一発 FBX 出力 (Unity用・自動+1連番)", icon='EXPORT')
+
+        # 🔧 モディファイア微調整中の状態表示＆一括確定ボタン
+        active_obj = context.active_object
+        if active_obj and active_obj.type == 'MESH' and active_obj.modifiers:
+            row_mod = box_act.row(align=True)
+            row_mod.scale_y = 1.15
+            row_mod.operator("mesh.apply_all_modifiers", text=f"🔘 全モディファイアを一括適用 ({len(active_obj.modifiers)}個)", icon='CHECKMARK')
 
         layout.separator()
 
@@ -289,6 +298,31 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_bed.prop(props, "column_ornament_style", text="四隅ポスト装飾")
                 box_bed.prop(props, "rand_furniture_style", text="🎲 スタイルランダム")
 
+            # Dictionary Specific
+            elif props.prop_category == 'DICTIONARY':
+                box_dict = layout.box()
+                box_dict.label(text="Dictionary Settings (中性的辞書設定):", icon='BOOKMARKS')
+                box_dict.prop(props, "dictionary_color_preset", text="表紙カラー")
+                box_dict.prop(props, "dictionary_rib_count", text="背リブ本数")
+                box_dict.prop(props, "dictionary_has_ribbon", text="しおり紐")
+                box_dict.prop(props, "dictionary_page_aging", text="⌛ 紙の年季・黄ばみ度", slider=True)
+                
+                box_runes = box_dict.box()
+                box_runes.label(text="謎文字・古代グリフ装飾:", icon='FONT_DATA')
+                box_runes.prop(props, "dictionary_has_runes", text="表紙・背に謎文字を刻印")
+                if props.dictionary_has_runes:
+                    box_runes.prop(props, "dictionary_foil_style", text="箔様式")
+                    box_runes.prop(props, "dictionary_rune_intensity", text="刻印の鮮明度", slider=True)
+
+                box_adv = box_dict.box()
+                box_adv.label(text="製本カーブ微調整:", icon='SURFACE_NCURVE')
+                box_adv.prop(props, "dictionary_spine_curvature", text="背の丸み")
+                box_adv.prop(props, "dictionary_fore_edge_hollow", text="小口の凹み")
+
+                row_reroll = box_dict.row(align=True)
+                row_reroll.scale_y = 1.3
+                row_reroll.operator("mesh.reroll_selected_prop", text="🎲 ランダム再抽選 (大きさ・厚み・色)", icon='FILE_REFRESH')
+
             # Bookshelf Specific
             elif props.prop_category == 'BOOKSHELF':
                 box_shelf = layout.box()
@@ -459,11 +493,12 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
                 # 散布設定
                 box_cw_scat = box_cwall.box()
-                box_cw_scat.label(text="🧱 石材散布設定 (Poisson Disk):", icon='MOD_PARTICLES')
+                box_cw_scat.label(text="🧱 石材散布 & 単一メッシュ結合設定:", icon='MOD_PARTICLES')
                 row_cws = box_cw_scat.row(align=True)
                 row_cws.prop(props, "castle_wall_density", text="石材密度")
                 row_cws.prop(props, "castle_wall_min_dist", text="最小間隔 (m)")
                 box_cw_scat.prop(props, "castle_wall_jitter", text="凹凸・飛び出し (Jitter)", slider=True)
+                box_cw_scat.prop(props, "castle_wall_combine", text="🎮 1つのStatic Meshに結合 (確定)")
 
                 # 操作ボタン
                 col_cw_btn = box_cwall.column(align=True)
@@ -471,8 +506,10 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 col_cw_btn.operator("mesh.reroll_castle_wall", text="🎲 形状・石材を全再抽選 (Re-Roll All)", icon='FILE_REFRESH')
                 col_cw_btn.operator("mesh.regenerate_castle_wall", text="🔄 現在の設定で更新 (その場更新)", icon='FILE_CACHE')
                 col_cw_btn.operator("mesh.create_castle_wall", text="➕ 新規城壁を生成", icon='ADD')
-                col_cw_btn.separator()
-                col_cw_btn.operator("mesh.convert_castle_wall_to_game_mesh", text="🎮 ゲーム用実体メッシュへ変換 (Make Real)", icon='CHECKMARK')
+                if not props.castle_wall_combine:
+                    col_cw_btn.separator()
+                    col_cw_btn.operator("mesh.convert_castle_wall_to_game_mesh", text="🎮 手動でゲーム用実体メッシュへ変換", icon='CHECKMARK')
+
 
             # Cave Floor (New Terrain) Preset Specific
             elif props.prop_category == 'CAVE_FLOOR':
@@ -655,6 +692,13 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_a_hint.label(text="💡 hbitproject式 建築プロポーション＆要石・多段モールディング", icon='INFO')
                 box_a_hint.label(text="   外周はモジュラー壁や上階と完全フラットに接合できる形状です")
 
+                col_a_btn = box_arch.column(align=True)
+                col_a_btn.scale_y = 1.3
+                col_a_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新 (選択中を更新)", icon='FILE_REFRESH')
+                row_a_sub = col_a_btn.row(align=True)
+                row_a_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
+                row_a_sub.operator("mesh.create_new_prop", text="➕ 新規アーチを生成", icon='ADD')
+
             # Modular Relief Wall Preset Specific
             elif props.prop_category == 'RELIEF_WALL':
                 box_rw = layout.box()
@@ -687,6 +731,13 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_rw_hint = box_rw.box()
                 box_rw_hint.label(text="💡 モジュラー設計: 左右端の半幅ピラスターが並べた瞬間に合体します", icon='INFO')
                 box_rw_hint.label(text="   X境界は完全フラットスナップ面を維持し、継ぎ目が完全に隠れます")
+
+                col_rw_btn = box_rw.column(align=True)
+                col_rw_btn.scale_y = 1.3
+                col_rw_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新 (選択中を更新)", icon='FILE_REFRESH')
+                row_rw_sub = col_rw_btn.row(align=True)
+                row_rw_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
+                row_rw_sub.operator("mesh.create_new_prop", text="➕ 新規レリーフ壁を生成", icon='ADD')
 
             # Realistic Western Window Preset Specific
             elif props.prop_category == 'WINDOW':
@@ -736,10 +787,315 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_w_weath.prop(props, "window_weathering", text="🌧️ 汚し・風化 (AO/雨垂れ)", slider=True)
                 box_w_weath.prop(props, "window_moss_amount", text="🌿 窓台の苔・湿気", slider=True)
 
+                # 5. 🚪 UE開閉インタラクション＆サッシュ設定
+                box_w_sash = box_win.box()
+                box_w_sash.label(text="🚪 UE開閉インタラクション・サッシュ設定:", icon='OBJECT_DATAMODE')
+                box_w_sash.prop(props, "window_sash_mode", text="開閉方式")
+                if props.window_sash_mode != 'FIXED':
+                    box_w_sash.prop(props, "window_open_angle", text="開閉角度 (プレビュー)", slider=True)
+                    row_sdir = box_w_sash.row(align=True)
+                    row_sdir.prop(props, "window_open_direction", text="開閉方向")
+                    row_sdir.prop(props, "window_has_handle", text="クレモン錠ハンドル")
+                    box_w_sash.prop(props, "window_has_hinges", text="蝶番金具 (Hinges)")
+                box_w_sash.prop(props, "window_sash_material", text="サッシュ材質")
+                box_w_sash.prop(props, "window_combine", text="単一メッシュ結合 (UE開閉時はOFF)")
+
                 # 特徴ヒント
                 box_w_hint = box_win.box()
-                box_w_hint.label(text="💡 物理透過ガラス(IOR 1.52)＋鍛鉄/鉛線＋風化石枠の3マテリアル分離構成", icon='INFO')
-                box_w_hint.label(text="   十字棧(Cross)やX字交差針金(Diamond Wire)など中世〜近世様式に対応")
+                box_w_hint.label(text="💡 【UE開閉対応】蝶番の回転軸(Pivot)が正確に配置された親子階層で出力されます", icon='INFO')
+                box_w_hint.label(text="   UE側で Relative Rotation (Yaw) を回すだけで実物通りに開閉します")
+
+                col_w_btn = box_win.column(align=True)
+                col_w_btn.scale_y = 1.3
+                col_w_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新 (選択中を更新)", icon='FILE_REFRESH')
+                row_w_sub = col_w_btn.row(align=True)
+                row_w_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
+                row_w_sub.operator("mesh.create_new_prop", text="➕ 新規西洋窓を生成", icon='ADD')
+
+            # 📖 Dictionary (Single Book) Specific
+            elif props.prop_category == 'DICTIONARY':
+                box_dict = layout.box()
+                box_dict.label(text="📖 中性的辞書・大型書籍 (Dictionary / Book):", icon='BOOKMARKS')
+                
+                # 1. 表紙・装丁スタイル
+                box_cover = box_dict.box()
+                box_cover.label(text="装丁・表紙カラー:", icon='COLOR')
+                box_cover.prop(props, "dictionary_color_preset", text="表紙色")
+                box_cover.prop(props, "dictionary_rib_count", text="背リブ本数 (3~5本)")
+                box_cover.prop(props, "dictionary_has_ribbon", text="布製しおり紐 (Ribbon Bookmark)")
+
+                # 2. 背表紙アーチ & 小口凹み
+                box_form = box_dict.box()
+                box_form.label(text="製本プロポーション:", icon='MOD_SUBSURF')
+                row_form = box_form.row(align=True)
+                row_form.prop(props, "dictionary_spine_curvature", text="背の丸み", slider=True)
+                row_form.prop(props, "dictionary_fore_edge_hollow", text="小口の窪み", slider=True)
+
+                # 3. 紙の年季・黄ばみ (古書エイジング)
+                box_age = box_dict.box()
+                box_age.label(text="古書エイジング・紙の年季:", icon='BRUSH_DATA')
+                box_age.prop(props, "dictionary_page_aging", text="紙の黄ばみ・経年感", slider=True)
+
+                # 4. 謎文字・古代グリフ箔押し
+                box_rune = box_dict.box()
+                box_rune.label(text="謎文字・古代ルーン刻印:", icon='FORCE_VORTEX')
+                box_rune.prop(props, "dictionary_has_runes", text="表紙・背表紙に謎文字を刻印")
+                if props.dictionary_has_runes:
+                    box_rune.prop(props, "dictionary_foil_style", text="箔押し様式")
+                    box_rune.prop(props, "dictionary_rune_intensity", text="刻印の明瞭度・凹凸", slider=True)
+
+            # 📚 Book Stack (Messy / Physics Pile) Specific
+            elif props.prop_category == 'BOOK_STACK':
+                box_stack = layout.box()
+                box_stack.label(text="📚 本の山・積読・物理演算スタック (Book Stack):", icon='FILE_VOLUME')
+
+                # 1. 冊数 & 積み様式
+                box_stk_mode = box_stack.box()
+                box_stk_mode.label(text="積み上げ設定 & 物理シミュレーション:", icon='MOD_BUILD')
+                box_stk_mode.prop(props, "book_stack_count", text="本の冊数 (2~30冊)")
+                box_stk_mode.prop(props, "book_stack_style", text="積み様式")
+                if props.book_stack_style in ('MESSY', 'DESK_SCATTER', 'PHYSICS'):
+                    box_stk_mode.prop(props, "book_stack_scatter_radius", text="散乱・ズレ半径 (m)", slider=True)
+                    box_stk_mode.prop(props, "book_stack_drop_dynamics", text="転がり・乱雑落下度", slider=True)
+                    box_stk_mode.prop(props, "book_stack_include_ground", text="🪵 地面（床板）をアセットに含める")
+
+                # 2. スタイルバリエーション & 結合オプション
+                box_stk_opt = box_stack.box()
+                box_stk_opt.label(text="バリエーション & 最適化:", icon='PREFERENCES')
+                box_stk_opt.prop(props, "book_stack_mix_styles", text="🎨 12色 ＆ 5大柄装飾（ルーン/格子/枠線/縞/無地）をバラバラにする")
+                box_stk_opt.prop(props, "book_stack_combine", text="🎮 1つのStatic Meshに結合 (UE/Unity向け)")
+
+                # 操作ボタン
+                col_stk_btn = box_stack.column(align=True)
+                col_stk_btn.scale_y = 1.3
+                col_stk_btn.operator("mesh.reroll_selected_prop", text="🎲 本の山を再抽選・再積み上げ", icon='FILE_REFRESH')
+
+            # 📄 Document Stack (Paper Pile) Specific
+            elif props.prop_category == 'DOCUMENT_STACK':
+                box_doc = layout.box()
+                box_doc.label(text="📄 書類の束・紙の山 (Document / Paper Stack):", icon='DOCUMENTS')
+
+                # 1. 層数 & 乱雑度
+                box_doc_cfg = box_doc.box()
+                box_doc_cfg.label(text="紙束・レイヤー設定:", icon='MOD_BUILD')
+                box_doc_cfg.prop(props, "doc_layer_count", text="紙束の層数 (8~50層)")
+                box_doc_cfg.prop(props, "doc_messiness", text="乱雑・飛び出し度", slider=True)
+                box_doc_cfg.prop(props, "doc_include_folders", text="📑 クラフト紙・フォルダーを混ぜる")
+
+                # 特徴ヒント
+                box_doc_hint = box_doc.box()
+                box_doc_hint.label(text="💡 白紙、クラフト紙、古紙、フォルダーが不揃いに重なるリアルな書類束", icon='INFO')
+                box_doc_hint.label(text="   角の反り・めくれ＆ランダム飛び出しを幾何学的にめり込みゼロで生成")
+
+                # 操作ボタン
+                col_doc_btn = box_doc.column(align=True)
+                col_doc_btn.scale_y = 1.3
+                col_doc_btn.operator("mesh.reroll_selected_prop", text="🎲 書類の束を再抽選 (Re-Roll)", icon='FILE_REFRESH')
+
+            # 🪨 Stone Stairs Specific (年季の入った石畳の地下階段)
+            elif props.prop_category == 'STONE_STAIRS':
+                box_stone = layout.box()
+                box_stone.label(text="🪨 年季の入った石畳の地下階段 (Dungeon / Cellar Stairs):", icon='FILE_IMAGE')
+
+                # 1. 階段・欄干スタイル & 配置
+                box_st_style = box_stone.box()
+                box_st_style.label(text="階段・欄干スタイル & 手すり配置:", icon='MOD_BUILD')
+                box_st_style.prop(props, "stone_stairs_style", text="様式")
+                box_st_style.prop(props, "stone_stairs_rail_placement", text="手すり配置")
+
+                # 2. 階段寸法 & 段数
+                box_st_dim = box_stone.box()
+                box_st_dim.label(text="寸法 & 段数設定:", icon='EMPTY_DATA')
+                row_dim1 = box_st_dim.row(align=True)
+                row_dim1.prop(props, "stone_stairs_step_count", text="段数")
+                row_dim1.prop(props, "stone_stairs_width", text="階段幅")
+
+                row_dim2 = box_st_dim.row(align=True)
+                row_dim2.prop(props, "stone_stairs_step_depth", text="踏み面奥行")
+                row_dim2.prop(props, "stone_stairs_step_height", text="蹴上げ高")
+
+                box_st_dim.prop(props, "stone_stairs_include_landing", text="🏢 最下段の踊り場・地下フロア延長")
+
+                # 3. 年季の入った風化・エイジング表現
+                box_st_aging = box_stone.box()
+                box_st_aging.label(text="年季・風化エイジング表現:", icon='EXPERIMENTAL')
+                box_st_aging.prop(props, "stone_stairs_wear_amount", text="中央すり減り摩耗")
+                box_st_aging.prop(props, "stone_stairs_damage", text="角欠け・チッピング")
+                box_st_aging.prop(props, "stone_stairs_moss", text="苔・湿気汚れ")
+
+                # 4. マテリアル & エクスポート
+                box_st_mat = box_stone.box()
+                box_st_mat.label(text="マテリアル & 出力設定:", icon='MATERIAL')
+                box_st_mat.prop(props, "stone_stairs_material", text="石材プリセット")
+                box_st_mat.prop(props, "stone_stairs_combine", text="🎮 1つのStatic Meshに結合")
+
+                # 特徴ヒント
+                box_st_hint = box_stone.box()
+                box_st_hint.label(text="💡 動画準拠の壺型バラスター＋親柱＆長年の歩行摩耗すり減り", icon='INFO')
+
+                # 再生成ボタン
+                col_st_btn = box_stone.column(align=True)
+                col_st_btn.scale_y = 1.3
+                col_st_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新 (選択中を更新)", icon='FILE_REFRESH')
+                row_st_sub = col_st_btn.row(align=True)
+                row_st_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
+                row_st_sub.operator("mesh.create_new_prop", text="➕ 新規石畳階段を生成", icon='ADD')
+
+            # 🪜 Spiral Stairs Specific
+            elif props.prop_category == 'SPIRAL_STAIRS':
+                box_stairs = layout.box()
+                box_stairs.label(text="🪜 手すり付き螺旋階段 (Spiral Stairs):", icon='FILE_IMAGE')
+
+                # 1. 階段スタイル & 寸法構造
+                box_s_geom = box_stairs.box()
+                box_s_geom.label(text="螺旋構造 & 寸法設定:", icon='MOD_BUILD')
+                box_s_geom.prop(props, "spiral_stairs_style", text="スタイル")
+                
+                row_steps = box_s_geom.row(align=True)
+                row_steps.prop(props, "spiral_stairs_step_count", text="段数")
+                row_steps.prop(props, "spiral_stairs_step_height", text="段高")
+
+                row_rad = box_s_geom.row(align=True)
+                row_rad.prop(props, "spiral_stairs_radius", text="外径半径")
+                row_rad.prop(props, "spiral_stairs_inner_radius", text="支柱半径")
+
+                box_s_geom.prop(props, "spiral_stairs_step_angle", text="1段の回転角(度)")
+
+                # 2. 手すり & 手すり子（バラスター）
+                box_s_rail = box_stairs.box()
+                box_s_rail.label(text="螺旋手すり & バラスター:", icon='CON_FOLLOWPATH')
+                box_s_rail.prop(props, "spiral_stairs_has_handrail", text="〰️ 連続螺旋手すり")
+                if props.spiral_stairs_has_handrail:
+                    box_s_rail.prop(props, "spiral_stairs_baluster_style", text="手すり子装飾")
+                box_s_rail.prop(props, "spiral_stairs_has_pillar", text="🏛️ センター支柱")
+
+                # 3. マテリアル設定
+                box_s_mat = box_stairs.box()
+                box_s_mat.label(text="マテリアル & エクスポート設定:", icon='MATERIAL')
+                if props.spiral_stairs_style == 'CLASSIC_WOOD':
+                    box_s_mat.prop(props, "spiral_stairs_tread_material", text="踏み板木目")
+                    box_s_mat.prop(props, "spiral_stairs_metal_material", text="手すり金属")
+                box_s_mat.prop(props, "spiral_stairs_combine", text="🎮 1つのStatic Meshに結合")
+
+                # 特徴ヒント
+                box_s_hint = box_stairs.box()
+                box_s_hint.label(text="💡 ねじれのない滑らかな3D螺旋手すり＆扇形ノーズ重なり構造", icon='INFO')
+
+                # 操作ボタン
+                col_s_btn = box_stairs.column(align=True)
+                col_s_btn.scale_y = 1.3
+                col_s_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新 (選択中を更新)", icon='FILE_REFRESH')
+                row_s_sub = col_s_btn.row(align=True)
+                row_s_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
+                row_s_sub.operator("mesh.create_new_prop", text="➕ 新規螺旋階段を生成", icon='ADD')
+
+            # 🌿 Houseplant Specific
+            elif props.prop_category == 'HOUSEPLANT':
+                box_plant = layout.box()
+                box_plant.label(text="🌿 観葉植物・鉢植え (Houseplant / Potted Foliage):", icon='FILE_IMAGE')
+
+                # 1. スタイル & ボリューム
+                box_p_style = box_plant.box()
+                box_p_style.label(text="観葉植物スタイル & 葉密度:", icon='MOD_BUILD')
+                box_p_style.prop(props, "houseplant_style", text="様式")
+                box_p_style.prop(props, "houseplant_leaf_shape", text="葉の形状パターン")
+                box_p_style.prop(props, "houseplant_density", text="葉の繁茂・密度")
+
+                # 2. 鉢 & 葉の素材
+                box_p_mat = box_plant.box()
+                box_p_mat.label(text="鉢 ＆ 葉のマテリアル質感:", icon='MATERIAL')
+                box_p_mat.prop(props, "houseplant_pot_material", text="植木鉢素材")
+                box_p_mat.prop(props, "houseplant_leaf_color", text="葉の基本色")
+                box_p_mat.prop(props, "houseplant_variegated", text="✨ 斑入り葉 (Variegated)")
+                box_p_mat.prop(props, "houseplant_combine", text="🎮 1つのStatic Meshに結合")
+
+                # 特徴ヒント
+                box_p_hint = box_plant.box()
+                box_p_hint.label(text="💡 樋状V字カーブ立体葉 & 樹冠球状法線転送 (SSS半透明)", icon='INFO')
+
+                # 操作ボタン
+                col_p_btn = box_plant.column(align=True)
+                col_p_btn.scale_y = 1.3
+                col_p_btn.operator("mesh.reroll_selected_prop", text="🎲 観葉植物を再生成 (Re-Roll)", icon='FILE_REFRESH')
+
+            # 🕯️ Candle Stand Specific
+            elif props.prop_category == 'CANDLE_STAND':
+                box_candle = layout.box()
+                box_candle.label(text="🕯️ アンティーク蝋燭立て (Candle Stand / Chandelier):", icon='LIGHT_SUN')
+
+                # 1. スタイル & 本数
+                box_c_style = box_candle.box()
+                box_c_style.label(text="燭台スタイル & 蝋燭本数:", icon='MOD_BUILD')
+                box_c_style.prop(props, "candle_stand_style", text="様式")
+                if props.candle_stand_style in ('HANGING_CHANDELIER', 'TABLE_CANDELABRA', 'WALL_SCONCE'):
+                    box_c_style.prop(props, "candle_count", text="蝋燭本数")
+
+                # 2. 蝋燭ディテール & 炎
+                box_c_detail = box_candle.box()
+                box_c_detail.label(text="蝋の溶け具合 & 炎・ライト:", icon='LIGHT_POINT')
+                box_c_detail.prop(props, "candle_melt_level", text="蝋だれ・溶け度", slider=True)
+                row_flame = box_c_detail.row(align=True)
+                row_flame.prop(props, "candle_has_flame", text="🔥 炎メッシュ点灯", toggle=True)
+                row_flame.prop(props, "candle_add_lights", text="💡 Point Light配置", toggle=True)
+
+                # 3. PBRマテリアル設定
+                box_c_mat = box_candle.box()
+                box_c_mat.label(text="PBRマテリアル質感:", icon='MATERIAL')
+                box_c_mat.prop(props, "candle_holder_material", text="金具素材")
+                box_c_mat.prop(props, "candle_wax_material", text="蝋燭素材")
+                box_c_mat.prop(props, "candle_combine", text="🎮 1つのStatic Meshに結合")
+
+                # 操作ボタン
+                col_c_btn = box_candle.column(align=True)
+                col_c_btn.scale_y = 1.3
+                col_c_btn.operator("mesh.reroll_selected_prop", text="🎲 蝋燭立てを再生成 (Re-Roll)", icon='FILE_REFRESH')
+
+            # 🪟 Curtain (Drapes & Wind Sim) Specific
+            elif props.prop_category == 'CURTAIN':
+                box_curtain = layout.box()
+                box_curtain.label(text="🪟 カーテン・ドレープ布地 (Curtain & Drapes):", icon='MOD_CLOTH')
+
+                # 1. カーテン様式 & 布地
+                box_c_style = box_curtain.box()
+                box_c_style.label(text="プリーツ様式 & 布地マテリアル:", icon='MOD_SUBSURF')
+                box_c_style.prop(props, "curtain_style", text="開き方")
+                box_c_style.prop(props, "curtain_pleats", text="ヒダ数 (プリーツ)")
+                box_c_style.prop(props, "curtain_smoothness", text="丸み・柔らかさ")
+                box_c_style.prop(props, "curtain_fabric_type", text="布地素材")
+
+                # 2. カーテンロッド・レール金具
+                box_c_rod = box_curtain.box()
+                box_c_rod.label(text="カーテンレール・金具 (Rod & Rings):", icon='SNAP_VOLUME')
+                box_c_rod.prop(props, "curtain_include_rod", text="🪵 レール・リング金具を生成")
+                if props.curtain_include_rod:
+                    box_c_rod.prop(props, "curtain_rod_style", text="金具素材")
+
+                # 3. 開閉・束ね設定 (Open/Close & Tie-back)
+                box_c_open = box_curtain.box()
+                box_c_open.label(text="開閉・束ね設定 (Open/Close & Tie-back):", icon='DRIVER_DISTANCE')
+                box_c_open.prop(props, "curtain_open_amount", text="開閉度 (0:閉 ~ 1:全開)", slider=True)
+                row_open_opts = box_c_open.row(align=True)
+                row_open_opts.prop(props, "curtain_tied_back", text="🎗️ タッセルで束ねる", toggle=True)
+                row_open_opts.prop(props, "curtain_generate_shapekey", text="🎮 UE5モーフターゲット出力", toggle=True)
+
+                # 4. 横風シミュレーション & ベイク
+                box_c_wind = box_curtain.box()
+                box_c_wind.label(text="横風シミュレーション & UE5対応:", icon='FORCE_WIND')
+                box_c_wind.prop(props, "curtain_simulate_wind", text="💨 Blender内横風Clothシミュレーション")
+                if props.curtain_simulate_wind:
+                    box_c_wind.prop(props, "curtain_wind_strength", text="風の強さ", slider=True)
+                    box_c_wind.prop(props, "curtain_bake_static", text="📌 風で膨らんだ瞬間を静止メッシュ確定 (UE用)")
+                box_c_wind.prop(props, "curtain_combine", text="🎮 1つのStatic Meshに結合 (UE/Unity向け)")
+
+                # 特徴ヒント
+                box_c_hint = box_curtain.box()
+                box_c_hint.label(text="💡 UE5風揺れ対応: 頂点カラー(R:ピン, G:中央スリット, B:左右識別, A:ヒダ)自動ベイク済み", icon='INFO')
+                box_c_hint.label(text="   中央の合わせ目から左右それぞれ異なる位相で風になびくシェーダー制御が可能")
+
+                # 操作ボタン
+                col_c_btn = box_curtain.column(align=True)
+                col_c_btn.scale_y = 1.3
+                col_c_btn.operator("mesh.reroll_selected_prop", text="🎲 カーテンを再生成・再送風", icon='FILE_REFRESH')
 
             # Dimensions Box
             box_dim = layout.box()
@@ -823,7 +1179,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 col_d.prop(props, "displacement_strength", text="凹凸の強さ", slider=True)
                 col_d.prop(props, "displacement_midlevel", text="基準高さ", slider=True)
                 col_d.prop(props, "displacement_subdiv", text="メッシュ細分化 (0~4)")
-                col_d.prop(props, "apply_disp_to_mesh", text="🎮 メッシュへベイク (FBX用)")
+                col_d.prop(props, "apply_disp_to_mesh", text="🎮 生成時に即時適用 (オフで微調整可能)")
 
         # 🌟 6. Tab 3: Export Settings
         elif props.studio_tab == 'EXPORT':
@@ -844,4 +1200,9 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
             box_exp.label(text="Unity FBX Settings:", icon='EXPORT')
             box_exp.prop(props, "asset_name", text="アセット名")
             box_exp.prop(props, "export_folder", text="")
-            box_exp.operator("mesh.open_export_folder", text="📂 保存先フォルダを開く", icon='FOLDER_REDIRECT')
+            row_exp_btns = box_exp.row(align=True)
+            row_exp_btns.operator("mesh.open_export_folder", text="📂 保存先を開く", icon='FOLDER_REDIRECT')
+            
+            active_obj = context.active_object
+            if active_obj and active_obj.type == 'MESH' and active_obj.modifiers:
+                box_exp.operator("mesh.apply_all_modifiers", text=f"🔘 全モディファイアを一括適用 ({len(active_obj.modifiers)}個)", icon='CHECKMARK')

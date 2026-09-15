@@ -4,11 +4,15 @@ import random
 import shutil
 import subprocess
 
-from ..generators.core_orchestrator import generate_procedural_prop_mesh, resolve_prop_parameters
+from ..generators.core_orchestrator import (
+    generate_procedural_prop_mesh,
+    resolve_prop_parameters,
+    resolve_prop_root_hierarchy
+)
 from ..generators.nature_gen import create_grass_field_scene
 from ..materials.image_shaders import apply_image_texture_material
 from ..utils.texture_utils import get_textures_from_folder
-from ..utils.baker import bake_procedural_material_to_pbr
+from ..utils.baker import bake_procedural_material_to_pbr, apply_baked_pbr_material
 from ..utils.anim_baker import export_animated_water_fbx
 from ..utils.sky_lighting import setup_procedural_sky_lighting
 
@@ -27,7 +31,7 @@ def get_next_available_fbx_path(export_dir, base_name):
 
 
 class MESH_OT_bake_prop_textures(bpy.types.Operator):
-    """Bake procedural shaders into PBR Image Textures (BaseColor + Normal) for Unity"""
+    """Bake procedural shaders into PBR Image Textures (BaseColor + Normal) for Unity/UE"""
     bl_idname = "mesh.bake_prop_textures"
     bl_label = "Bake Procedural to PBR Textures"
     bl_options = {'REGISTER', 'UNDO'}
@@ -53,7 +57,8 @@ class MESH_OT_bake_prop_textures(bpy.types.Operator):
         )
 
         if baked:
-            self.report({'INFO'}, f"Bake succeeded! Saved to: {tex_out_dir}")
+            apply_baked_pbr_material(active_obj, baked)
+            self.report({'INFO'}, f"Bake succeeded & applied to mesh! Saved to: {tex_out_dir}")
             return {'FINISHED'}
         else:
             self.report({'WARNING'}, "Bake failed. Check UV unwrap or material.")
@@ -99,7 +104,17 @@ class MESH_OT_export_selected_fbx(bpy.types.Operator):
                 self.report({'ERROR'}, f"Animated water export error: {str(e)}")
                 return {'CANCELLED'}
 
+        # 城壁（Castle Wall）のGeometry Nodes散布インスタンスが未実体化の場合、実体メッシュ化して単一オブジェクトとして確定するフェイルセーフ
+        if any(m.name == 'CastleWallScatter' for m in active_obj.modifiers):
+            from ..generators.castle_wall_gen import convert_castle_wall_to_game_mesh, cleanup_stone_assets
+            base_name = active_obj.name.replace("_Core", "")
+            convert_castle_wall_to_game_mesh(context, active_obj)
+            cleanup_stone_assets(base_name)
+            if active_obj.name.endswith("_Core"):
+                active_obj.name = base_name
+
         if props.auto_bake_on_export:
+
             has_procedural = any(
                 mat and mat.use_nodes and not any(n.type == 'TEX_IMAGE' for n in mat.node_tree.nodes)
                 for mat in active_obj.data.materials
@@ -107,44 +122,58 @@ class MESH_OT_export_selected_fbx(bpy.types.Operator):
             if props.prop_category != 'WATER' and has_procedural:
                 tex_out_dir = os.path.join(export_dir, "textures")
                 res = int(props.bake_resolution)
-                bake_procedural_material_to_pbr(
+                baked_texs = bake_procedural_material_to_pbr(
                     active_obj,
                     output_dir=tex_out_dir,
                     res=res,
                     bake_diffuse=props.bake_diffuse,
                     bake_normal=props.bake_normal
                 )
+                if baked_texs:
+                    apply_baked_pbr_material(active_obj, baked_texs)
 
         base_name = props.asset_name.strip() or active_obj.name
         final_fbx_path = get_next_available_fbx_path(export_dir, base_name)
         file_name_only = os.path.basename(final_fbx_path)
 
+        # アクティブオブジェクトおよびその子孫（可動サッシュ等）をすべて選択して親子階層エクスポート
+        export_objs = [active_obj] + list(active_obj.children_recursive)
         for obj in context.scene.objects:
-            obj.select_set(False)
-        active_obj.select_set(True)
+            obj.select_set(obj in export_objs)
         context.view_layer.objects.active = active_obj
 
-        copied_textures = []
-        for mat in active_obj.data.materials:
-            if mat and mat.use_nodes:
-                for node in mat.node_tree.nodes:
-                    if node.type == 'TEX_IMAGE' and node.image and node.image.filepath:
-                        src_img = bpy.path.abspath(node.image.filepath)
-                        if os.path.exists(src_img):
-                            try:
-                                dst_img = os.path.join(export_dir, os.path.basename(src_img))
-                                if src_img != dst_img:
-                                    shutil.copy2(src_img, dst_img)
-                                copied_textures.append(os.path.basename(src_img))
-                            except Exception:
-                                pass
+        # 最後の一発：エクスポート直前に残っている全モディファイア（Displace, Bevel等）を一括適用して実メッシュ確定
+        for o in export_objs:
+            if o.type == 'MESH' and o.modifiers:
+                apply_all_modifiers_for_object(context, o)
 
+        copied_textures = []
+        for o in export_objs:
+            if o.type == 'MESH':
+                for mat in o.data.materials:
+                    if mat and mat.use_nodes:
+                        for node in mat.node_tree.nodes:
+                            if node.type == 'TEX_IMAGE' and node.image and node.image.filepath:
+                                src_img = bpy.path.abspath(node.image.filepath)
+                                if os.path.exists(src_img):
+                                    try:
+                                        dst_img = os.path.join(export_dir, os.path.basename(src_img))
+                                        if src_img != dst_img:
+                                            shutil.copy2(src_img, dst_img)
+                                        copied_textures.append(os.path.basename(src_img))
+                                    except Exception:
+                                        pass
+
+        # Unreal Engine / Unity 互換の正確なエクスポート設定 (100倍/100分の1の縮小バグを完全防止)
         bpy.ops.export_scene.fbx(
             filepath=final_fbx_path,
             use_selection=True,
             object_types={'MESH'},
-            bake_space_transform=True,
-            apply_scale_options='FBX_SCALE_ALL',
+            global_scale=1.0,
+            apply_unit_scale=True,
+            apply_scale_options='FBX_SCALE_NONE',
+            bake_space_transform=False,
+            use_space_transform=True,
             path_mode='COPY',
             embed_textures=True,
             axis_forward='-Z',
@@ -155,6 +184,57 @@ class MESH_OT_export_selected_fbx(bpy.types.Operator):
         if copied_textures:
             msg += f" (textures copied: {', '.join(set(copied_textures))})"
         self.report({'INFO'}, msg)
+        return {'FINISHED'}
+
+
+def apply_all_modifiers_for_object(context, obj):
+    """オブジェクトの全モディファイアを上から順に安全に適用（実メッシュ化）"""
+    if not obj or obj.type != 'MESH':
+        return 0
+    
+    if context.mode != 'OBJECT':
+        try:
+            bpy.ops.object.mode_set(mode='OBJECT')
+        except Exception:
+            pass
+
+    context.view_layer.objects.active = obj
+    obj.select_set(True)
+
+    count = 0
+    for mod in list(obj.modifiers):
+        try:
+            bpy.ops.object.modifier_apply(modifier=mod.name)
+            count += 1
+        except Exception:
+            try:
+                with context.temp_override(active_object=obj, object=obj, selected_objects=[obj]):
+                    bpy.ops.object.modifier_apply(modifier=mod.name)
+                count += 1
+            except Exception:
+                pass
+    return count
+
+
+class MESH_OT_apply_all_modifiers(bpy.types.Operator):
+    """Apply all active modifiers (Displace, Bevel, etc.) to finalize mesh geometry"""
+    bl_idname = "mesh.apply_all_modifiers"
+    bl_label = "全モディファイアを一括適用（メッシュ確定）"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        active_obj = context.active_object
+        if not active_obj or active_obj.type != 'MESH':
+            self.report({'WARNING'}, "モディファイアを適用するメッシュを選択してください")
+            return {'CANCELLED'}
+
+        mod_count = len(active_obj.modifiers)
+        if mod_count == 0:
+            self.report({'INFO'}, "適用可能なモディファイアはありません（既に実メッシュ化済み）")
+            return {'FINISHED'}
+
+        applied = apply_all_modifiers_for_object(context, active_obj)
+        self.report({'INFO'}, f"全 {applied} 個のモディファイアを適用し、実メッシュとして確定しました: {active_obj.name}")
         return {'FINISHED'}
 
 
@@ -175,8 +255,202 @@ class MESH_OT_open_export_folder(bpy.types.Operator):
         return {'FINISHED'}
 
 
+def sanitize_prop_base_name(name, category, default_name):
+    if not name:
+        return default_name
+    import re
+    if category == "WINDOW":
+        name = re.sub(r'(_Frame|_Sash_L|_Sash_R|_Mesh)+$', '', name).strip()
+    elif category == "CAVE":
+        name = re.sub(r'(_Floor|_Water|_Ceiling|_Pillars|_Debris)+$', '', name).strip()
+    elif category == "CANDLE_STAND":
+        name = re.sub(r'(_Stand|_Candles|_Flame|_Light)+$', '', name).strip()
+    elif category == "SPIRAL_STAIRS":
+        name = re.sub(r'(_Stairs|_Steps|_Handrail|_Pillar)+$', '', name).strip()
+    elif category == "STONE_STAIRS":
+        name = re.sub(r'(_Stairs|_Rail|_Steps|_Landing)+$', '', name).strip()
+    return name or default_name
+
+
+def reroll_category_properties(props, category):
+    """
+    Re-roll実行時に、各カテゴリの形状・様式・装飾ディテールを真にランダム抽選してガラリと変化させる。
+    """
+    if category == "WINDOW":
+        props.window_frame_style = random.choice([
+            'GOTHIC_POINTED', 'ROMAN_ROUND', 'TUDOR', 'RECTANGLE'
+        ])
+        props.window_arch_style = random.choice([
+            'MOLDED_FRENCH', 'RADIAL_ASHLAR'
+        ])
+        props.window_grille_style = random.choice([
+            'SUNBURST', 'CROSS', 'DIAMOND_WIRE', 'IRON_BARS', 'GOTHIC_TRACERY', 'PLAIN'
+        ])
+        props.window_jamb_style = random.choice([
+            'ENGAGED_FLUTED', 'PILASTER_PANEL', 'ASHLAR_QUOIN'
+        ])
+        props.window_column_flutes = random.choice([6, 8, 12, 16, 20])
+        props.window_column_pedestal = random.choice([True, False])
+        props.window_has_keystone = random.choice([True, False])
+        props.window_has_sill = True
+        props.window_has_hood = random.choice([True, False])
+        props.window_wire_density = random.randint(4, 9)
+        props.window_wire_thickness = round(random.uniform(0.008, 0.018), 3)
+        props.window_damage = round(random.uniform(0.05, 0.45), 2)
+        props.window_weathering = round(random.uniform(0.20, 0.65), 2)
+        props.window_moss_amount = round(random.uniform(0.0, 0.40), 2)
+        props.window_sash_mode = random.choice(['DOUBLE_CASEMENT', 'FIXED'])
+        props.window_sash_material = random.choice(['DARK_WOOD', 'WHITE_WOOD', 'WROUGHT_IRON', 'BRONZE'])
+
+    elif category == "PILLAR":
+        props.pillar_type = random.choice([
+            'COURTYARD_CLASSIC', 'CLASSIC_FLUTED', 'GOTHIC_CLUSTERED', 'STONE_DRUM', 'TWISTED_SOLOMONIC', 'SQUARE_MONUMENT'
+        ])
+        props.pillar_mat_type = random.choice(['MARBLE', 'ANCIENT_STONE', 'MOSSY_RUINS'])
+        props.pillar_flutes = random.choice([8, 12, 16, 20, 24])
+        props.pillar_colonnettes = random.choice([4, 6, 8])
+        props.pillar_entasis = round(random.uniform(0.03, 0.12), 2)
+
+    elif category == "RELIEF_WALL":
+        props.relief_style = random.choice(['ROSETTE', 'FRIEZE', 'RUNIC'])
+        props.relief_wall_bays = random.choice([1, 2, 3])
+        props.relief_depth = round(random.uniform(0.025, 0.06), 3)
+        props.relief_pilaster_width = round(random.uniform(0.30, 0.50), 2)
+        props.relief_damage = round(random.uniform(0.10, 0.45), 2)
+        props.relief_weathering = round(random.uniform(0.20, 0.65), 2)
+        props.relief_moss_amount = round(random.uniform(0.05, 0.40), 2)
+
+    elif category == "STONE_STAIRS":
+        props.stone_stairs_style = random.choice([
+            'CLASSICAL_BALUSTRADE', 'DUNGEON_FORGED_IRON', 'MEDIEVAL_STONE_WALL', 'SIMPLE_STEPS'
+        ])
+        props.stone_stairs_rail_placement = random.choice(['BOTH_SIDES', 'LEFT_ONLY', 'RIGHT_ONLY', 'NONE'])
+        props.stone_stairs_step_count = random.choice([8, 10, 12, 16])
+        props.stone_stairs_wear_amount = round(random.uniform(0.15, 0.55), 2)
+        props.stone_stairs_damage = round(random.uniform(0.20, 0.60), 2)
+        props.stone_stairs_moss = round(random.uniform(0.10, 0.50), 2)
+        props.stone_stairs_material = random.choice(['AGED_COBBLE', 'DARK_FLAGSTONE', 'MEDIEVAL_SANDSTONE', 'ANCIENT_RUINS'])
+
+    elif category == "BEAM_ARCH":
+        props.arch_style = random.choice(['ROMAN_ROUND', 'GOTHIC_POINTED', 'HORSESHOE', 'SEGMENTAL', 'CORBELLED'])
+        props.arch_structure_type = random.choice(['SINGLE', 'ARCADE'])
+        props.arch_span_count = random.choice([2, 3, 4])
+        props.arch_pillar_shape = random.choice(['SQUARE_PIER', 'ROUND_COLUMN', 'OCTAGONAL_PIER'])
+        props.arch_damage = round(random.uniform(0.15, 0.50), 2)
+        props.arch_has_keystone = random.choice([True, False])
+
+    elif category == "CANDLE_STAND":
+        props.candle_stand_style = random.choice([
+            'HANGING_CHANDELIER', 'FLOOR_CANDELABRA', 'TABLE_CANDLESTICK', 'WALL_SCONCE'
+        ])
+        props.candle_count = random.choice([3, 4, 5, 6, 8])
+        props.candle_melt_level = round(random.uniform(0.2, 0.8), 2)
+        props.candle_holder_material = random.choice(['FORGED_IRON', 'ANTIQUE_BRASS', 'TARNISHED_SILVER'])
+
+    elif category == "CURTAIN":
+        props.curtain_style = random.choice(['DOUBLE_OPEN', 'SINGLE_LEFT', 'SINGLE_RIGHT'])
+        props.curtain_fabric_type = random.choice(['SHEER_LACE', 'HEAVY_VELVET', 'NATURAL_LINEN', 'SILK_SATIN'])
+        props.curtain_rod_style = random.choice(['BRASS', 'MATTE_BLACK', 'CHROME_SILVER'])
+
+    elif category == "SPIRAL_STAIRS":
+        props.spiral_stairs_style = random.choice(['CLASSIC_WOOD', 'CAST_IRON', 'CASTLE_STONE', 'MODERN_STEEL'])
+        props.spiral_stairs_baluster_style = random.choice(['ORNATE_TURNED', 'SIMPLE_ROUND'])
+
+    elif category == "HOUSEPLANT":
+        props.houseplant_style = random.choice(['HANGING_MACRAME', 'FLOOR_TERRACOTTA', 'TABLE_CERAMIC', 'WOODEN_STAND'])
+        props.houseplant_leaf_shape = random.choice(['AUTO', 'MONSTERA', 'PALM', 'FERN', 'FICUS'])
+        props.houseplant_pot_material = random.choice(['TERRACOTTA', 'CERAMIC_WHITE', 'BRASS', 'CONCRETE'])
+
+    elif category == "DICTIONARY":
+        props.dictionary_color_preset = random.choice([
+            'LEATHER_BROWN', 'CRIMSON_RED', 'ROYAL_NAVY', 'EMERALD_GREEN', 'BLACK_OBSIDIAN'
+        ])
+        props.dictionary_rib_count = random.choice([3, 4, 5])
+        props.dictionary_has_ribbon = random.choice([True, False])
+
+    elif category == "SPEAKER":
+        props.speaker_style = random.choice(['MODERN', 'VINTAGE', 'SUBWOOFER'])
+        props.speaker_cone_color = random.choice(['YELLOW', 'WHITE', 'BLACK', 'GOLD'])
+        props.speaker_has_grille = random.choice([True, False])
+
+    elif category == "CLOCK":
+        props.clock_shape = random.choice(['ROUND', 'OCTAGON', 'SQUARE'])
+        props.clock_style = random.choice(['ANTIQUE_WOOD', 'BRASS_STEAMPUNK', 'MODERN_MINIMAL'])
+        props.clock_time_hour = random.randint(1, 12)
+        props.clock_time_minute = random.randint(0, 59)
+
+    elif category == "FLASK":
+        props.flask_shape = random.choice(['ROUND', 'ERLENMEYER', 'FLAT_BOTTOM', 'GOURD', 'TUBE'])
+        props.liquid_color = (random.random(), random.random(), random.random(), 1.0)
+        props.liquid_level = round(random.uniform(0.3, 0.85), 2)
+
+    elif category == "CAVE":
+        props.cave_path_type = random.choice(['S_CURVE', 'STRAIGHT', 'CHAMBER'])
+        props.cave_rock_style = random.choice(['SLATE', 'LIMESTONE', 'VOLCANIC'])
+
+    elif category in ("ROCK", "CRAG"):
+        props.rock_type = random.choice([
+            'JAGGED_CRAG', 'COLUMNAR_CLIFF', 'VOLCANIC_SPIKE', 'FRACTURED', 'SHARP', 'BOULDER'
+        ])
+        props.roughness = round(random.uniform(0.3, 0.8), 2)
+        props.chisel_strength = round(random.uniform(0.3, 0.9), 2)
+        props.crack_depth = round(random.uniform(0.2, 0.7), 2)
+
+
+class MESH_OT_update_selected_prop(bpy.types.Operator):
+    """Update and morph the selected prop in-place using current UI parameters without changing seed"""
+    bl_idname = "mesh.update_selected_prop"
+    bl_label = "Update Selected Prop"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        if context.mode != 'OBJECT':
+            try:
+                bpy.ops.object.mode_set(mode='OBJECT')
+            except Exception:
+                pass
+
+        props = context.scene.prop_studio_props
+        active_obj = context.active_object
+        target = None
+        if active_obj and active_obj.type == 'MESH':
+            root, _, _, _, _ = resolve_prop_root_hierarchy(active_obj)
+            target = root or active_obj
+        else:
+            # 選択がない場合、シーン内の最新プロップをフォールバック検索
+            for obj in reversed(context.scene.objects):
+                if obj.type == 'MESH' and (props.asset_name in obj.name or props.prop_category in obj.name):
+                    root, _, _, _, _ = resolve_prop_root_hierarchy(obj)
+                    target = root or obj
+                    context.view_layer.objects.active = target
+                    target.select_set(True)
+                    break
+
+        if not target:
+            self.report({'WARNING'}, "更新対象のプロップが選択されていません。オブジェクトを選択してください。")
+            return {'CANCELLED'}
+
+        p = resolve_prop_parameters(props)
+        params = dict(p)
+        cat = params.pop("category", "ROCK")
+        seed_val = params.pop("seed", props.seed)
+
+        prop_name = sanitize_prop_base_name(target.name, cat, props.asset_name)
+
+        generate_procedural_prop_mesh(
+            context=context,
+            target_obj=target,
+            category=cat,
+            name=prop_name,
+            seed=seed_val,
+            **params
+        )
+        self.report({'INFO'}, f"🔄 Updated in-place: {prop_name}")
+        return {'FINISHED'}
+
+
 class MESH_OT_reroll_selected_prop(bpy.types.Operator):
-    """Re-roll and morph the selected prop in-place with new random seed & texture"""
+    """Re-roll and morph the selected prop in-place with new random seed & diverse styles"""
     bl_idname = "mesh.reroll_selected_prop"
     bl_label = "Re-Roll Selected Prop"
     bl_options = {'REGISTER', 'UNDO'}
@@ -190,8 +464,13 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
 
         props = context.scene.prop_studio_props
         active_obj = context.active_object
-        target = active_obj if (active_obj and active_obj.type == 'MESH') else None
+        target = None
+        if active_obj and active_obj.type == 'MESH':
+            root, _, _, _, _ = resolve_prop_root_hierarchy(active_obj)
+            target = root or active_obj
         
+        # カテゴリ固有のスタイルEnumおよびパラメータを真にランダム化！
+        reroll_category_properties(props, props.prop_category)
         props.seed = random.randint(1, 999999)
         p = resolve_prop_parameters(props)
         
@@ -200,11 +479,8 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
         cat = params.pop("category", "ROCK")
         seed_val = params.pop("seed", props.seed)
         
-        # For CAVE, sanitize name so selecting Floor/Water/Ceiling/Pillars/Debris does not append duplicate suffixes
-        prop_name = props.asset_name if not target else target.name
-        if cat == "CAVE":
-            import re
-            prop_name = re.sub(r'(_Floor|_Water|_Ceiling|_Pillars|_Debris)+$', '', prop_name).strip() or "Cave_Dungeon"
+        raw_name = props.asset_name if not target else target.name
+        prop_name = sanitize_prop_base_name(raw_name, cat, props.asset_name)
 
         generate_procedural_prop_mesh(
             context=context,
@@ -214,7 +490,7 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
             seed=seed_val,
             **params
         )
-        self.report({'INFO'}, f"Re-roll complete: {props.asset_name}")
+        self.report({'INFO'}, f"🎲 Re-roll complete ({cat}): {prop_name}")
         return {'FINISHED'}
 
 
@@ -982,7 +1258,7 @@ class MESH_OT_regenerate_castle_wall(bpy.types.Operator):
 
         active_obj = context.active_object
         target = None
-        if active_obj and active_obj.type == 'MESH' and ("CastleWallScatter" in active_obj.modifiers or "_Core" in active_obj.name):
+        if active_obj and active_obj.type == 'MESH' and ("CastleWallScatter" in active_obj.modifiers or "_Core" in active_obj.name or "Castle_Wall" in active_obj.name):
             target = active_obj
 
         name = target.name.replace("_Core", "") if target else (props.asset_name.strip() or "Castle_Wall")
@@ -1005,7 +1281,8 @@ class MESH_OT_regenerate_castle_wall(bpy.types.Operator):
             jitter=props.castle_wall_jitter,
             batter=props.castle_wall_batter,
             roughness=props.castle_wall_roughness,
-            target_obj=target
+            target_obj=target,
+            combine_mesh=props.castle_wall_combine
         )
 
         context.view_layer.objects.active = wall_obj
@@ -1039,7 +1316,7 @@ class MESH_OT_create_castle_wall(bpy.types.Operator):
 
         name = base_name
         counter = 1
-        while (name + "_Core") in bpy.data.objects:
+        while (name + "_Core") in bpy.data.objects or name in bpy.data.objects:
             name = f"{base_name}_{counter:02d}"
             counter += 1
 
@@ -1063,7 +1340,8 @@ class MESH_OT_create_castle_wall(bpy.types.Operator):
             jitter=props.castle_wall_jitter,
             batter=props.castle_wall_batter,
             roughness=props.castle_wall_roughness,
-            target_obj=None
+            target_obj=None,
+            combine_mesh=props.castle_wall_combine
         )
 
         context.view_layer.objects.active = wall_obj
@@ -1084,13 +1362,18 @@ class MESH_OT_convert_castle_wall_to_game_mesh(bpy.types.Operator):
             self.report({'WARNING'}, "城壁オブジェクトを選択してください")
             return {'CANCELLED'}
 
-        from ..generators.castle_wall_gen import convert_castle_wall_to_game_mesh
+        from ..generators.castle_wall_gen import convert_castle_wall_to_game_mesh, cleanup_stone_assets
 
         ok = convert_castle_wall_to_game_mesh(context, obj)
         if ok:
+            base_name = obj.name.replace("_Core", "")
+            cleanup_stone_assets(base_name)
+            if obj.name.endswith("_Core"):
+                obj.name = base_name
             v_cnt = len(obj.data.vertices)
             p_cnt = len(obj.data.polygons)
             self.report({'INFO'}, f"ゲーム用実体メッシュへ変換完了: {obj.name} ({v_cnt}頂点 / {p_cnt}ポリゴン)")
+
             return {'FINISHED'}
         else:
             self.report({'WARNING'}, "有効な城壁 Geometry Nodes モディファイアが見つかりませんでした")

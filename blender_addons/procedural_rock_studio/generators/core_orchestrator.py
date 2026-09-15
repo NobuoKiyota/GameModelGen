@@ -52,6 +52,15 @@ from .fence_gen import build_wooden_fence_mesh
 from .bush_gen import build_bush_mesh, apply_bush_spherical_normals
 from .pillar_gen import create_procedural_pillar
 from .telescope_gen import create_procedural_telescope
+from .dictionary_gen import build_dictionary_mesh, sample_random_dictionary_specs
+from .book_stack_gen import generate_book_stack
+from .document_stack_gen import generate_document_stack
+from .curtain_gen import generate_curtain
+from ..materials.dictionary_mat import (
+    create_dictionary_cover_material,
+    create_dictionary_pages_material,
+    create_dictionary_ribbon_material
+)
 from ..utils.water_anim_utils import setup_water_ocean_animation
 
 
@@ -64,12 +73,67 @@ def cleanup_old_debris(context, parent_name):
         bpy.data.objects.remove(o, do_unlink=True)
 
 
+def resolve_prop_root_hierarchy(target_obj):
+    """
+    選択されたオブジェクトが子パーツであっても、ルートとなる最上位の親オブジェクトを特定し、
+    ルートと全子孫オブジェクトのリスト、およびルートのワールド位置・回転・スケールを返す。
+    """
+    if not target_obj:
+        return None, [], None, None, None
+
+    root = target_obj
+    while getattr(root, "parent", None) is not None:
+        root = root.parent
+
+    all_objs = [root]
+    def collect_children(parent):
+        for child in getattr(parent, "children", []):
+            if child not in all_objs:
+                all_objs.append(child)
+                collect_children(child)
+    collect_children(root)
+
+    try:
+        world_loc = root.location.copy()
+        world_rot = root.rotation_euler.copy()
+        world_scale = root.scale.copy()
+    except Exception:
+        world_loc = None
+        world_rot = None
+        world_scale = None
+
+    return root, all_objs, world_loc, world_rot, world_scale
+
+
+def delete_prop_hierarchy(objects_to_delete):
+    """
+    リスト内のオブジェクトおよび関連する孤立メッシュデータを安全かつ完全に削除。
+    """
+    meshes_to_remove = set()
+    for obj in objects_to_delete:
+        try:
+            if obj and hasattr(obj, 'type') and obj.type == 'MESH' and getattr(obj, 'data', None):
+                meshes_to_remove.add(obj.data)
+            bpy.data.objects.remove(obj, do_unlink=True)
+        except Exception:
+            pass
+
+    for mesh in meshes_to_remove:
+        try:
+            if hasattr(mesh, 'users') and mesh.users == 0:
+                bpy.data.meshes.remove(mesh, do_unlink=True)
+        except Exception:
+            pass
+
+
+
 def resolve_prop_parameters(props):
     cat = props.prop_category
+    cur_seed = getattr(props, 'seed', random.randint(1, 999999))
     types = ['JAGGED_CRAG', 'COLUMNAR_CLIFF', 'VOLCANIC_SPIKE', 'FRACTURED', 'SHARP', 'BOULDER']
     final_type = random.choice(types) if props.rand_type else props.rock_type
     
-    if props.rand_dimensions:
+    if props.rand_dimensions or cat == "DICTIONARY":
         if cat == "CHAIR":
             final_sx = round(random.uniform(0.48, 0.62), 2)
             final_sy = round(random.uniform(0.48, 0.62), 2)
@@ -108,8 +172,13 @@ def resolve_prop_parameters(props):
                 final_sx = sq
                 final_sy = sq
                 final_sz = round(sq * random.uniform(0.65, 0.95), 2)
-        elif cat in ("FLOOR", "GRASS"):
-            if cat == "GRASS" and props.grass_mode == 'TUFT':
+        elif cat == "FLOOR":
+            sq = round(random.choice([1.5, 2.0, 2.5, 3.0]), 2)
+            final_sx = sq
+            final_sy = sq
+            final_sz = round(random.uniform(0.04, 0.06), 3)
+        elif cat == "GRASS":
+            if props.grass_mode == 'TUFT':
                 final_sx = round(random.uniform(0.6, 1.2), 2)
                 final_sy = final_sx
                 final_sz = round(random.uniform(0.6, 1.3), 2)
@@ -138,6 +207,24 @@ def resolve_prop_parameters(props):
             final_sx = round(random.uniform(1.2, 2.0), 2)
             final_sy = round(random.uniform(0.28, 0.40), 2)
             final_sz = round(random.uniform(2.0, 3.0), 2)
+        elif cat == "DICTIONARY":
+            specs = sample_random_dictionary_specs(seed=cur_seed)
+            final_sx = specs['width']
+            final_sy = specs['height']
+            final_sz = specs['thickness']
+            try:
+                props.size_x = final_sx
+                props.size_y = final_sy
+                props.size_z = final_sz
+                props.dictionary_rib_count = specs['rib_count']
+                props.dictionary_color_preset = specs['color_preset']
+                props.dictionary_has_ribbon = specs['has_ribbon']
+                props.dictionary_page_aging = specs.get('page_aging', 0.65)
+                props.dictionary_has_runes = specs.get('has_runes', True)
+                props.dictionary_rune_intensity = specs.get('rune_intensity', 0.85)
+                props.dictionary_foil_style = specs.get('foil_style', 'GOLD')
+            except Exception:
+                pass
         elif cat == "PILLAR":
             final_sx = round(random.uniform(0.8, 1.6), 2)
             final_sy = round(random.uniform(0.8, 1.6), 2)
@@ -209,7 +296,7 @@ def resolve_prop_parameters(props):
         "crack_depth": props.crack_depth,
         "big_chunk_cuts": props.big_chunk_cuts,
         "crack_count": props.floor_crack_count,
-        "create_debris": False if cat in ("FLOOR", "WALL", "GRASS", "BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED", "TREE", "WATER", "FENCE", "BUSH") else props.create_debris,
+        "create_debris": False if cat in ("FLOOR", "WALL", "GRASS", "BOOKSHELF", "TABLE", "PC_DESK", "CHAIR", "OFFICE_CHAIR", "CHEST", "BED", "TREE", "WATER", "FENCE", "BUSH", "DICTIONARY", "BOOK_STACK", "DOCUMENT_STACK", "CURTAIN") else props.create_debris,
         "debris_count": props.debris_count,
         "detail_level": props.detail_level,
         "tex_folder": props.texture_folder,
@@ -332,7 +419,110 @@ def resolve_prop_parameters(props):
         "window_damage": getattr(props, 'window_damage', 0.30),
         "window_weathering": getattr(props, 'window_weathering', 0.50),
         "window_moss_amount": getattr(props, 'window_moss_amount', 0.25),
+        "window_sash_mode": getattr(props, 'window_sash_mode', 'DOUBLE_CASEMENT'),
+        "window_open_angle": getattr(props, 'window_open_angle', 0.0),
+        "window_open_direction": getattr(props, 'window_open_direction', 'OUTWARD'),
+        "window_has_handle": getattr(props, 'window_has_handle', True),
+        "window_has_hinges": getattr(props, 'window_has_hinges', True),
+        "window_sash_material": getattr(props, 'window_sash_material', 'DARK_WOOD'),
+        "window_combine": getattr(props, 'window_combine', False),
+        # Dictionary parameters
+        "dictionary_rib_count": getattr(props, 'dictionary_rib_count', 4),
+        "dictionary_color_preset": getattr(props, 'dictionary_color_preset', 'NAVY'),
+        "dictionary_has_ribbon": getattr(props, 'dictionary_has_ribbon', True),
+        "dictionary_spine_curvature": getattr(props, 'dictionary_spine_curvature', 0.22),
+        "dictionary_fore_edge_hollow": getattr(props, 'dictionary_fore_edge_hollow', 0.14),
+        "dictionary_page_aging": getattr(props, 'dictionary_page_aging', 0.65),
+        "dictionary_has_runes": getattr(props, 'dictionary_has_runes', True),
+        "dictionary_rune_intensity": getattr(props, 'dictionary_rune_intensity', 0.85),
+        "dictionary_foil_style": getattr(props, 'dictionary_foil_style', 'GOLD'),
+        # Book Stack parameters
+        "book_stack_count": getattr(props, 'book_stack_count', 5),
+        "book_stack_style": getattr(props, 'book_stack_style', 'MESSY'),
+        "book_stack_scatter_radius": getattr(props, 'book_stack_scatter_radius', 0.08),
+        "book_stack_drop_dynamics": getattr(props, 'book_stack_drop_dynamics', 0.65),
+        "book_stack_include_ground": getattr(props, 'book_stack_include_ground', False),
+        "book_stack_combine": getattr(props, 'book_stack_combine', True),
+        "book_stack_mix_styles": getattr(props, 'book_stack_mix_styles', True),
+        # Document Stack parameters
+        "doc_layer_count": getattr(props, 'doc_layer_count', 26),
+        "doc_messiness": getattr(props, 'doc_messiness', 0.65),
+        "doc_include_folders": getattr(props, 'doc_include_folders', True),
+        # Curtain parameters
+        "curtain_style": getattr(props, 'curtain_style', 'DOUBLE_OPEN'),
+        "curtain_pleats": getattr(props, 'curtain_pleats', 12),
+        "curtain_fabric_type": getattr(props, 'curtain_fabric_type', 'SHEER_LACE'),
+        "curtain_rod_style": getattr(props, 'curtain_rod_style', 'BRASS'),
+        "curtain_include_rod": getattr(props, 'curtain_include_rod', True),
+        "curtain_simulate_wind": getattr(props, 'curtain_simulate_wind', True),
+        "curtain_wind_strength": getattr(props, 'curtain_wind_strength', 45.0),
+        "curtain_bake_static": getattr(props, 'curtain_bake_static', True),
+        "curtain_combine": getattr(props, 'curtain_combine', True),
+        "curtain_open_amount": getattr(props, 'curtain_open_amount', 0.0),
+        "curtain_tied_back": getattr(props, 'curtain_tied_back', False),
+        "curtain_generate_shapekey": getattr(props, 'curtain_generate_shapekey', True),
+        "curtain_smoothness": getattr(props, 'curtain_smoothness', 'MEDIUM'),
+        # Candle Stand parameters
+        "candle_stand_style": getattr(props, 'candle_stand_style', 'HANGING_CHANDELIER'),
+        "candle_count": getattr(props, 'candle_count', 6),
+        "candle_melt_level": getattr(props, 'candle_melt_level', 0.50),
+        "candle_has_flame": getattr(props, 'candle_has_flame', True),
+        "candle_add_lights": getattr(props, 'candle_add_lights', True),
+        "candle_holder_material": getattr(props, 'candle_holder_material', 'FORGED_IRON'),
+        "candle_wax_material": getattr(props, 'candle_wax_material', 'IVORY_BEESWAX'),
+        "candle_combine": getattr(props, 'candle_combine', True),
+        # Houseplant parameters
+        "houseplant_style": getattr(props, 'houseplant_style', 'HANGING_MACRAME'),
+        "houseplant_leaf_shape": getattr(props, 'houseplant_leaf_shape', 'AUTO'),
+        "houseplant_density": getattr(props, 'houseplant_density', 'MEDIUM'),
+        "houseplant_pot_material": getattr(props, 'houseplant_pot_material', 'TERRACOTTA'),
+        "houseplant_leaf_color": getattr(props, 'houseplant_leaf_color', 'VIBRANT_GREEN'),
+        "houseplant_variegated": getattr(props, 'houseplant_variegated', False),
+        "houseplant_combine": getattr(props, 'houseplant_combine', True),
+        # Spiral Stairs parameters
+        "spiral_stairs_style": getattr(props, 'spiral_stairs_style', 'CLASSIC_WOOD'),
+        "spiral_stairs_step_count": getattr(props, 'spiral_stairs_step_count', 20),
+        "spiral_stairs_radius": getattr(props, 'spiral_stairs_radius', 1.2),
+        "spiral_stairs_inner_radius": getattr(props, 'spiral_stairs_inner_radius', 0.15),
+        "spiral_stairs_step_height": getattr(props, 'spiral_stairs_step_height', 0.18),
+        "spiral_stairs_step_angle": getattr(props, 'spiral_stairs_step_angle', 18.0),
+        "spiral_stairs_baluster_style": getattr(props, 'spiral_stairs_baluster_style', 'ORNATE_TURNED'),
+        "spiral_stairs_has_pillar": getattr(props, 'spiral_stairs_has_pillar', True),
+        "spiral_stairs_has_handrail": getattr(props, 'spiral_stairs_has_handrail', True),
+        "spiral_stairs_tread_material": getattr(props, 'spiral_stairs_tread_material', 'DARK_WALNUT'),
+        "spiral_stairs_metal_material": getattr(props, 'spiral_stairs_metal_material', 'CAST_IRON'),
+        "spiral_stairs_combine": getattr(props, 'spiral_stairs_combine', True),
+        # Stone Stairs parameters
+        "stone_stairs_style": getattr(props, 'stone_stairs_style', 'CLASSICAL_BALUSTRADE'),
+        "stone_stairs_step_count": getattr(props, 'stone_stairs_step_count', 12),
+        "stone_stairs_width": getattr(props, 'stone_stairs_width', 1.8),
+        "stone_stairs_step_depth": getattr(props, 'stone_stairs_step_depth', 0.32),
+        "stone_stairs_step_height": getattr(props, 'stone_stairs_step_height', 0.18),
+        "stone_stairs_rail_placement": getattr(props, 'stone_stairs_rail_placement', 'BOTH_SIDES'),
+        "stone_stairs_wear_amount": getattr(props, 'stone_stairs_wear_amount', 0.35),
+        "stone_stairs_damage": getattr(props, 'stone_stairs_damage', 0.40),
+        "stone_stairs_moss": getattr(props, 'stone_stairs_moss', 0.30),
+        "stone_stairs_material": getattr(props, 'stone_stairs_material', 'AGED_COBBLE'),
+        "stone_stairs_include_landing": getattr(props, 'stone_stairs_include_landing', True),
+        "stone_stairs_combine": getattr(props, 'stone_stairs_combine', True),
+        # Castle Wall parameters
+        "castle_wall_shape": getattr(props, 'castle_wall_shape', 'STRAIGHT'),
+        "castle_wall_style": getattr(props, 'castle_wall_style', 'ASHLAR'),
+        "castle_wall_stone_aspect": getattr(props, 'castle_wall_stone_aspect', 'STANDARD'),
+        "castle_wall_stone_roundness": getattr(props, 'castle_wall_stone_roundness', 0.035),
+        "castle_wall_stone_chipping": getattr(props, 'castle_wall_stone_chipping', 0.016),
+        "castle_wall_length": getattr(props, 'castle_wall_length', 6.0),
+        "castle_wall_height": getattr(props, 'castle_wall_height', 3.5),
+        "castle_wall_thickness": getattr(props, 'castle_wall_thickness', 1.2),
+        "castle_wall_has_crenels": getattr(props, 'castle_wall_has_crenels', True),
+        "castle_wall_density": getattr(props, 'castle_wall_density', 22.0),
+        "castle_wall_min_dist": getattr(props, 'castle_wall_min_dist', 0.22),
+        "castle_wall_jitter": getattr(props, 'castle_wall_jitter', 0.04),
+        "castle_wall_batter": getattr(props, 'castle_wall_batter', 0.18),
+        "castle_wall_roughness": getattr(props, 'castle_wall_roughness', 0.14),
+        "castle_wall_combine": getattr(props, 'castle_wall_combine', True),
     }
+
 
 
 def generate_procedural_prop_mesh(
@@ -444,6 +634,7 @@ def generate_procedural_prop_mesh(
         c_rnd = kwargs.get('castle_wall_stone_roundness', 0.035)
         c_chip = kwargs.get('castle_wall_stone_chipping', 0.016)
         c_asp = kwargs.get('castle_wall_stone_aspect', 'STANDARD')
+        c_combine = kwargs.get('castle_wall_combine', True)
 
         wall_obj, _ = create_castle_wall_scene(
             context=context,
@@ -463,7 +654,8 @@ def generate_procedural_prop_mesh(
             jitter=c_jit,
             batter=c_bat,
             roughness=c_rough,
-            target_obj=target_obj
+            target_obj=target_obj,
+            combine_mesh=c_combine
         )
         return wall_obj
 
@@ -609,10 +801,233 @@ def generate_procedural_prop_mesh(
             size_z=size_z
         )
 
+    # 📚 Book Stack Preset (本の山・積読・物理演算スタック)
+    if category == "BOOK_STACK":
+        if target_obj:
+            root_obj, all_objs, _, _, _ = resolve_prop_root_hierarchy(target_obj)
+            delete_prop_hierarchy(all_objs)
+        return generate_book_stack(
+            context=context,
+            name=name,
+            count=kwargs.get('book_stack_count', 5),
+            style=kwargs.get('book_stack_style', 'MESSY'),
+            base_width=size_x,
+            base_height=size_y,
+            base_thickness=size_z,
+            scatter_radius=kwargs.get('book_stack_scatter_radius', 0.08),
+            drop_dynamics=kwargs.get('book_stack_drop_dynamics', 0.65),
+            include_ground=kwargs.get('book_stack_include_ground', False),
+            mix_styles=kwargs.get('book_stack_mix_styles', True),
+            combine=kwargs.get('book_stack_combine', True),
+            seed=seed
+        )
+
+    # 📄 Document Stack Preset (書類の束・ペーパースタック)
+    if category == "DOCUMENT_STACK":
+        if target_obj:
+            root_obj, all_objs, _, _, _ = resolve_prop_root_hierarchy(target_obj)
+            delete_prop_hierarchy(all_objs)
+        return generate_document_stack(
+            context=context,
+            name=name,
+            base_width=size_x,
+            base_length=size_y,
+            stack_height=size_z,
+            layer_count=kwargs.get('doc_layer_count', 26),
+            messiness=kwargs.get('doc_messiness', 0.65),
+            include_folders=kwargs.get('doc_include_folders', True),
+            seed=seed
+        )
+
+    # 🪟 Curtain Preset (カーテン・ドレープ布地・風シミュレーション)
+    if category == "CURTAIN":
+        if target_obj:
+            root_obj, all_objs, _, _, _ = resolve_prop_root_hierarchy(target_obj)
+            delete_prop_hierarchy(all_objs)
+        return generate_curtain(
+            context=context,
+            name=name,
+            width=size_x,
+            height=size_y,
+            pleats_per_panel=kwargs.get('curtain_pleats', 12),
+            style=kwargs.get('curtain_style', 'DOUBLE_OPEN'),
+            fabric_type=kwargs.get('curtain_fabric_type', 'SHEER_LACE'),
+            rod_style=kwargs.get('curtain_rod_style', 'BRASS'),
+            include_rod=kwargs.get('curtain_include_rod', True),
+            simulate_wind=kwargs.get('curtain_simulate_wind', True),
+            wind_strength=kwargs.get('curtain_wind_strength', 45.0),
+            wind_direction=(0.3, 1.0, 0.1),
+            bake_to_static=kwargs.get('curtain_bake_static', True),
+            combine=kwargs.get('curtain_combine', True),
+            open_amount=kwargs.get('curtain_open_amount', 0.0),
+            tied_back=kwargs.get('curtain_tied_back', False),
+            generate_shapekey=kwargs.get('curtain_generate_shapekey', True),
+            smoothness=kwargs.get('curtain_smoothness', 'MEDIUM'),
+            seed=seed
+        )
+
+    # 🕯️ Candle Stand Preset (アンティーク蝋燭立て・シャンデリア)
+    if category == "CANDLE_STAND":
+        old_loc = None
+        old_rot = None
+        if target_obj:
+            root_obj, all_objs, old_loc, old_rot, _ = resolve_prop_root_hierarchy(target_obj)
+            delete_prop_hierarchy(all_objs)
+        from .candle_stand_gen import generate_candle_stand
+        res_candle = generate_candle_stand(
+            context=context,
+            name=name,
+            style=kwargs.get('candle_stand_style', 'HANGING_CHANDELIER'),
+            candle_count=kwargs.get('candle_count', 6),
+            melt_level=kwargs.get('candle_melt_level', 0.50),
+            has_flame=kwargs.get('candle_has_flame', True),
+            add_point_lights=kwargs.get('candle_add_lights', True),
+            holder_material=kwargs.get('candle_holder_material', 'FORGED_IRON'),
+            wax_material=kwargs.get('candle_wax_material', 'IVORY_BEESWAX'),
+            combine=kwargs.get('candle_combine', True),
+            target_obj=None,
+            seed=seed
+        )
+        if old_loc is not None and res_candle:
+            try:
+                res_candle.location = old_loc
+                res_candle.rotation_euler = old_rot
+            except Exception:
+                pass
+        return res_candle
+
+    # 🪟 Western Window Preset (リアル西洋窓・UE開閉対応)
+    if category == "WINDOW":
+        old_loc = None
+        old_rot = None
+        if target_obj:
+            root_obj, all_objs, old_loc, old_rot, _ = resolve_prop_root_hierarchy(target_obj)
+            delete_prop_hierarchy(all_objs)
+        from .window_gen import generate_western_window
+        created = generate_western_window(
+            context=context,
+            size_x=size_x,
+            size_y=size_y,
+            size_z=size_z,
+            frame_style=kwargs.get('window_frame_style', 'ROMAN_ROUND'),
+            grille_style=kwargs.get('window_grille_style', 'SUNBURST'),
+            arch_style=kwargs.get('window_arch_style', 'MOLDED_FRENCH'),
+            jamb_style=kwargs.get('window_jamb_style', 'ENGAGED_FLUTED'),
+            column_flutes=kwargs.get('window_column_flutes', 8),
+            column_pedestal=kwargs.get('window_column_pedestal', True),
+            has_keystone=kwargs.get('window_has_keystone', True),
+            wire_density=kwargs.get('window_wire_density', 6),
+            wire_thickness=kwargs.get('window_wire_thickness', 0.012),
+            frame_width=kwargs.get('window_frame_width', 0.18),
+            has_sill=kwargs.get('window_has_sill', True),
+            has_hood=kwargs.get('window_has_hood', True),
+            damage=kwargs.get('window_damage', 0.30),
+            weathering=kwargs.get('window_weathering', 0.50),
+            moss_amount=kwargs.get('window_moss_amount', 0.25),
+            sash_mode=kwargs.get('window_sash_mode', 'DOUBLE_CASEMENT'),
+            open_angle=kwargs.get('window_open_angle', 0.0),
+            open_direction=kwargs.get('window_open_direction', 'OUTWARD'),
+            has_handle=kwargs.get('window_has_handle', True),
+            has_hinges=kwargs.get('window_has_hinges', True),
+            sash_material=kwargs.get('window_sash_material', 'DARK_WOOD'),
+            combine_mesh=kwargs.get('window_combine', False),
+            location=old_loc if old_loc is not None else (0, 0, 0),
+            rotation=old_rot if old_rot is not None else (0, 0, 0),
+            seed=seed,
+            name=name
+        )
+        return created[0] if created else None
+
+    # 🪨 Stone Stairs Preset (年季の入った石畳の地下階段)
+    if category == "STONE_STAIRS":
+        old_loc = None
+        old_rot = None
+        if target_obj:
+            root_obj, all_objs, old_loc, old_rot, _ = resolve_prop_root_hierarchy(target_obj)
+            delete_prop_hierarchy(all_objs)
+        from .stone_stairs_gen import generate_stone_stairs
+        created = generate_stone_stairs(
+            style=kwargs.get('stone_stairs_style', 'CLASSICAL_BALUSTRADE'),
+            step_count=kwargs.get('stone_stairs_step_count', 12),
+            width=kwargs.get('stone_stairs_width', 1.8),
+            step_depth=kwargs.get('stone_stairs_step_depth', 0.32),
+            step_height=kwargs.get('stone_stairs_step_height', 0.18),
+            rail_placement=kwargs.get('stone_stairs_rail_placement', 'BOTH_SIDES'),
+            wear_amount=kwargs.get('stone_stairs_wear_amount', 0.35),
+            damage=kwargs.get('stone_stairs_damage', 0.40),
+            moss=kwargs.get('stone_stairs_moss', 0.30),
+            material_preset=kwargs.get('stone_stairs_material', 'AGED_COBBLE'),
+            include_landing=kwargs.get('stone_stairs_include_landing', True),
+            combine_mesh=kwargs.get('stone_stairs_combine', True),
+            location=old_loc if old_loc is not None else (0, 0, 0),
+            rotation=old_rot if old_rot is not None else (0, 0, 0)
+        )
+        return created[0] if created else None
+
+    # 🪜 Spiral Stairs Preset (手すり付き螺旋階段)
+    if category == "SPIRAL_STAIRS":
+        old_loc = None
+        old_rot = None
+        if target_obj:
+            root_obj, all_objs, old_loc, old_rot, _ = resolve_prop_root_hierarchy(target_obj)
+            delete_prop_hierarchy(all_objs)
+        from .spiral_stairs_gen import generate_spiral_stairs
+        created = generate_spiral_stairs(
+            style=kwargs.get('spiral_stairs_style', 'CLASSIC_WOOD'),
+            step_count=kwargs.get('spiral_stairs_step_count', 20),
+            radius=kwargs.get('spiral_stairs_radius', 1.2),
+            inner_radius=kwargs.get('spiral_stairs_inner_radius', 0.15),
+            step_height=kwargs.get('spiral_stairs_step_height', 0.18),
+            step_angle=kwargs.get('spiral_stairs_step_angle', 18.0),
+            baluster_style=kwargs.get('spiral_stairs_baluster_style', 'ORNATE_TURNED'),
+            has_pillar=kwargs.get('spiral_stairs_has_pillar', True),
+            has_handrail=kwargs.get('spiral_stairs_has_handrail', True),
+            tread_material_style=kwargs.get('spiral_stairs_tread_material', 'DARK_WALNUT'),
+            metal_material_style=kwargs.get('spiral_stairs_metal_material', 'CAST_IRON'),
+            combine_mesh=kwargs.get('spiral_stairs_combine', True),
+            location=old_loc if old_loc is not None else (0, 0, 0),
+            rotation=old_rot if old_rot is not None else (0, 0, 0)
+        )
+        return created[0] if created else None
+
+    # 🌿 Houseplant Preset (観葉植物・鉢植え)
+    if category == "HOUSEPLANT":
+        old_loc = None
+        old_rot = None
+        if target_obj:
+            root_obj, all_objs, old_loc, old_rot, _ = resolve_prop_root_hierarchy(target_obj)
+            delete_prop_hierarchy(all_objs)
+        from .houseplant_gen import generate_houseplant
+        res_plant = generate_houseplant(
+            context=context,
+            name=name,
+            style=kwargs.get('houseplant_style', 'HANGING_MACRAME'),
+            leaf_shape=kwargs.get('houseplant_leaf_shape', 'AUTO'),
+            leaf_density=kwargs.get('houseplant_density', 'MEDIUM'),
+            pot_material=kwargs.get('houseplant_pot_material', 'TERRACOTTA'),
+            leaf_color=kwargs.get('houseplant_leaf_color', 'VIBRANT_GREEN'),
+            variegated=kwargs.get('houseplant_variegated', False),
+            combine=kwargs.get('houseplant_combine', True),
+            target_obj=None,
+            seed=seed
+        )
+        if old_loc is not None and res_plant:
+            try:
+                res_plant.location = old_loc
+                res_plant.rotation_euler = old_rot
+            except Exception:
+                pass
+        return res_plant
+
     cleanup_old_debris(context, name if not target_obj else target_obj.name)
 
     if target_obj and target_obj.type == 'MESH':
-        obj = target_obj
+        root_obj, all_objs, _, _, _ = resolve_prop_root_hierarchy(target_obj)
+        # ルート配下に子オブジェクトが残っていればクリーンアップ
+        children = [o for o in all_objs if o != root_obj]
+        if children:
+            delete_prop_hierarchy(children)
+        obj = root_obj
         obj.name = name
         mesh = obj.data
         mesh.name = name + "_Mesh"
@@ -647,6 +1062,22 @@ def generate_procedural_prop_mesh(
         build_bookshelf_base(bm, size_x, size_y, size_z, tiers=shelf_tiers, column_style=column_style, seed=seed)
     elif category in ("TABLE", "PC_DESK"):
         build_table_base(bm, size_x, size_y, size_z, shape=table_shape, leg_style=table_leg_style, seed=seed)
+    elif category == "DICTIONARY":
+        d_ribs = kwargs.get('dictionary_rib_count', 4)
+        d_spine_curv = kwargs.get('dictionary_spine_curvature', 0.22)
+        d_hollow = kwargs.get('dictionary_fore_edge_hollow', 0.14)
+        d_ribbon = kwargs.get('dictionary_has_ribbon', True)
+        build_dictionary_mesh(
+            bm,
+            width=size_x,
+            height=size_y,
+            thickness=size_z,
+            rib_count=d_ribs,
+            spine_curvature=d_spine_curv,
+            fore_edge_hollow=d_hollow,
+            has_ribbon=d_ribbon,
+            seed=seed
+        )
     elif category == "BUSH":
         build_bush_mesh(
             bm,
@@ -764,6 +1195,7 @@ def generate_procedural_prop_mesh(
             bmesh.ops.scale(bm, vec=(sx, sy, sz), verts=d_verts)
             bmesh.ops.translate(bm, vec=(dx, dy, dz), verts=d_verts)
 
+    bm_face_mat_indices = [f.material_index for f in bm.faces] if category == "DICTIONARY" else None
     bm.to_mesh(mesh)
     bm.free()
 
@@ -777,10 +1209,11 @@ def generate_procedural_prop_mesh(
         else:
             bevel_mod.width = min(0.03, (size_z if category != "WALL" else size_y) * 0.15)
         bevel_mod.segments = 2
-        try:
-            bpy.ops.object.modifier_apply(modifier=bevel_mod.name)
-        except Exception:
-            pass
+        if apply_disp:
+            try:
+                bpy.ops.object.modifier_apply(modifier=bevel_mod.name)
+            except Exception:
+                pass
 
     # 3. Ocean Modifier for OCEAN preset
     if category == "WATER" and water_shape == "OCEAN":
@@ -858,7 +1291,7 @@ def generate_procedural_prop_mesh(
     for p in mesh.polygons:
         p.use_smooth = True
 
-    if not (category == "WATER" and water_animate):
+    if apply_disp and not (category == "WATER" and water_animate):
         for mod in list(obj.modifiers):
             try:
                 bpy.ops.object.modifier_apply(modifier=mod.name)
@@ -880,7 +1313,9 @@ def generate_procedural_prop_mesh(
         # GRASS は build_dense_meadow_field_mesh / build_grass_blade_with_uv 内で
         # 地面(Slot 0)と草ブレード(Slot 1)のUVが正しく分離生成されているため追加投影不要
         pass
-    elif category in ("FLOOR", "WALL", "BEAM", "BEAM_ARCH", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED", "WATER", "FENCE", "BUSH"):
+    elif category == "FLOOR":
+        bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.015)
+    elif category in ("WALL", "BEAM", "BEAM_ARCH", "BOOKSHELF", "TABLE", "CHAIR", "CHEST", "BED", "WATER", "FENCE", "BUSH"):
         if uv_mode == "FIT":
             max_dim = max(size_x, size_y, size_z)
             bpy.ops.uv.cube_project(cube_size=max_dim, correct_aspect=True, clip_to_bounds=True)
@@ -966,6 +1401,36 @@ def generate_procedural_prop_mesh(
         if water_shape == "POND" and water_include_bed:
             mat_bed = create_procedural_water_bed_shader(name + "_Water_Bed_Mat", seed=seed)
             obj.data.materials.append(mat_bed)
+    elif category == "DICTIONARY":
+        color_preset = kwargs.get('dictionary_color_preset', 'NAVY')
+        has_ribbon = kwargs.get('dictionary_has_ribbon', True)
+        d_aging = kwargs.get('dictionary_page_aging', 0.65)
+        d_runes = kwargs.get('dictionary_has_runes', True)
+        d_rune_int = kwargs.get('dictionary_rune_intensity', 0.85)
+        d_foil = kwargs.get('dictionary_foil_style', 'GOLD')
+
+        mat_cover = create_dictionary_cover_material(
+            f"{name}_Cover_Mat",
+            color_preset=color_preset,
+            has_runes=d_runes,
+            rune_intensity=d_rune_int,
+            foil_style=d_foil,
+            seed=seed
+        )
+        mat_pages = create_dictionary_pages_material(f"{name}_Pages_Mat", aging=d_aging, seed=seed)
+        
+        obj.data.materials.clear()
+        obj.data.materials.append(mat_cover) # Slot 0: Cover (表紙/丸背/リブ)
+        obj.data.materials.append(mat_pages) # Slot 1: Pages (ページブロック)
+
+        if has_ribbon:
+            ribbon_col = (0.55, 0.05, 0.08, 1.0) if color_preset != 'BURGUNDY' else (0.05, 0.15, 0.40, 1.0)
+            mat_ribbon = create_dictionary_ribbon_material(f"{name}_Ribbon_Mat", color=ribbon_col)
+            obj.data.materials.append(mat_ribbon) # Slot 2: Ribbon (しおり紐)
+
+        if bm_face_mat_indices and len(bm_face_mat_indices) == len(obj.data.polygons):
+            for p, idx in zip(obj.data.polygons, bm_face_mat_indices):
+                p.material_index = idx
     elif category in ("ROCK", "CRAG"):
         tex_files = get_textures_from_folder(tex_folder)
         disp_img = None
@@ -1056,7 +1521,44 @@ def generate_procedural_prop_mesh(
                 obj.data.materials.append(None)
             obj.data.materials[2] = mat_iron
 
-        if enable_disp and disp_strength > 0.001 and category in ("WALL", "FLOOR", "PILLAR", "BEAM", "TABLE", "PC_DESK", "CHEST", "GRASS"):
+        # 床（FLOOR）: アプローチA テクスチャ完全連動型ジオメトリDisplacement
+        if category == "FLOOR":
+            # 天面頂点グループ Top_Surface を検出・作成（側面・底面を保護し天面のみに変位を限定）
+            vg_top = obj.vertex_groups.get("Top_Surface") or obj.vertex_groups.new(name="Top_Surface")
+            if obj.data.vertices:
+                max_z = max(v.co.z for v in obj.data.vertices)
+                top_indices = [v.index for v in obj.data.vertices if v.co.z >= max_z - 0.002]
+                if top_indices:
+                    vg_top.add(top_indices, 1.0, 'REPLACE')
+            
+            if enable_disp or floor_shape == "COBBLESTONE":
+                eff_strength = disp_strength if (enable_disp and disp_strength > 0.001) else 0.02
+                if use_folder_tex and disp_img:
+                    apply_geometry_displacement(
+                        obj,
+                        disp_image_path=disp_img,
+                        strength=eff_strength,
+                        midlevel=disp_midlevel,
+                        subdivisions=0,
+                        apply_modifier=apply_disp,
+                        vertex_group="Top_Surface",
+                        texture_coords='UV'
+                    )
+                else:
+                    tile_sc = max(1.2, (1.0 / max(0.1, cobble_stone_size)) * 0.8) if floor_shape == "COBBLESTONE" else 5.5
+                    apply_geometry_displacement(
+                        obj,
+                        disp_image_path=None,
+                        strength=-eff_strength,
+                        midlevel=disp_midlevel,
+                        subdivisions=0,
+                        apply_modifier=apply_disp,
+                        vertex_group="Top_Surface",
+                        tex_type='VORONOI',
+                        tex_scale=1.0 / tile_sc,
+                        texture_coords='OBJECT'
+                    )
+        elif enable_disp and disp_strength > 0.001 and category in ("WALL", "PILLAR", "BEAM", "TABLE", "PC_DESK", "CHEST", "GRASS"):
             apply_geometry_displacement(
                 obj,
                 disp_image_path=disp_img,
