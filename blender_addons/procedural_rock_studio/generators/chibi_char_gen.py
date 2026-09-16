@@ -397,14 +397,15 @@ def build_chibi_nose_mesh(context, name="Chibi_Nose", head_center=(0, 0, 0.72), 
     return obj
 
 
-def build_chibi_hair_mesh(context, name="Chibi_Hair", gender="BOY", hair_style="SHORT", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
+def build_chibi_hair_front_mesh(context, name="Chibi_Hair_Front", front_style="SHORT", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
     """
-    純粋ヘアスタイルメッシュ（帽子・被り物全撤廃 ＆ 高密度ハイポリ有機造形）
-    前髪の毛束フリンジ、もみあげ、首筋に沿う滑らかな襟足V/W字曲線を完備
-    対応スタイル (12種):
-      SHORT, SHORT_MESSY, MUSHROOM, BOB, TWINTAILS, BRAIDS,
-      PONYTAIL, TOPKNOT, SPIKY, WAVY_LONG, CENTER_PART, AFRO
+    前髪メッシュ（前髪・毛束フリンジ・もみあげ 独立パーツ）
+    耳の手前で自然に抜けるレイヤー構造により、耳へのめり込みを完全に防止
+    対応スタイル: SHORT, SHORT_MESSY, CENTER_PART, MUSHROOM, NONE
     """
+    if front_style == "NONE":
+        return None
+
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
@@ -413,8 +414,100 @@ def build_chibi_hair_mesh(context, name="Chibi_Hair", gender="BOY", hair_style="
     hc = Vector(head_center)
     hsx, hsy, hsz = head_size[0], head_size[1], head_size[2]
 
-    # アフロは独自のふんわり球体ベース
-    if hair_style == "AFRO":
+    # 高精細UV球ベース（前頭部特化）
+    bmesh.ops.create_uvsphere(bm, u_segments=36, v_segments=22, radius=0.5)
+
+    def calc_front_cutoff(norm_x, style):
+        if style == "MUSHROOM":
+            return 0.12 + 0.02 * math.cos(norm_x * 2.0 * math.pi)
+        elif style == "CENTER_PART":
+            return 0.20 - 0.10 * math.cos(norm_x * math.pi * 0.85)
+        elif style == "SHORT_MESSY":
+            wave1 = math.sin((norm_x + 0.15) * 3.5 * math.pi) * 0.030
+            wave2 = math.cos((norm_x - 0.20) * 2.0 * math.pi) * 0.020
+            return 0.13 + 0.04 * norm_x + wave1 + wave2
+        else:  # SHORT
+            fringe = math.sin((norm_x - 0.12) * 3.0 * math.pi) * 0.025 + math.cos(norm_x * 1.8 * math.pi) * 0.018
+            return 0.13 + 0.03 * norm_x + fringe
+
+    del_verts = []
+    for v in bm.verts:
+        norm_z = v.co.z / 0.5
+        norm_y = v.co.y / 0.5
+        norm_x = v.co.x / 0.5
+
+        # 1. 後頭部側の除外（頭頂部は深くオーバーラップして隙間を防止、耳まわりだけ前で抜く）
+        back_limit = 0.18 if norm_z > 0.15 else 0.02
+        if norm_y > back_limit:
+            del_verts.append(v)
+            continue
+
+        # 2. 耳の逃げ穴（耳位置近傍のめり込み防止）
+        if abs(norm_x) > 0.40 and norm_y > -0.04 and norm_z < 0.12:
+            del_verts.append(v)
+            continue
+
+        # 3. 前髪生え際＆もみあげのカットライン
+        cutoff = calc_front_cutoff(norm_x, front_style)
+        if abs(norm_x) > 0.32:
+            # 耳前もみあげ（耳の手前・前方に自然に下ろす）
+            side_depth = (abs(norm_x) - 0.32) * 1.10
+            cutoff -= side_depth
+
+        if norm_z < cutoff:
+            del_verts.append(v)
+
+    bmesh.ops.delete(bm, geom=del_verts, context='VERTS')
+
+    # 境界エッジの滑らかなスナップ
+    for v in bm.verts:
+        if v.is_boundary and v.co.y < 0.0:
+            nx = v.co.x / 0.5
+            cz = calc_front_cutoff(nx, front_style)
+            if abs(nx) > 0.32:
+                cz -= (abs(nx) - 0.32) * 1.10
+            v.co.z = cz * 0.5
+
+    # 頭部サイズにフィット＆ふっくらボリューム
+    for v in bm.verts:
+        norm_z = v.co.z / 0.5
+        y_fac = 1.0 + max(0.0, -norm_z) * 0.07
+        x_fac = 1.0 + max(0.0, -norm_z) * 0.09
+        vx = v.co.x * hsx * x_fac * 1.08
+        vy = v.co.y * hsy * y_fac * 1.08
+        vz = v.co.z * hsz * 1.08
+        v.co = Vector((vx, vy, vz)) + hc
+
+    bm.to_mesh(mesh)
+    bm.free()
+
+    mod_sol = obj.modifiers.new(name="Solidify", type='SOLIDIFY')
+    mod_sol.thickness = 0.018
+    mod_sub = obj.modifiers.new(name="Subdivision", type='SUBSURF')
+    mod_sub.levels = 1
+    mod_sub.render_levels = 1
+
+    return obj
+
+
+def build_chibi_hair_back_mesh(context, name="Chibi_Hair_Back", back_style="SHORT_NAPE", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
+    """
+    後ろ髪メッシュ（後頭部・襟足・サイドお団子・長髪 独立パーツ）
+    耳の後ろから首筋を包み込むレイヤー構造により、耳へのめり込みを完全に防止
+    対応スタイル: SHORT_NAPE, BOB, WAVY_LONG, TWINTAILS, BRAIDS, PONYTAIL, TOPKNOT, SPIKY, AFRO, NONE
+    """
+    if back_style == "NONE":
+        return None
+
+    mesh = bpy.data.meshes.new(name + "_Mesh")
+    obj = bpy.data.objects.new(name, mesh)
+    context.collection.objects.link(obj)
+
+    bm = bmesh.new()
+    hc = Vector(head_center)
+    hsx, hsy, hsz = head_size[0], head_size[1], head_size[2]
+
+    if back_style == "AFRO":
         res_afro = bmesh.ops.create_uvsphere(bm, u_segments=28, v_segments=18, radius=0.32)
         afro_p = hc + Vector((0.0, 0.05, hsz * 0.12))
         afro_del = []
@@ -429,71 +522,53 @@ def build_chibi_hair_mesh(context, name="Chibi_Hair", gender="BOY", hair_style="
             bmesh.ops.delete(bm, geom=afro_del, context='VERTS')
 
     else:
-        # 高精細UV球（44 segments, 28 rings - ユーザー要望の高ポリゴン有機造形）
-        bmesh.ops.create_uvsphere(bm, u_segments=44, v_segments=28, radius=0.5)
+        bmesh.ops.create_uvsphere(bm, u_segments=36, v_segments=22, radius=0.5)
 
-        def calc_hair_cutoff(norm_x, norm_y, style):
-            """
-            髪の毛の裾（前髪生え際・もみあげ・後頭部襟足）の有機的曲線を計算
-            添付画像（前髪のアシンメトリーな毛束フリンジ、耳前もみあげ、首筋に沿う深い襟足カーブ）に完全準拠
-            """
-            # 後頭部・襟足 (norm_y >= -0.05): 首筋中央へなだらかに下がるU字/V字カーブ
-            if norm_y >= -0.05:
-                if style == "WAVY_LONG":
-                    return -0.58
-                elif style == "MUSHROOM":
-                    return -0.22
-                else:
-                    # SHORT / 標準: 首筋中央（norm_x ≈ 0, norm_y ≈ 1.0）へ深くフィット (-0.32 〜 -0.46)
-                    center_depth = 1.0 - min(1.0, abs(norm_x) * 1.1)
-                    return -0.30 - 0.16 * center_depth
-
-            # 前頭部 (norm_y < -0.05): 前髪フリンジ＆もみあげ（眉毛のすぐ上に配置）
-            if style == "MUSHROOM":
-                # おかっぱパッツン
-                cutoff = 0.12 + 0.02 * math.cos(norm_x * 2.0 * math.pi)
-            elif style == "CENTER_PART":
-                # センター分け: おでこ中央が上がり、左右へ流れる
-                cutoff = 0.20 - 0.10 * math.cos(norm_x * math.pi * 0.85)
-            elif style == "SHORT_MESSY":
-                # 無造作アシメショート: 右から左へ流れる毛束フリンジ
-                wave1 = math.sin((norm_x + 0.15) * 3.5 * math.pi) * 0.030
-                wave2 = math.cos((norm_x - 0.20) * 2.0 * math.pi) * 0.020
-                cutoff = 0.13 + 0.04 * norm_x + wave1 + wave2
-            else:
-                # SHORT (添付画像準拠の王道ショート):
-                # 眉毛のすぐ上を走る自然な毛束ウェーブ（右/左への斜め流し）
-                fringe = math.sin((norm_x - 0.12) * 3.0 * math.pi) * 0.025 + math.cos(norm_x * 1.8 * math.pi) * 0.018
-                cutoff = 0.13 + 0.03 * norm_x + fringe
-
-            # もみあげ（耳前の自然な下がりカバー）
-            if abs(norm_x) > 0.32:
-                side_depth = (abs(norm_x) - 0.32) * 1.20
-                cutoff -= side_depth
-
-            return cutoff
-
-        verts_to_delete = []
+        del_verts = []
         for v in bm.verts:
             norm_z = v.co.z / 0.5
             norm_y = v.co.y / 0.5
             norm_x = v.co.x / 0.5
 
-            limit_z = calc_hair_cutoff(norm_x, norm_y, hair_style)
+            # 1. 前面側の除外判定（頭頂部は前髪としっかり重ね、耳の高さは前方を抜く）
+            front_limit = -0.16 if norm_z > 0.15 else 0.00
+            if norm_y < front_limit:
+                del_verts.append(v)
+                continue
+
+            # 2. 耳の逃げ穴（耳位置近傍の切り欠き）
+            if abs(norm_x) > 0.40 and -0.06 <= norm_y <= 0.08 and norm_z < 0.12:
+                del_verts.append(v)
+                continue
+
+            # 3. 襟足カットライン
+            if back_style == "WAVY_LONG":
+                limit_z = -0.58
+            elif back_style == "BOB":
+                limit_z = -0.26 - 0.04 * (1.0 - abs(norm_x))
+            else:  # SHORT_NAPE 等
+                center_depth = 1.0 - min(1.0, abs(norm_x) * 1.1)
+                limit_z = -0.30 - 0.16 * center_depth
+
             if norm_z < limit_z:
-                verts_to_delete.append(v)
+                del_verts.append(v)
 
-        bmesh.ops.delete(bm, geom=verts_to_delete, context='VERTS')
+        bmesh.ops.delete(bm, geom=del_verts, context='VERTS')
 
-        # 境界頂点（オープンエッジ）を計算カーブに滑らかに投影し、階段状ギザギザを解消
+        # 境界エッジの滑らかなスナップ
         for v in bm.verts:
-            if v.is_boundary:
+            if v.is_boundary and v.co.y >= -0.04:
                 nx = v.co.x / 0.5
-                ny = v.co.y / 0.5
-                target_z = calc_hair_cutoff(nx, ny, hair_style) * 0.5
-                v.co.z = target_z
+                if back_style == "WAVY_LONG":
+                    tz = -0.58
+                elif back_style == "BOB":
+                    tz = -0.26 - 0.04 * (1.0 - abs(nx))
+                else:
+                    cd = 1.0 - min(1.0, abs(nx) * 1.1)
+                    tz = -0.30 - 0.16 * cd
+                v.co.z = max(v.co.z, tz * 0.5)
 
-        # 残った頂点を頭部に合わせてスケール＆配置（頭部より一回り大きく包み込む）
+        # スケール＆配置
         for v in bm.verts:
             norm_z = v.co.z / 0.5
             y_fac = 1.0 + max(0.0, -norm_z) * 0.08
@@ -503,49 +578,17 @@ def build_chibi_hair_mesh(context, name="Chibi_Hair", gender="BOY", hair_style="
             vz = v.co.z * hsz * 1.08
             v.co = Vector((vx, vy, vz)) + hc
 
-        # スタイルごとの特徴ディテール
-        if hair_style == "SHORT":
-            # 王道ショート: 前髪の自然な立体毛束ウェーブ
-            for v in bm.verts:
-                if v.co.y < hc.y - 0.08 and v.co.z > hc.z - 0.06:
-                    wave = math.sin((v.co.x - hc.x) * 26.0) * 0.010
-                    v.co.y += wave - 0.007
-                    v.co.z -= 0.004
-
-        elif hair_style == "SHORT_MESSY":
-            # 無造作レイヤーショート: 毛先の立体ハネ感
-            for v in bm.verts:
-                if v.co.y < hc.y - 0.06:
-                    swirl = math.sin((v.co.x - hc.x) * 20.0 + (v.co.z - hc.z) * 15.0) * 0.012
-                    v.co.y += swirl - 0.006
-                    v.co.x += swirl * 0.5
-
-        elif hair_style == "CENTER_PART":
-            # センター分け: 左右へふんわり分かれる前髪
-            for v in bm.verts:
-                if v.co.y < hc.y - 0.08:
-                    side_dir = 1.0 if v.co.x > hc.x else -1.0
-                    v.co.x += side_dir * 0.008
-                    v.co.y -= 0.005
-
-        elif hair_style == "MUSHROOM":
-            # キノコマッシュ: ふっくら丸いボウル形状と裾の内巻き
-            for v in bm.verts:
-                rel_z = v.co.z - hc.z
-                if -0.05 < rel_z < 0.14:
-                    v.co.x = hc.x + (v.co.x - hc.x) * 1.15
-                    v.co.y = hc.y + (v.co.y - hc.y) * 1.13
-
-        elif hair_style == "TWINTAILS":
+        # スタイル固有の付属物（お団子、三つ編み、ポニテ、スパイク）
+        if back_style == "TWINTAILS":
             for side in (-1.0, 1.0):
-                bun_pos = hc + Vector((side * hsx * 0.55, -0.02, hsz * 0.22))
-                res_bun = bmesh.ops.create_uvsphere(bm, u_segments=18, v_segments=12, radius=0.105)
+                bun_pos = hc + Vector((side * hsx * 0.55, 0.04, hsz * 0.18))
+                res_bun = bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=12, radius=0.105)
                 for v in res_bun['verts']:
                     v.co += bun_pos
 
-        elif hair_style == "BRAIDS":
+        elif back_style == "BRAIDS":
             for side in (-1.0, 1.0):
-                base_braid = hc + Vector((side * hsx * 0.48, -0.04, -hsz * 0.05))
+                base_braid = hc + Vector((side * hsx * 0.48, 0.02, -hsz * 0.05))
                 for i in range(3):
                     b_pos = base_braid + Vector((side * i * 0.012, -0.01 * i, -i * 0.08))
                     b_rad = 0.048 - i * 0.006
@@ -558,8 +601,8 @@ def build_chibi_hair_mesh(context, name="Chibi_Hair", gender="BOY", hair_style="
                 for v in res_tip['verts']:
                     v.co += tip_p
 
-        elif hair_style == "TOPKNOT":
-            knot_p = hc + Vector((0.0, -0.02, hsz * 0.52))
+        elif back_style == "TOPKNOT":
+            knot_p = hc + Vector((0.0, 0.04, hsz * 0.52))
             res_knot = bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=12, radius=0.085)
             for v in res_knot['verts']:
                 v.co.z *= 0.85
@@ -568,40 +611,7 @@ def build_chibi_hair_mesh(context, name="Chibi_Hair", gender="BOY", hair_style="
             for v in res_ring['verts']:
                 v.co += knot_p - Vector((0, 0, 0.04))
 
-        elif hair_style == "WAVY_LONG":
-            for v in bm.verts:
-                if v.co.z < hc.z + 0.02:
-                    wave_x = math.sin((v.co.z - hc.z) * 24.0) * 0.014
-                    wave_y = math.cos((v.co.z - hc.z) * 24.0) * 0.010
-                    v.co.x += wave_x
-                    v.co.y += wave_y
-                    v.co.x = hc.x + (v.co.x - hc.x) * 1.10
-
-        elif hair_style == "BOB":
-            for v in bm.verts:
-                if v.co.z < hc.z + 0.05:
-                    v.co.x *= 1.10
-                    v.co.y *= 1.06
-
-        elif hair_style == "SPIKY":
-            spikes = [
-                (0.0, 0.02, hsz * 0.50, 0.0, 0.0),
-                (-0.08, -0.01, hsz * 0.46, -0.25, 0.0),
-                (0.08, -0.01, hsz * 0.46, 0.25, 0.0),
-                (0.0, 0.12, hsz * 0.38, 0.0, 0.30),
-                (-0.10, 0.08, hsz * 0.35, -0.20, 0.25),
-                (0.10, 0.08, hsz * 0.35, 0.20, 0.25),
-            ]
-            for sx, sy, sz, rx, ry in spikes:
-                res_spk = bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=0.038, radius2=0.005, depth=0.09)
-                base_p = hc + Vector((sx, sy, sz))
-                for v in res_spk['verts']:
-                    vx = v.co.x + ry * v.co.z
-                    vy = v.co.y + rx * v.co.z
-                    vz = v.co.z
-                    v.co = Vector((vx, vy, vz)) + base_p
-
-        elif hair_style == "PONYTAIL":
+        elif back_style == "PONYTAIL":
             tie_p = hc + Vector((0.0, hsy * 0.48, hsz * 0.18))
             res_tie = bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=10, radius=0.034)
             for v in res_tie['verts']:
@@ -613,11 +623,111 @@ def build_chibi_hair_mesh(context, name="Chibi_Hair", gender="BOY", hair_style="
                 vz = -v.co.z * 0.75 + v.co.y * 0.65 - 0.04
                 v.co = Vector((vx, vy, vz)) + tie_p
 
+        elif back_style == "SPIKY":
+            spikes = [
+                (0.0, 0.02, hsz * 0.50, 0.0, 0.0),
+                (-0.08, 0.04, hsz * 0.46, -0.25, 0.0),
+                (0.08, 0.04, hsz * 0.46, 0.25, 0.0),
+                (0.0, 0.14, hsz * 0.38, 0.0, 0.30),
+                (-0.10, 0.10, hsz * 0.35, -0.20, 0.25),
+                (0.10, 0.10, hsz * 0.35, 0.20, 0.25),
+            ]
+            for sx, sy, sz, rx, ry in spikes:
+                res_spk = bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=0.038, radius2=0.005, depth=0.09)
+                base_p = hc + Vector((sx, sy, sz))
+                for v in res_spk['verts']:
+                    vx = v.co.x + ry * v.co.z
+                    vy = v.co.y + rx * v.co.z
+                    vz = v.co.z
+                    v.co = Vector((vx, vy, vz)) + base_p
+
+        elif back_style == "WAVY_LONG":
+            for v in bm.verts:
+                if v.co.z < hc.z + 0.02:
+                    wave_x = math.sin((v.co.z - hc.z) * 24.0) * 0.014
+                    wave_y = math.cos((v.co.z - hc.z) * 24.0) * 0.010
+                    v.co.x += wave_x
+                    v.co.y += wave_y
+                    v.co.x = hc.x + (v.co.x - hc.x) * 1.10
+
+        elif back_style == "BOB":
+            for v in bm.verts:
+                if v.co.z < hc.z + 0.05:
+                    v.co.x *= 1.10
+                    v.co.y *= 1.06
+
     bm.to_mesh(mesh)
     bm.free()
 
     mod_sol = obj.modifiers.new(name="Solidify", type='SOLIDIFY')
     mod_sol.thickness = 0.022
+    mod_sub = obj.modifiers.new(name="Subdivision", type='SUBSURF')
+    mod_sub.levels = 1
+    mod_sub.render_levels = 1
+
+    return obj
+
+
+def build_chibi_hair_mesh(context, name="Chibi_Hair", gender="BOY", hair_style="SHORT", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
+    """
+    旧互換用ヘアスタイルメッシュ（前髪・後ろ髪を一体化して生成）
+    """
+    front_style = "SHORT"
+    back_style = "SHORT_NAPE"
+    if hair_style in ("SHORT", "SHORT_MESSY", "CENTER_PART", "MUSHROOM"):
+        front_style = hair_style
+        back_style = "SHORT_NAPE"
+    elif hair_style == "BOB":
+        front_style = "SHORT"
+        back_style = "BOB"
+    elif hair_style == "TWINTAILS":
+        front_style = "SHORT"
+        back_style = "TWINTAILS"
+    elif hair_style == "BRAIDS":
+        front_style = "SHORT"
+        back_style = "BRAIDS"
+    elif hair_style == "PONYTAIL":
+        front_style = "SHORT"
+        back_style = "PONYTAIL"
+    elif hair_style == "TOPKNOT":
+        front_style = "CENTER_PART"
+        back_style = "TOPKNOT"
+    elif hair_style == "SPIKY":
+        front_style = "SHORT_MESSY"
+        back_style = "SPIKY"
+    elif hair_style == "WAVY_LONG":
+        front_style = "SHORT"
+        back_style = "WAVY_LONG"
+    elif hair_style == "AFRO":
+        front_style = "NONE"
+        back_style = "AFRO"
+
+    # 前髪・後ろ髪の両方を生成して1つのメッシュに結合（後方互換）
+    f_obj = build_chibi_hair_front_mesh(context, name + "_Front_Temp", front_style, head_center, head_size)
+    b_obj = build_chibi_hair_back_mesh(context, name + "_Back_Temp", back_style, head_center, head_size)
+
+    mesh = bpy.data.meshes.new(name + "_Mesh")
+    obj = bpy.data.objects.new(name, mesh)
+    context.collection.objects.link(obj)
+
+    bm = bmesh.new()
+    if f_obj and f_obj.data:
+        bm.from_mesh(f_obj.data)
+    if b_obj and b_obj.data:
+        bm.from_mesh(b_obj.data)
+    bm.to_mesh(mesh)
+    bm.free()
+
+    # クリーンアップ
+    for temp in (f_obj, b_obj):
+        if temp:
+            m = temp.data
+            bpy.data.objects.remove(temp, do_unlink=True)
+            if m and m.users == 0:
+                bpy.data.meshes.remove(m)
+
+    mod_sol = obj.modifiers.new(name="Solidify", type='SOLIDIFY')
+    mod_sol.thickness = 0.020
     mod_sub = obj.modifiers.new(name="Subdivision", type='SUBSURF')
     mod_sub.levels = 1
     mod_sub.render_levels = 1
@@ -703,27 +813,35 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
                 v.co.z = v.co.z * 0.02 + (base_z + leg_len + torso_len * 0.92)
 
     elif outfit_type == "HOODIE":
-        # パーカー（少しゆったり胴体 ＋ 長袖 ＋ 背中フード）
+        # パーカー（少しゆったり胴体 ＋ 長袖 ＋ 背中フード ＋ 丸い撫で肩）
         t_z = base_z + leg_len * 0.55
-        t_top_z = base_z + leg_len + torso_len * 0.98
+        t_top_z = base_z + leg_len + torso_len * 0.96
         depth = t_top_z - t_z
-        res_t = bmesh.ops.create_cone(bm, cap_ends=False, segments=20, radius1=0.23, radius2=0.19, depth=depth)
+        res_t = bmesh.ops.create_cone(bm, cap_ends=False, segments=20, radius1=0.225, radius2=0.18, depth=depth)
         for v in res_t['verts']:
             v.co.z += t_z + depth * 0.5
-            v.co.y *= 0.92
+            v.co.y *= 0.91
+            # 撫で肩カーブ
+            if v.co.z > t_top_z - 0.07:
+                v.co.z -= (abs(v.co.x) / 0.18) ** 2 * 0.022
 
-        # 長袖（Sleeves）
-        sleeve_len = 0.19
+        # 長袖（丸いラウンドスリーブ）
+        sleeve_len = 0.18
         for side in (-1.0, 1.0):
-            sh_x = side * 0.135
+            sh_x = side * 0.125
             center_x = sh_x + side * (sleeve_len * 0.5 * sin_theta)
             center_z = sh_z - (sleeve_len * 0.5 * cos_theta)
-            res_sl = bmesh.ops.create_cone(bm, cap_ends=False, segments=12, radius1=0.095, radius2=0.125, depth=sleeve_len)
+            res_sl = bmesh.ops.create_cone(bm, cap_ends=False, segments=16, radius1=0.085, radius2=0.100, depth=sleeve_len)
             for v in res_sl['verts']:
                 vx, vy, vz = v.co.x, v.co.y, v.co.z
+                if vz > 0:
+                    vx *= 0.82
+                    vy *= 0.85
                 v.co.x = vx * cos_theta - side * vz * sin_theta + center_x
-                v.co.y = vy * 0.95 - 0.01
+                v.co.y = vy * 0.93 - 0.01
                 v.co.z = side * vx * sin_theta + vz * cos_theta + center_z
+                if v.co.z > sh_z - 0.04 and abs(v.co.x) > 0.13:
+                    v.co.z -= (abs(v.co.x) - 0.13) * 0.35
 
         # 背中のフード（ふっくら垂れ下がった袋状メッシュ）
         res_hood = bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=10, radius=0.12)
@@ -735,27 +853,35 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
             v.co += hood_p
 
     elif outfit_type == "COAT":
-        # ダッフルコート（腰下長め ＋ 折り返し襟 ＋ 長袖）
+        # ダッフルコート（腰下長め ＋ 折り返し襟 ＋ 長袖 ＋ 丸い撫で肩）
         c_z = base_z + leg_len * 0.30
-        c_top_z = base_z + leg_len + torso_len * 0.98
+        c_top_z = base_z + leg_len + torso_len * 0.96
         depth = c_top_z - c_z
-        res_c = bmesh.ops.create_cone(bm, cap_ends=False, segments=20, radius1=0.235, radius2=0.19, depth=depth)
+        res_c = bmesh.ops.create_cone(bm, cap_ends=False, segments=20, radius1=0.23, radius2=0.185, depth=depth)
         for v in res_c['verts']:
             v.co.z += c_z + depth * 0.5
-            v.co.y *= 0.91
+            v.co.y *= 0.90
+            # 撫で肩カーブ
+            if v.co.z > c_top_z - 0.07:
+                v.co.z -= (abs(v.co.x) / 0.18) ** 2 * 0.022
 
         # 長袖
-        sleeve_len = 0.19
+        sleeve_len = 0.18
         for side in (-1.0, 1.0):
-            sh_x = side * 0.135
+            sh_x = side * 0.125
             center_x = sh_x + side * (sleeve_len * 0.5 * sin_theta)
             center_z = sh_z - (sleeve_len * 0.5 * cos_theta)
-            res_sl = bmesh.ops.create_cone(bm, cap_ends=False, segments=12, radius1=0.098, radius2=0.128, depth=sleeve_len)
+            res_sl = bmesh.ops.create_cone(bm, cap_ends=False, segments=16, radius1=0.088, radius2=0.105, depth=sleeve_len)
             for v in res_sl['verts']:
                 vx, vy, vz = v.co.x, v.co.y, v.co.z
+                if vz > 0:
+                    vx *= 0.82
+                    vy *= 0.85
                 v.co.x = vx * cos_theta - side * vz * sin_theta + center_x
-                v.co.y = vy * 0.95 - 0.01
+                v.co.y = vy * 0.93 - 0.01
                 v.co.z = side * vx * sin_theta + vz * cos_theta + center_z
+                if v.co.z > sh_z - 0.04 and abs(v.co.x) > 0.13:
+                    v.co.z -= (abs(v.co.x) - 0.13) * 0.35
 
         # 首元の折り返し襟 (Collar)
         res_col = bmesh.ops.create_cone(bm, cap_ends=False, segments=16, radius1=0.17, radius2=0.14, depth=0.06)
@@ -765,26 +891,36 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
             v.co.y *= 0.95
 
     else:
-        # T_SHIRT: 半袖 ＋ 短パン
+        # T_SHIRT: 半袖 ＋ 短パン ＋ 丸い撫で肩
         t_z = base_z + leg_len * 0.65
-        t_top_z = base_z + leg_len + torso_len * 0.98
+        t_top_z = base_z + leg_len + torso_len * 0.96
         depth = t_top_z - t_z
-        res_t = bmesh.ops.create_cone(bm, cap_ends=False, segments=20, radius1=0.215, radius2=0.185, depth=depth)
+        res_t = bmesh.ops.create_cone(bm, cap_ends=False, segments=20, radius1=0.21, radius2=0.18, depth=depth)
         for v in res_t['verts']:
             v.co.z += t_z + depth * 0.5
             v.co.y *= 0.88
+            # 撫で肩カーブ（首元が高く、肩端に向かってなだらかに下がる）
+            if v.co.z > t_top_z - 0.07:
+                v.co.z -= (abs(v.co.x) / 0.18) ** 2 * 0.022
 
         sleeve_len = 0.125
         for side in (-1.0, 1.0):
-            sh_x = side * 0.135
+            sh_x = side * 0.125
             center_x = sh_x + side * (sleeve_len * 0.5 * sin_theta)
             center_z = sh_z - (sleeve_len * 0.5 * cos_theta)
-            res_sl = bmesh.ops.create_cone(bm, cap_ends=False, segments=12, radius1=0.100, radius2=0.125, depth=sleeve_len)
+            res_sl = bmesh.ops.create_cone(bm, cap_ends=False, segments=16, radius1=0.090, radius2=0.105, depth=sleeve_len)
             for v in res_sl['verts']:
                 vx, vy, vz = v.co.x, v.co.y, v.co.z
+                # 肩の付け根を内側に寄せて丸いラウンドショルダーに
+                if vz > 0:
+                    vx *= 0.80
+                    vy *= 0.85
                 v.co.x = vx * cos_theta - side * vz * sin_theta + center_x
-                v.co.y = vy * 0.95 - 0.01
+                v.co.y = vy * 0.93 - 0.01
                 v.co.z = side * vx * sin_theta + vz * cos_theta + center_z
+                # 肩先の角を落として丸める
+                if v.co.z > sh_z - 0.04 and abs(v.co.x) > 0.13:
+                    v.co.z -= (abs(v.co.x) - 0.13) * 0.35
 
     # 🔘 小さな立体ボタンの追加（オーバーオール、コート、Tシャツ等）
     btn_verts = []
@@ -941,6 +1077,8 @@ def create_procedural_chibi_character(
     head_ratio=2.2,
     total_height=1.15,
     hair_style="SHORT",
+    hair_front="SHORT",
+    hair_back="SHORT_NAPE",
     outfit_type="T_SHIRT",
     eye_style="OVAL",
     eye_scale=1.0,
@@ -956,8 +1094,8 @@ def create_procedural_chibi_character(
 ):
     """
     『どうぶつの森』風デフォルメ3Dキャラクター統合生成
+    前髪・後ろ髪を完全独立分離パーツ化（耳めり込み解消 ＆ 着せ替え自由度向上）
     体（Body）を親（Root）として各パーツを親子付けし、マテリアルを一括適用
-    リアルタイム更新（Live Morphing）＆ バリエーション拡張対応
     """
     from ..materials.character_shaders import create_chibi_character_shader
 
@@ -967,6 +1105,37 @@ def create_procedural_chibi_character(
     head_center_z = body_height + head_height * 0.38
     head_size = (head_height * 0.95, head_height * 0.85, head_height * 0.80)
 
+    # hair_style プリセットからのフォールバック分解
+    if hair_front is None or hair_back is None:
+        style = hair_style or "SHORT"
+        if style in ("SHORT", "SHORT_MESSY", "CENTER_PART", "MUSHROOM"):
+            hair_front = style
+            hair_back = "SHORT_NAPE"
+        elif style == "BOB":
+            hair_front = "SHORT"
+            hair_back = "BOB"
+        elif style == "TWINTAILS":
+            hair_front = "SHORT"
+            hair_back = "TWINTAILS"
+        elif style == "BRAIDS":
+            hair_front = "SHORT"
+            hair_back = "BRAIDS"
+        elif style == "PONYTAIL":
+            hair_front = "SHORT"
+            hair_back = "PONYTAIL"
+        elif style == "TOPKNOT":
+            hair_front = "CENTER_PART"
+            hair_back = "TOPKNOT"
+        elif style == "SPIKY":
+            hair_front = "SHORT_MESSY"
+            hair_back = "SPIKY"
+        elif style == "WAVY_LONG":
+            hair_front = "SHORT"
+            hair_back = "WAVY_LONG"
+        elif style == "AFRO":
+            hair_front = "NONE"
+            hair_back = "AFRO"
+
     # 2. 各パーツメッシュ生成
     body_obj = build_chibi_body_mesh(context, f"{name}_Body", gender, head_ratio, total_height)
     head_obj = build_chibi_head_mesh(context, f"{name}_Head", (0, 0, head_center_z), head_size)
@@ -974,7 +1143,11 @@ def create_procedural_chibi_character(
     eyes_obj = build_chibi_eyes_mesh(context, f"{name}_Eyes", eye_style, eye_scale, (0, 0, head_center_z), head_size)
     eyebrow_obj = build_chibi_eyebrows_mesh(context, f"{name}_Eyebrows", eyebrow_style, (0, 0, head_center_z), head_size)
     nose_obj = build_chibi_nose_mesh(context, f"{name}_Nose", (0, 0, head_center_z), head_size)
-    hair_obj = build_chibi_hair_mesh(context, f"{name}_Hair", gender, hair_style, (0, 0, head_center_z), head_size)
+
+    # 前髪・後ろ髪の独立生成
+    hair_front_obj = build_chibi_hair_front_mesh(context, f"{name}_Hair_Front", hair_front, (0, 0, head_center_z), head_size)
+    hair_back_obj = build_chibi_hair_back_mesh(context, f"{name}_Hair_Back", hair_back, (0, 0, head_center_z), head_size)
+
     outfit_obj = build_chibi_outfit_mesh(context, f"{name}_Outfit", gender, outfit_type, 0.05, body_height)
     shoes_obj = build_chibi_shoes_mesh(context, f"{name}_Shoes")
     acc_obj = build_chibi_accessories_mesh(context, f"{name}_Accessory", accessory, (0, 0, head_center_z), head_size)
@@ -997,7 +1170,11 @@ def create_procedural_chibi_character(
     body_obj.data.materials.append(mat_skin)
     head_obj.data.materials.append(mat_skin)
     ears_obj.data.materials.append(mat_skin)
-    hair_obj.data.materials.append(mat_hair)
+    if hair_front_obj:
+        hair_front_obj.data.materials.append(mat_hair)
+    if hair_back_obj:
+        hair_back_obj.data.materials.append(mat_hair)
+
     outfit_obj.data.materials.append(mat_top)
     outfit_obj.data.materials.append(mat_button)  # スロット1: 衣装装飾ボタン（オーバーオール留め具・コート・Tシャツ等）
     eyes_obj.data.materials.append(mat_eye)
@@ -1020,7 +1197,11 @@ def create_procedural_chibi_character(
             acc_obj.data.materials.append(mat_acc)
 
     # 4. 親子付け（Body を Root として階層化）
-    child_parts = [head_obj, ears_obj, eyes_obj, nose_obj, hair_obj, outfit_obj, shoes_obj]
+    child_parts = [head_obj, ears_obj, eyes_obj, nose_obj, outfit_obj, shoes_obj]
+    if hair_front_obj:
+        child_parts.append(hair_front_obj)
+    if hair_back_obj:
+        child_parts.append(hair_back_obj)
     if eyebrow_obj:
         child_parts.append(eyebrow_obj)
     if acc_obj:

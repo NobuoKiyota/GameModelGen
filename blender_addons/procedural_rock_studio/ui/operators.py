@@ -269,6 +269,8 @@ def sanitize_prop_base_name(name, category, default_name):
         name = re.sub(r'(_Stairs|_Steps|_Handrail|_Pillar)+$', '', name).strip()
     elif category == "STONE_STAIRS":
         name = re.sub(r'(_Stairs|_Rail|_Steps|_Landing)+$', '', name).strip()
+    elif category == "CHIBI_CHARACTER":
+        name = re.sub(r'(_Body|_Head|_Hair|_Hair_Front|_Hair_Back|_Eyes|_Eyebrows|_Ears|_Nose|_Outfit|_Shoes|_Accessory)+$', '', name).strip()
     return name or default_name
 
 
@@ -283,6 +285,13 @@ def reroll_category_properties(props, category):
             'SHORT', 'SHORT_MESSY', 'CENTER_PART', 'BOB', 'MUSHROOM',
             'TWINTAILS', 'BRAIDS', 'PONYTAIL', 'TOPKNOT', 'SPIKY',
             'WAVY_LONG', 'AFRO'
+        ])
+        props.chibi_hair_front = random.choice([
+            'SHORT', 'SHORT_MESSY', 'CENTER_PART', 'MUSHROOM'
+        ])
+        props.chibi_hair_back = random.choice([
+            'SHORT_NAPE', 'BOB', 'WAVY_LONG', 'TWINTAILS', 'BRAIDS',
+            'PONYTAIL', 'TOPKNOT', 'SPIKY', 'AFRO'
         ])
         props.chibi_eyebrow_style = random.choice([
             'ARCH', 'DOT', 'STRAIGHT', 'NONE'
@@ -531,13 +540,23 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
         props = context.scene.prop_studio_props
         active_obj = context.active_object
         target = None
+        target_name = props.asset_name
         if active_obj and active_obj.type == 'MESH':
             root, _, _, _, _ = resolve_prop_root_hierarchy(active_obj)
             target = root or active_obj
+            if target and hasattr(target, 'name'):
+                target_name = target.name
         
         # カテゴリ固有のスタイルEnumおよびパラメータを真にランダム化！
-        reroll_category_properties(props, props.prop_category)
-        props.seed = random.randint(1, 999999)
+        # 多重発火による途中削除・ReferenceErrorを完全防止
+        from .. import properties
+        properties._is_updating_props = True
+        try:
+            reroll_category_properties(props, props.prop_category)
+            props.seed = random.randint(1, 999999)
+        finally:
+            properties._is_updating_props = False
+
         p = resolve_prop_parameters(props)
         
         # カテゴリパラメータを kwargs として完全伝達
@@ -545,12 +564,13 @@ class MESH_OT_reroll_selected_prop(bpy.types.Operator):
         cat = params.pop("category", "ROCK")
         seed_val = params.pop("seed", props.seed)
         
-        raw_name = props.asset_name if not target else target.name
-        prop_name = sanitize_prop_base_name(raw_name, cat, props.asset_name)
+        # targetがまだbpy.data.objectsに存在するか安全確認
+        safe_target = target if (target and target.name in bpy.data.objects) else None
+        prop_name = sanitize_prop_base_name(target_name, cat, props.asset_name)
 
         generate_procedural_prop_mesh(
             context=context,
-            target_obj=target,
+            target_obj=safe_target,
             category=cat,
             name=prop_name,
             seed=seed_val,

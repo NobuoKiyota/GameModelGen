@@ -13,14 +13,15 @@ from procedural_rock_studio.generators import create_procedural_chibi_character
 bpy.ops.wm.read_factory_settings(use_empty=True)
 rock_studio_addon.register()
 
-# 1. ショートヘア（前髪フリンジ＆もみあげ）・丸眉・Tシャツ（ボタン付き）・ウインクまばたき表情の男の子 (左正面)
+# 1. 前髪SHORT × 後ろ髪SHORT_NAPE・丸眉・丸い肩のTシャツ（左正面）
 char1 = create_procedural_chibi_character(
     context=bpy.context,
     name="ShortHair_Front_Boy",
     gender="BOY",
     head_ratio=2.2,
     total_height=1.15,
-    hair_style="SHORT",
+    hair_front="SHORT",
+    hair_back="SHORT_NAPE",
     eyebrow_style="DOT",
     outfit_type="T_SHIRT",
     eye_style="OVAL",
@@ -28,12 +29,12 @@ char1 = create_procedural_chibi_character(
     accessory="NONE",
     skin_color=(0.96, 0.82, 0.74, 1.0),
     hair_color=(0.32, 0.18, 0.12, 1.0), # ダークブラウン
-    cloth_top_color=(0.18, 0.55, 0.85, 1.0), # 青白ボーダーTシャツ（首元ボタン）
+    cloth_top_color=(0.18, 0.55, 0.85, 1.0), # 青白ボーダーTシャツ（丸い撫で肩）
     shoe_color=(0.85, 0.25, 0.22, 1.0),
     seed=101
 )
-char1.location = (-0.95, 0.05, 0.0)
-char1.rotation_euler = (0, 0, 0.15)
+char1.location = (-1.00, 0.05, 0.0)
+char1.rotation_euler = (0, 0, 0.12)
 # 目のシェイプキー（ウインク/片目まばたき）を適用
 for c in char1.children:
     if "Eyes" in c.name and c.data.shape_keys:
@@ -41,14 +42,15 @@ for c in char1.children:
         if "Blink" in kb:
             kb["Blink"].value = 0.85
 
-# 2. ショートヘアの背面・首筋襟足V/Wカーブ確認用キャラクター (中央左・後ろ向き)
+# 2. 真横プロフィール確認用（耳のめり込み解消＆前髪・後ろ髪のレイヤー確認） (中央左)
 char2 = create_procedural_chibi_character(
     context=bpy.context,
-    name="ShortHair_Back_Boy",
+    name="Profile_Ear_Clearance_Char",
     gender="BOY",
     head_ratio=2.2,
     total_height=1.15,
-    hair_style="SHORT",
+    hair_front="SHORT_MESSY",
+    hair_back="SHORT_NAPE",
     eyebrow_style="ARCH",
     outfit_type="COAT",
     eye_style="OVAL",
@@ -56,21 +58,22 @@ char2 = create_procedural_chibi_character(
     accessory="NONE",
     skin_color=(0.96, 0.82, 0.74, 1.0),
     hair_color=(0.32, 0.18, 0.12, 1.0),
-    cloth_top_color=(0.75, 0.28, 0.24, 1.0), # レッドコート（金ボタン）
+    cloth_top_color=(0.75, 0.28, 0.24, 1.0), # レッドコート（丸い肩）
     shoe_color=(0.20, 0.20, 0.22, 1.0),
     seed=102
 )
-char2.location = (-0.30, 0.20, 0.0)
-char2.rotation_euler = (0, 0, math.radians(165)) # 後頭部・襟足が見える後ろ斜め向き
+char2.location = (-0.32, 0.10, 0.0)
+char2.rotation_euler = (0, 0, math.radians(78)) # 真横に近い角度で耳と髪の隙間をアピール
 
-# 3. センターパート・オーバーオール（左右肩紐ボタン）・アーチ眉・笑顔シェイプキーの女の子 (中央右正面)
+# 3. 前髪CENTER_PART × 後ろ髪TWINTAILS（お団子ツインテ）・オーバーオール・笑顔 (中央右)
 char3 = create_procedural_chibi_character(
     context=bpy.context,
-    name="CenterPart_Overalls_Girl",
+    name="CenterPart_Twintails_Girl",
     gender="GIRL",
     head_ratio=2.15,
     total_height=1.12,
-    hair_style="CENTER_PART",
+    hair_front="CENTER_PART",
+    hair_back="TWINTAILS",
     eyebrow_style="ARCH",
     outfit_type="OVERALLS",
     eye_style="OVAL",
@@ -78,7 +81,7 @@ char3 = create_procedural_chibi_character(
     accessory="CHEEK_BLUSH",
     skin_color=(0.98, 0.86, 0.78, 1.0),
     hair_color=(0.88, 0.70, 0.35, 1.0), # アッシュゴールド
-    cloth_top_color=(0.25, 0.65, 0.40, 1.0), # グリーンオーバーオール（肩紐金ボタン）
+    cloth_top_color=(0.25, 0.65, 0.40, 1.0), # グリーンオーバーオール（丸い肩）
     shoe_color=(0.45, 0.25, 0.15, 1.0),
     seed=303
 )
@@ -91,14 +94,15 @@ for c in char3.children:
         if "Smile" in kb:
             kb["Smile"].value = 1.0
 
-# 4. 無造作ショート（SHORT_MESSY）・まっすぐ眉・コート（前立てボタン）・丸メガネの島民 (右端)
+# 4. 前髪MUSHROOM（おかっぱ） × 後ろ髪PONYTAIL・丸メガネ・ダッフルコート (右端)
 char4 = create_procedural_chibi_character(
     context=bpy.context,
-    name="Messy_Coat_Char",
+    name="Mushroom_Ponytail_Char",
     gender="BOY",
     head_ratio=2.20,
     total_height=1.14,
-    hair_style="SHORT_MESSY",
+    hair_front="MUSHROOM",
+    hair_back="PONYTAIL",
     eyebrow_style="STRAIGHT",
     outfit_type="COAT",
     eye_style="ROUND",
@@ -106,11 +110,11 @@ char4 = create_procedural_chibi_character(
     accessory="ROUND_GLASSES",
     skin_color=(0.92, 0.76, 0.65, 1.0), # 小麦肌
     hair_color=(0.18, 0.18, 0.22, 1.0), # ナチュラルブラック
-    cloth_top_color=(0.35, 0.45, 0.60, 1.0), # ダッフルコート
+    cloth_top_color=(0.35, 0.45, 0.60, 1.0), # ダッフルコート（丸い肩）
     shoe_color=(0.85, 0.45, 0.20, 1.0),
     seed=404
 )
-char4.location = (1.00, 0.10, 0.0)
+char4.location = (1.02, 0.10, 0.0)
 char4.rotation_euler = (0, 0, -0.22)
 
 # 3. ワールド環境光（アンビエント光）

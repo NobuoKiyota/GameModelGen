@@ -525,6 +525,8 @@ def resolve_prop_parameters(props):
         "chibi_gender": getattr(props, 'chibi_gender', 'BOY'),
         "chibi_head_ratio": getattr(props, 'chibi_head_ratio', 2.2),
         "chibi_hair_style": getattr(props, 'chibi_hair_style', 'SHORT'),
+        "chibi_hair_front": getattr(props, 'chibi_hair_front', 'SHORT'),
+        "chibi_hair_back": getattr(props, 'chibi_hair_back', 'SHORT_NAPE'),
         "chibi_outfit_type": getattr(props, 'chibi_outfit_type', 'T_SHIRT'),
         "chibi_eye_style": getattr(props, 'chibi_eye_style', 'OVAL'),
         "chibi_eye_scale": getattr(props, 'chibi_eye_scale', 1.0),
@@ -756,11 +758,24 @@ def generate_procedural_prop_mesh(
     if category == "CHIBI_CHARACTER":
         from .cleanup_helper import cleanup_old_chibi_character
         from .chibi_char_gen import create_procedural_chibi_character
+
+        # 既存プロップの位置・回転を退避してインプレース更新を保証
+        prev_loc = (0.0, 0.0, 0.0)
+        prev_rot = (0.0, 0.0, 0.0)
+        if target_obj and hasattr(target_obj, 'name') and target_obj.name in bpy.data.objects:
+            root = target_obj
+            while root.parent:
+                root = root.parent
+            prev_loc = tuple(root.location)
+            prev_rot = tuple(root.rotation_euler)
+
         cleanup_old_chibi_character(context, target_obj, name)
 
         chibi_gen = kwargs.get('chibi_gender', 'BOY')
         chibi_ratio = kwargs.get('chibi_head_ratio', 2.2)
         chibi_hair = kwargs.get('chibi_hair_style', 'SHORT')
+        chibi_h_front = kwargs.get('chibi_hair_front', 'SHORT')
+        chibi_h_back = kwargs.get('chibi_hair_back', 'SHORT_NAPE')
         chibi_outfit = kwargs.get('chibi_outfit_type', 'T_SHIRT')
         chibi_eye = kwargs.get('chibi_eye_style', 'OVAL')
         chibi_eye_sc = kwargs.get('chibi_eye_scale', 1.0)
@@ -779,6 +794,8 @@ def generate_procedural_prop_mesh(
             head_ratio=chibi_ratio,
             total_height=size_z if size_z > 0.6 else 1.15,
             hair_style=chibi_hair,
+            hair_front=chibi_h_front,
+            hair_back=chibi_h_back,
             outfit_type=chibi_outfit,
             eye_style=chibi_eye,
             eye_scale=chibi_eye_sc,
@@ -791,6 +808,12 @@ def generate_procedural_prop_mesh(
             shoe_color=chibi_shoe_c,
             seed=seed
         )
+
+        root_obj.location = prev_loc
+        root_obj.rotation_euler = prev_rot
+        context.view_layer.objects.active = root_obj
+        root_obj.select_set(True)
+
         return root_obj
 
     # 🔭 Telescope Preset (天体望遠鏡: 三脚・マウント・鏡筒 独立階層)

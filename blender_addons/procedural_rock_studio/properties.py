@@ -10,20 +10,80 @@ def get_texture_enum_items(self, context):
     return [(f, f, f) for f in tex_files]
 
 
+_is_updating_props = False
+
+
+def update_chibi_hair_preset(self, context):
+    """髪型プリセット変更時に前髪・後ろ髪を連動セット"""
+    global _is_updating_props
+    if _is_updating_props:
+        return
+    style = self.chibi_hair_style
+    _is_updating_props = True
+    try:
+        if style == 'SHORT':
+            self.chibi_hair_front = 'SHORT'
+            self.chibi_hair_back = 'SHORT_NAPE'
+        elif style == 'SHORT_MESSY':
+            self.chibi_hair_front = 'SHORT_MESSY'
+            self.chibi_hair_back = 'SHORT_NAPE'
+        elif style == 'CENTER_PART':
+            self.chibi_hair_front = 'CENTER_PART'
+            self.chibi_hair_back = 'SHORT_NAPE'
+        elif style == 'MUSHROOM':
+            self.chibi_hair_front = 'MUSHROOM'
+            self.chibi_hair_back = 'BOB'
+        elif style == 'BOB':
+            self.chibi_hair_front = 'SHORT'
+            self.chibi_hair_back = 'BOB'
+        elif style == 'TWINTAILS':
+            self.chibi_hair_front = 'SHORT'
+            self.chibi_hair_back = 'TWINTAILS'
+        elif style == 'BRAIDS':
+            self.chibi_hair_front = 'SHORT'
+            self.chibi_hair_back = 'BRAIDS'
+        elif style == 'PONYTAIL':
+            self.chibi_hair_front = 'SHORT'
+            self.chibi_hair_back = 'PONYTAIL'
+        elif style == 'TOPKNOT':
+            self.chibi_hair_front = 'CENTER_PART'
+            self.chibi_hair_back = 'TOPKNOT'
+        elif style == 'SPIKY':
+            self.chibi_hair_front = 'SHORT_MESSY'
+            self.chibi_hair_back = 'SPIKY'
+        elif style == 'WAVY_LONG':
+            self.chibi_hair_front = 'SHORT'
+            self.chibi_hair_back = 'WAVY_LONG'
+        elif style == 'AFRO':
+            self.chibi_hair_front = 'NONE'
+            self.chibi_hair_back = 'AFRO'
+    finally:
+        _is_updating_props = False
+
+    update_chibi_character_live(self, context)
+
+
 def update_chibi_character_live(self, context):
     """
-    キャラクターのパラメータ変更時に、選択中のキャラクターオブジェクトを即座に再生成・リアルタイム反映
+    キャラクターのパラメータ変更時に、選択中のキャラクターオブジェクトを安全にリアルタイム反映
     """
+    global _is_updating_props
+    if _is_updating_props:
+        return
     if not context or not hasattr(context, 'active_object'):
         return
     active_obj = context.active_object
-    if not active_obj:
+    if not active_obj or not hasattr(active_obj, 'name'):
+        return
+    if active_obj.name not in bpy.data.objects:
         return
 
     from .generators.core_orchestrator import resolve_prop_root_hierarchy, generate_procedural_prop_mesh, resolve_prop_parameters
     try:
         root_obj, all_objs, _, _, _ = resolve_prop_root_hierarchy(active_obj)
         target = root_obj or active_obj
+        if not target or target.name not in bpy.data.objects:
+            return
         if "Chibi" in target.name or getattr(self, 'prop_category', '') == 'CHIBI_CHARACTER':
             params = resolve_prop_parameters(self)
             generate_procedural_prop_mesh(
@@ -79,19 +139,26 @@ def update_category_preset(self, context):
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
     if cat == "CHIBI_CHARACTER":
-        props.size_x = 0.6
-        props.size_y = 0.5
-        props.size_z = 1.15
-        props.chibi_gender = 'BOY'
-        props.chibi_head_ratio = 2.2
-        props.chibi_hair_style = 'SHORT'
-        props.chibi_outfit_type = 'T_SHIRT'
-        props.chibi_eye_style = 'OVAL'
-        props.chibi_eye_scale = 1.0
-        props.chibi_eyebrow_style = 'ARCH'
-        props.chibi_pattern = 'PLAIN'
-        props.chibi_accessory = 'NONE'
-        props.uv_mapping_mode = 'FIT'
+        global _is_updating_props
+        _is_updating_props = True
+        try:
+            props.size_x = 0.6
+            props.size_y = 0.5
+            props.size_z = 1.15
+            props.chibi_gender = 'BOY'
+            props.chibi_head_ratio = 2.2
+            props.chibi_hair_style = 'SHORT'
+            props.chibi_hair_front = 'SHORT'
+            props.chibi_hair_back = 'SHORT_NAPE'
+            props.chibi_outfit_type = 'T_SHIRT'
+            props.chibi_eye_style = 'OVAL'
+            props.chibi_eye_scale = 1.0
+            props.chibi_eyebrow_style = 'ARCH'
+            props.chibi_pattern = 'PLAIN'
+            props.chibi_accessory = 'NONE'
+            props.uv_mapping_mode = 'FIT'
+        finally:
+            _is_updating_props = False
     elif cat == "STONE_STAIRS":
         props.size_x = 1.8
         props.size_y = 4.2
@@ -2549,7 +2616,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         update=update_chibi_character_live
     )
     chibi_hair_style: bpy.props.EnumProperty(
-        name="髪型 (Hair Style)",
+        name="髪型プリセット (Hair Style)",
         items=[
             ('SHORT', "✂️ 王道ショート (Natural Bangs)", "毛束感と前髪の自然なウェーブショート"),
             ('SHORT_MESSY', "🌾 レイヤー無造作ショート (Messy Layers)", "アシメ前髪と軽やかな毛先の無造作ヘア"),
@@ -2565,6 +2632,35 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('AFRO', "🐑 もこもこアフロ (Fluffy Afro)", "まん丸でボリューミーなポップヘア")
         ],
         default='SHORT',
+        update=update_chibi_hair_preset
+    )
+    chibi_hair_front: bpy.props.EnumProperty(
+        name="前髪 (Front Bangs)",
+        items=[
+            ('SHORT', "✂️ 王道ナチュラル (Bangs & Sideburns)", "眉上の斜め流し毛束 ＆ もみあげ"),
+            ('SHORT_MESSY', "🌾 アシメ無造作 (Messy Fringe)", "軽やかな毛束フリンジ ＆ もみあげ"),
+            ('CENTER_PART', "🧑‍💼 センターパート (Center Part)", "おでこを見せて左右に分かれる前髪"),
+            ('MUSHROOM', "🍄 パッツンおかっぱ (Straight Bangs)", "水平に切り揃えられたおかっぱ前髪"),
+            ('NONE', "❌ 前髪なし (No Bangs)", "前髪なし・おでこ全開スタイル")
+        ],
+        default='SHORT',
+        update=update_chibi_character_live
+    )
+    chibi_hair_back: bpy.props.EnumProperty(
+        name="後ろ髪 (Back Hair)",
+        items=[
+            ('SHORT_NAPE', "✂️ ショート襟足 (Short Nape)", "首筋に沿う滑らかなV字短髪襟足"),
+            ('BOB', "💇‍♀️ ふんわりボブ (Bob)", "後頭部から肩口を丸く包むボブ"),
+            ('WAVY_LONG', "💁‍♀️ ウェーブロング (Wavy Long)", "肩まで届くゆるやかな長髪ウェーブ"),
+            ('TWINTAILS', "🎀 ツインテール (Twintails)", "左右の結び目お団子"),
+            ('BRAIDS', "👩‍🌾 おさげ・三つ編み (Braids)", "左右に垂れる素朴な三つ編み"),
+            ('PONYTAIL', "🐴 ポニーテール (Ponytail)", "後頭部でまとめたポニーテール"),
+            ('TOPKNOT', "🍙 ちょんまげ/お団子 (Topknot)", "頭頂部のお団子ノット"),
+            ('SPIKY', "⚡ ツンツンスパイク (Spiky)", "後頭部の元気なハネスパイク"),
+            ('AFRO', "🐑 もこもこアフロ (Afro)", "まん丸なアフロヘア"),
+            ('NONE', "❌ 後ろ髪なし (None)", "後ろ髪なし")
+        ],
+        default='SHORT_NAPE',
         update=update_chibi_character_live
     )
     chibi_eyebrow_style: bpy.props.EnumProperty(

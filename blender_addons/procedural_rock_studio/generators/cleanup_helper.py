@@ -45,7 +45,10 @@ def cleanup_old_chibi_character(context, target_obj, base_name):
         for child in root.children_recursive:
             to_delete.add(child)
 
-    chibi_suffixes = ("_Head", "_Hair", "_Outfit", "_Shoes", "_Eyes", "_Ears", "_Nose", "_Root", "_Body")
+    chibi_suffixes = (
+        "_Head", "_Hair", "_Hair_Front", "_Hair_Back", "_Eyebrows",
+        "_Outfit", "_Shoes", "_Eyes", "_Ears", "_Nose", "_Accessory", "_Root", "_Body"
+    )
     for o in list(bpy.data.objects):
         if o.name == base_name or o.name.startswith(base_name + "_") or any(o.name.startswith(base_name + s) for s in chibi_suffixes):
             to_delete.add(o)

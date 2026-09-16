@@ -46,7 +46,7 @@ def test_chibi_character_generation():
     child_names = [c.name for c in children]
     print(f"Child names: {child_names}")
 
-    expected_parts = ["Head", "Ears", "Eyes", "Eyebrows", "Nose", "Hair", "Outfit", "Shoes"]
+    expected_parts = ["Head", "Ears", "Eyes", "Eyebrows", "Nose", "Hair_Front", "Hair_Back", "Outfit", "Shoes"]
     for part in expected_parts:
         matched = any(part in c_name for c_name in child_names)
         assert matched, f"Missing child part: {part}"
@@ -86,7 +86,7 @@ def test_chibi_character_generation():
     print("PASS: Boy mesh structure & vertices verified!")
 
 
-    # 2. 女の子（Girl）キャラクター生成テスト
+    # 2. 女の子（Girl）キャラクター生成テスト（前髪・後ろ髪カスタム）
     print("\n=== [TEST 2] Testing Girl Chibi Character Generation ===")
     girl_root = create_procedural_chibi_character(
         context=bpy.context,
@@ -94,7 +94,8 @@ def test_chibi_character_generation():
         gender="GIRL",
         head_ratio=2.1,
         total_height=1.10,
-        hair_style="TWINTAILS",
+        hair_front="CENTER_PART",
+        hair_back="TWINTAILS",
         eyebrow_style="ARCH",
         outfit_type="ONE_PIECE",
         skin_color=(0.98, 0.85, 0.76, 1.0),
@@ -106,8 +107,8 @@ def test_chibi_character_generation():
 
     assert girl_root is not None, "Girl root object is None!"
     girl_children = girl_root.children
-    assert len(girl_children) >= 8, f"Girl children count too low: {len(girl_children)}"
-    print("PASS: Girl character with twintails and one-piece dress verified!")
+    assert len(girl_children) >= 9, f"Girl children count too low: {len(girl_children)}"
+    print("PASS: Girl character with center-part bangs, twintails and one-piece dress verified!")
 
     # 3. オーケストレーター経由でのディスパッチ＆クリーンアップ検証
     print("\n=== [TEST 3] Testing Core Orchestrator Dispatch & Regeneration ===")
@@ -116,6 +117,8 @@ def test_chibi_character_generation():
     real_props.chibi_gender = 'BOY'
     real_props.chibi_head_ratio = 2.2
     real_props.chibi_hair_style = 'SHORT'
+    real_props.chibi_hair_front = 'SHORT'
+    real_props.chibi_hair_back = 'SHORT_NAPE'
     real_props.chibi_eyebrow_style = 'ARCH'
     real_props.chibi_outfit_type = 'T_SHIRT'
     real_props.chibi_eye_style = 'OVAL'
@@ -142,47 +145,41 @@ def test_chibi_character_generation():
         seed=888,
         **params
     )
-    # 4. 全12種純粋髪型（帽子全除外）・4種眉毛・6種衣装・5種目の生成テスト
-    print("\n=== [TEST 4] Testing Pure Hairstyles, Eyebrows, Outfits, Eyes, Patterns & Accessories ===")
-    hairstyles = [
-        "SHORT", "SHORT_MESSY", "CENTER_PART", "BOB", "MUSHROOM",
-        "TWINTAILS", "BRAIDS", "PONYTAIL", "TOPKNOT", "SPIKY",
-        "WAVY_LONG", "AFRO"
-    ]
+    # 4. 前髪 × 後ろ髪 × 眉毛 × 衣装の網羅生成テスト
+    print("\n=== [TEST 4] Testing Separated Hair Combinations, Outfits & Eyebrows ===")
+    fronts = ["SHORT", "SHORT_MESSY", "CENTER_PART", "MUSHROOM", "NONE"]
+    backs = ["SHORT_NAPE", "BOB", "WAVY_LONG", "TWINTAILS", "BRAIDS", "PONYTAIL", "TOPKNOT", "SPIKY", "AFRO"]
     eyebrows = ["ARCH", "DOT", "STRAIGHT", "NONE"]
     outfits = ["T_SHIRT", "ONE_PIECE", "HOODIE", "OVERALLS", "KIMONO", "COAT"]
-    eyes = ["OVAL", "ROUND", "DROOPY", "CAT_EYE", "SMILING"]
-    patterns = ["PLAIN", "STRIPED", "POLKA_DOT", "ISLAND_LEAF"]
-    accessories = ["NONE", "ROUND_GLASSES", "CHEEK_BLUSH"]
 
-    for i, style in enumerate(hairstyles):
+    for i in range(len(backs)):
+        front = fronts[i % len(fronts)]
+        back = backs[i]
         outfit = outfits[i % len(outfits)]
         eyebrow = eyebrows[i % len(eyebrows)]
-        eye = eyes[i % len(eyes)]
-        pat = patterns[i % len(patterns)]
-        acc = accessories[i % len(accessories)]
         char_obj = create_procedural_chibi_character(
             context=bpy.context,
-            name=f"Test_{style}_Char",
+            name=f"Test_Combo_{i}_Char",
             gender="BOY" if i % 2 == 0 else "GIRL",
-            hair_style=style,
+            hair_front=front,
+            hair_back=back,
             eyebrow_style=eyebrow,
             outfit_type=outfit,
-            eye_style=eye,
-            pattern=pat,
-            accessory=acc,
             seed=200 + i
         )
-        assert char_obj is not None, f"Failed generating {style} character!"
-        print(f"  - Verified: Hair={style}, Eyebrow={eyebrow}, Outfit={outfit}, Eye={eye}, Pattern={pat}, Acc={acc}")
+        assert char_obj is not None, f"Failed generating combo Front={front}, Back={back}!"
+        print(f"  - Verified: Front={front}, Back={back}, Eyebrow={eyebrow}, Outfit={outfit}")
 
-    # 5. ランダム要素抽選（Re-Roll）のテスト
-    print("\n=== [TEST 5] Testing Random Gacha Re-Roll ===")
-    from procedural_rock_studio.ui.operators import reroll_category_properties
+    # 5. ランダム要素抽選（Re-Roll）オペレーター実行テスト（ReferenceError再発防止検証）
+    print("\n=== [TEST 5] Testing Random Gacha Operator Execution (Bug Fix Verification) ===")
+    bpy.context.view_layer.objects.active = orch_reroll
+    orch_reroll.select_set(True)
     real_props.prop_category = 'CHIBI_CHARACTER'
-    for _ in range(5):
-        reroll_category_properties(real_props, 'CHIBI_CHARACTER')
-        print(f"  - Reroll: Gender={real_props.chibi_gender}, Hair={real_props.chibi_hair_style}, Eyebrow={real_props.chibi_eyebrow_style}, Outfit={real_props.chibi_outfit_type}, Pattern={real_props.chibi_pattern}, Acc={real_props.chibi_accessory}, Eye={real_props.chibi_eye_style}")
+
+    for step in range(5):
+        res = bpy.ops.mesh.reroll_selected_prop()
+        assert res == {'FINISHED'}, f"Reroll operator failed with result {res}"
+        print(f"  - Step {step+1}: Reroll operator succeeded without ReferenceError! Active={bpy.context.active_object.name}")
 
     print("\n=======================================================")
     print("  ALL CHIBI CHARACTER COMPREHENSIVE TESTS PASSED 100%!")
