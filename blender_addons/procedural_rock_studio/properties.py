@@ -2521,7 +2521,11 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         items=[
             ('SHORT', "✂️ ショートヘア (Short Bangs)", "少しハネ感のある男の子風ショート"),
             ('BOB', "💇‍♀️ ふんわりボブ (Cute Bob)", "フェイスラインを包む丸い内巻きボブ"),
-            ('TWINTAILS', "🎀 お団子/ツインテール (Twintails)", "両サイドのポンポンお団子ヘア")
+            ('TWINTAILS', "🎀 お団子/ツインテール (Twintails)", "両サイドのポンポンお団子ヘア"),
+            ('SPIKY', "⚡ ツンツンヘア (Spiky Hair)", "元気な男の子風のハネ毛・ツンツン髪"),
+            ('PONYTAIL', "🐴 ポニーテール (Ponytail)", "スポーティな後ろ結びポニーテール"),
+            ('AFRO', "🐑 もこもこアフロ (Fluffy Afro)", "まん丸でボリューミーなポップヘア"),
+            ('CAP', "🧢 つば付きキャップ (Islander Cap)", "島民定番のつば付きベースボールキャップ")
         ],
         default='SHORT'
     )

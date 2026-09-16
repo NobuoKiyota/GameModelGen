@@ -13,7 +13,7 @@ from procedural_rock_studio.generators import create_procedural_chibi_character
 bpy.ops.wm.read_factory_settings(use_empty=True)
 rock_studio_addon.register()
 
-# 1. 男の子キャラクター生成 (左側に配置)
+# 1. 男の子キャラクター生成 (Tシャツ・袖修正確認用・左側)
 boy = create_procedural_chibi_character(
     context=bpy.context,
     name="Boy_Chibi",
@@ -28,24 +28,42 @@ boy = create_procedural_chibi_character(
     shoe_color=(0.85, 0.22, 0.20, 1.0),
     seed=10
 )
-boy.location = (-0.45, 0.0, 0.0)
+boy.location = (-0.68, 0.0, 0.0)
+boy.rotation_euler = (0, 0, 0.30) # 袖の向きがよく見えるよう少し斜め向き
 
-# 2. 女の子キャラクター生成 (右側に配置)
-girl = create_procedural_chibi_character(
+# 2. キャップ帽の島民キャラクター (中央)
+cap_char = create_procedural_chibi_character(
     context=bpy.context,
-    name="Girl_Chibi",
+    name="Cap_Chibi",
+    gender="BOY",
+    head_ratio=2.2,
+    total_height=1.15,
+    hair_style="CAP",
+    outfit_type="T_SHIRT",
+    skin_color=(0.98, 0.85, 0.76, 1.0),
+    hair_color=(0.85, 0.28, 0.22, 1.0), # レッドキャップ
+    cloth_top_color=(0.88, 0.72, 0.20, 1.0), # イエローTシャツ
+    shoe_color=(0.15, 0.15, 0.18, 1.0),
+    seed=33
+)
+cap_char.location = (0.0, 0.0, 0.0)
+
+# 3. もこもこアフロ＆ワンピースの女の子 (右側)
+afro_girl = create_procedural_chibi_character(
+    context=bpy.context,
+    name="Afro_Girl",
     gender="GIRL",
     head_ratio=2.1,
     total_height=1.10,
-    hair_style="TWINTAILS",
+    hair_style="AFRO",
     outfit_type="ONE_PIECE",
-    skin_color=(0.98, 0.86, 0.78, 1.0),
-    hair_color=(0.88, 0.65, 0.32, 1.0),
-    cloth_top_color=(0.95, 0.40, 0.58, 1.0),
+    skin_color=(0.90, 0.74, 0.62, 1.0),
+    hair_color=(0.92, 0.55, 0.30, 1.0), # キャロットアフロ
+    cloth_top_color=(0.95, 0.40, 0.58, 1.0), # ピンクワンピ
     shoe_color=(0.35, 0.18, 0.12, 1.0),
-    seed=25
+    seed=55
 )
-girl.location = (0.45, 0.0, 0.0)
+afro_girl.location = (0.68, 0.0, 0.0)
 
 # 3. ワールド環境光（アンビエント光）
 world = bpy.context.scene.world

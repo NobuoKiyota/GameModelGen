@@ -53,6 +53,12 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
             if props.prop_category == 'CHIBI_CHARACTER':
                 box_chibi = layout.box()
                 box_chibi.label(text="🐻 どうぶつの森風 キャラクター設定:", icon='COMMUNITY')
+
+                # 🎲 ガチャ要素抽選ボタン（目立つ位置に配置）
+                row_gacha = box_chibi.row(align=True)
+                row_gacha.scale_y = 1.3
+                row_gacha.operator("mesh.reroll_selected_prop", text="🎲 キャラクター要素をランダム抽選 (ガチャ)", icon='DICE')
+
                 row_gen = box_chibi.row(align=True)
                 row_gen.prop(props, "chibi_gender", text="タイプ")
                 row_gen.prop(props, "chibi_head_ratio", text="頭身比")
@@ -75,7 +81,8 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
                 col_btn = box_chibi.column(align=True)
                 col_btn.scale_y = 1.3
-                col_btn.operator("mesh.update_selected_prop", text="🔄 キャラクター再生成・更新", icon='FILE_REFRESH')
+                col_btn.operator("mesh.reroll_selected_prop", text="🎲 要素をランダム再抽選 (Re-Roll)", icon='DICE')
+                col_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新", icon='FILE_REFRESH')
                 col_btn.operator("mesh.create_new_prop", text="➕ 新規キャラクター生成", icon='ADD')
 
             # Speaker Specific

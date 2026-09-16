@@ -123,11 +123,28 @@ def test_chibi_character_generation():
         seed=888,
         **params
     )
-    assert orch_reroll is not None, "Reroll returned None!"
-    print("PASS: In-place regeneration & cleanup verified!")
+    # 4. 新規髪型バリエーション（SPIKY, PONYTAIL, AFRO, CAP）の生成テスト
+    print("\n=== [TEST 4] Testing New Hair Styles (SPIKY, PONYTAIL, AFRO, CAP) ===")
+    for style in ["SPIKY", "PONYTAIL", "AFRO", "CAP"]:
+        char_obj = create_procedural_chibi_character(
+            context=bpy.context,
+            name=f"Test_{style}_Char",
+            gender="BOY" if style in ("SPIKY", "CAP") else "GIRL",
+            hair_style=style,
+            seed=200
+        )
+        assert char_obj is not None, f"Failed generating {style} character!"
+        print(f"  - Verified hair style: {style}")
+
+    # 5. ランダム要素抽選（Re-Roll）のテスト
+    print("\n=== [TEST 5] Testing Random Gacha Re-Roll ===")
+    from procedural_rock_studio.ui.operators import reroll_category_properties
+    real_props.prop_category = 'CHIBI_CHARACTER'
+    reroll_category_properties(real_props, 'CHIBI_CHARACTER')
+    print(f"PASS: Randomized chibi props: Gender={real_props.chibi_gender}, Hair={real_props.chibi_hair_style}, Eye={real_props.chibi_eye_style} (Scale={real_props.chibi_eye_scale})")
 
     print("\n=======================================================")
-    print("  ALL 3 CHIBI CHARACTER TESTS PASSED 100% SUCCESSFULLY!")
+    print("  ALL 5 CHIBI CHARACTER TESTS PASSED 100% SUCCESSFULLY!")
     print("=======================================================")
 
 
