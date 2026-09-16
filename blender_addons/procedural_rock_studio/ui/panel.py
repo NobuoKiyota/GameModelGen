@@ -67,6 +67,8 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_parts.label(text="モジュール・パーツ設定:", icon='MODIFIER')
                 box_parts.prop(props, "chibi_hair_style", text="髪型")
                 box_parts.prop(props, "chibi_outfit_type", text="衣装")
+                box_parts.prop(props, "chibi_pattern", text="服の柄")
+                box_parts.prop(props, "chibi_accessory", text="アクセサリ")
                 box_parts.prop(props, "chibi_eye_style", text="目の形")
                 box_parts.prop(props, "chibi_eye_scale", text="目のサイズ", slider=True)
 

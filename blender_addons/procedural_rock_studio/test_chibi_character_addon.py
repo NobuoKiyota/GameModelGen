@@ -123,28 +123,46 @@ def test_chibi_character_generation():
         seed=888,
         **params
     )
-    # 4. 新規髪型バリエーション（SPIKY, PONYTAIL, AFRO, CAP）の生成テスト
-    print("\n=== [TEST 4] Testing New Hair Styles (SPIKY, PONYTAIL, AFRO, CAP) ===")
-    for style in ["SPIKY", "PONYTAIL", "AFRO", "CAP"]:
+    # 4. 全14種髪型・6種衣装・5種目・柄・アクセサリの生成テスト
+    print("\n=== [TEST 4] Testing All Hairstyles, Outfits, Eyes, Patterns & Accessories ===")
+    hairstyles = [
+        "SHORT", "TWINTAILS", "BOB", "SPIKY", "PONYTAIL", "AFRO", "CAP",
+        "MUSHROOM", "BRAIDS", "TOPKNOT", "WAVY_LONG", "CAT_HOOD", "KNIT_CAP", "WITCH_HAT"
+    ]
+    outfits = ["T_SHIRT", "ONE_PIECE", "HOODIE", "OVERALLS", "KIMONO", "COAT"]
+    eyes = ["OVAL", "ROUND", "DROOPY", "CAT_EYE", "SMILING"]
+    patterns = ["PLAIN", "STRIPED", "POLKA_DOT", "ISLAND_LEAF"]
+    accessories = ["NONE", "ROUND_GLASSES", "CHEEK_BLUSH"]
+
+    for i, style in enumerate(hairstyles):
+        outfit = outfits[i % len(outfits)]
+        eye = eyes[i % len(eyes)]
+        pat = patterns[i % len(patterns)]
+        acc = accessories[i % len(accessories)]
         char_obj = create_procedural_chibi_character(
             context=bpy.context,
             name=f"Test_{style}_Char",
-            gender="BOY" if style in ("SPIKY", "CAP") else "GIRL",
+            gender="BOY" if i % 2 == 0 else "GIRL",
             hair_style=style,
-            seed=200
+            outfit_type=outfit,
+            eye_style=eye,
+            pattern=pat,
+            accessory=acc,
+            seed=200 + i
         )
         assert char_obj is not None, f"Failed generating {style} character!"
-        print(f"  - Verified hair style: {style}")
+        print(f"  - Verified: Hair={style}, Outfit={outfit}, Eye={eye}, Pattern={pat}, Acc={acc}")
 
     # 5. ランダム要素抽選（Re-Roll）のテスト
     print("\n=== [TEST 5] Testing Random Gacha Re-Roll ===")
     from procedural_rock_studio.ui.operators import reroll_category_properties
     real_props.prop_category = 'CHIBI_CHARACTER'
-    reroll_category_properties(real_props, 'CHIBI_CHARACTER')
-    print(f"PASS: Randomized chibi props: Gender={real_props.chibi_gender}, Hair={real_props.chibi_hair_style}, Eye={real_props.chibi_eye_style} (Scale={real_props.chibi_eye_scale})")
+    for _ in range(5):
+        reroll_category_properties(real_props, 'CHIBI_CHARACTER')
+        print(f"  - Reroll: Gender={real_props.chibi_gender}, Hair={real_props.chibi_hair_style}, Outfit={real_props.chibi_outfit_type}, Pattern={real_props.chibi_pattern}, Acc={real_props.chibi_accessory}, Eye={real_props.chibi_eye_style}")
 
     print("\n=======================================================")
-    print("  ALL 5 CHIBI CHARACTER TESTS PASSED 100% SUCCESSFULLY!")
+    print("  ALL CHIBI CHARACTER COMPREHENSIVE TESTS PASSED 100%!")
     print("=======================================================")
 
 

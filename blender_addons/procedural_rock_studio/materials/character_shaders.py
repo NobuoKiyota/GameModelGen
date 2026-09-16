@@ -11,18 +11,20 @@ def set_bsdf_input_safe(bsdf_node, socket_candidates, value):
     return False
 
 
-def create_chibi_character_shader(mat_name, part_type="SKIN", color=(0.96, 0.82, 0.74, 1.0), roughness=0.65, seed=0):
+def create_chibi_character_shader(mat_name, part_type="SKIN", color=(0.96, 0.82, 0.74, 1.0), roughness=0.65, seed=0, pattern="PLAIN"):
     """
     どうぶつの森風デフォルメキャラクター向けプロシージャルマテリアル生成
     part_type:
       - 'SKIN': 肌色。アニメ・トイ調のわずかなSSSとソフトな質感
       - 'HAIR': 髪色。マットで発色の良い質感
-      - 'CLOTH_TOP': トップス衣服。細やかなファブリック質感
-      - 'CLOTH_BOTTOM': ボトムス衣服。
-      - 'FOOTSTEP_SURFACE': 靴底。ゲームエンジン内で足音(Footstep Surface ID)として認識される最重要スロット
+      - 'CLOTH_TOP': トップス衣服。プロシージャル柄（ボーダー、ドット、葉っぱ）対応
+      - 'CLOTH_BOTTOM': ボトムス衣服
+      - 'FOOTSTEP_SURFACE': 靴底。ゲームエンジン内で足音(Footstep Surface ID)として認識されるスロット
       - 'EYE': 瞳
       - 'EYE_HIGHLIGHT': 瞳ハイライト
       - 'FACE_FEATURE': 眉・鼻・口
+      - 'GLASSES': メガネフレーム
+      - 'BLUSH': チークほっぺ
     """
     mat = bpy.data.materials.get(mat_name)
     if not mat:
@@ -55,27 +57,89 @@ def create_chibi_character_shader(mat_name, part_type="SKIN", color=(0.96, 0.82,
         set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.35)
 
     elif part_type in ("CLOTH_TOP", "CLOTH_BOTTOM"):
-        # 微細な布地ノイズをバンプに適用
         node_texcoord = nodes.new(type='ShaderNodeTexCoord')
-        node_texcoord.location = (-650, 0)
+        node_texcoord.location = (-750, 0)
 
+        # プロシージャル柄（Pattern）の適用
+        if part_type == "CLOTH_TOP" and pattern == "STRIPED":
+            # ボーダー縞模様
+            node_wave = nodes.new(type='ShaderNodeTexWave')
+            node_wave.location = (-500, 150)
+            node_wave.wave_type = 'BANDS'
+            node_wave.bands_direction = 'Z'
+            node_wave.inputs['Scale'].default_value = 16.0
+            node_wave.inputs['Distortion'].default_value = 0.0
+            links.new(node_texcoord.outputs['Object'], node_wave.inputs['Vector'])
+
+            # 2色カラーミックス
+            node_ramp = nodes.new(type='ShaderNodeValToRGB')
+            node_ramp.location = (-280, 150)
+            node_ramp.color_ramp.interpolation = 'CONSTANT'
+            node_ramp.color_ramp.elements[0].position = 0.5
+            node_ramp.color_ramp.elements[0].color = color
+            node_ramp.color_ramp.elements[1].position = 0.501
+            node_ramp.color_ramp.elements[1].color = (0.95, 0.95, 0.96, 1.0) # 白ボーダー
+            links.new(node_wave.outputs['Color'], node_ramp.inputs['Fac'])
+            links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+        elif part_type == "CLOTH_TOP" and pattern == "POLKA_DOT":
+            # 水玉ドット
+            node_voro = nodes.new(type='ShaderNodeTexVoronoi')
+            node_voro.location = (-500, 150)
+            node_voro.feature = 'F1'
+            node_voro.inputs['Scale'].default_value = 22.0
+            links.new(node_texcoord.outputs['Object'], node_voro.inputs['Vector'])
+
+            node_ramp = nodes.new(type='ShaderNodeValToRGB')
+            node_ramp.location = (-280, 150)
+            node_ramp.color_ramp.interpolation = 'CONSTANT'
+            node_ramp.color_ramp.elements[0].position = 0.28
+            node_ramp.color_ramp.elements[0].color = (0.96, 0.96, 0.98, 1.0) # 白ドット
+            node_ramp.color_ramp.elements[1].position = 0.281
+            node_ramp.color_ramp.elements[1].color = color
+            links.new(node_voro.outputs['Distance'], node_ramp.inputs['Fac'])
+            links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+        elif part_type == "CLOTH_TOP" and pattern == "ISLAND_LEAF":
+            # 胸元のアイランドリーフワンポイント
+            node_map = nodes.new(type='ShaderNodeMapping')
+            node_map.location = (-550, 150)
+            node_map.inputs['Location'].default_value = (-0.05, 0.12, -0.65)
+            node_map.inputs['Scale'].default_value = (8.0, 8.0, 8.0)
+            links.new(node_texcoord.outputs['Object'], node_map.inputs['Vector'])
+
+            node_tex = nodes.new(type='ShaderNodeTexVoronoi')
+            node_tex.location = (-350, 150)
+            node_tex.inputs['Scale'].default_value = 5.0
+            links.new(node_map.outputs['Vector'], node_tex.inputs['Vector'])
+
+            node_ramp = nodes.new(type='ShaderNodeValToRGB')
+            node_ramp.location = (-150, 150)
+            node_ramp.color_ramp.interpolation = 'CONSTANT'
+            node_ramp.color_ramp.elements[0].position = 0.25
+            node_ramp.color_ramp.elements[0].color = (0.35, 0.85, 0.45, 1.0) # 葉っぱグリーン
+            node_ramp.color_ramp.elements[1].position = 0.251
+            node_ramp.color_ramp.elements[1].color = color
+            links.new(node_tex.outputs['Distance'], node_ramp.inputs['Fac'])
+            links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+        # 微細な布地ノイズバンプ
         node_noise = nodes.new(type='ShaderNodeTexNoise')
-        node_noise.location = (-450, 0)
+        node_noise.location = (-450, -150)
         node_noise.inputs['Scale'].default_value = 85.0
         node_noise.inputs['Detail'].default_value = 2.0
         node_noise.inputs['Roughness'].default_value = 0.5
         links.new(node_texcoord.outputs['Object'], node_noise.inputs['Vector'])
 
         node_bump = nodes.new(type='ShaderNodeBump')
-        node_bump.location = (-150, -100)
-        node_bump.inputs['Strength'].default_value = 0.05
+        node_bump.location = (-150, -150)
+        node_bump.inputs['Strength'].default_value = 0.04
         node_bump.inputs['Distance'].default_value = 0.02
         links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
         links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
 
     elif part_type == "FOOTSTEP_SURFACE":
         # Unity / UnrealEngine の Footstep / Physic Material 判定用スロット
-        # 靴底のラバー・レザー質感
         set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.8)
         set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.15)
 
@@ -86,8 +150,17 @@ def create_chibi_character_shader(mat_name, part_type="SKIN", color=(0.96, 0.82,
     elif part_type == "EYE_HIGHLIGHT":
         set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.05)
         set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 1.0)
-        # わずかに発光させてキラキラした瞳に
         set_bsdf_input_safe(node_bsdf, ['Emission Color'], (1.0, 1.0, 1.0, 1.0))
         set_bsdf_input_safe(node_bsdf, ['Emission Strength'], 0.3)
+
+    elif part_type == "GLASSES":
+        set_bsdf_input_safe(node_bsdf, ['Base Color'], (0.15, 0.15, 0.18, 1.0))
+        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.25)
+        set_bsdf_input_safe(node_bsdf, ['Metallic'], 0.4)
+
+    elif part_type == "BLUSH":
+        # ほんのりピンクほっぺ
+        set_bsdf_input_safe(node_bsdf, ['Base Color'], (0.95, 0.45, 0.55, 1.0))
+        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.8)
 
     return mat

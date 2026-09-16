@@ -276,7 +276,68 @@ def reroll_category_properties(props, category):
     """
     Re-roll実行時に、各カテゴリの形状・様式・装飾ディテールを真にランダム抽選してガラリと変化させる。
     """
-    if category == "WINDOW":
+    if category == "CHIBI_CHARACTER":
+        props.chibi_gender = random.choice(['BOY', 'GIRL'])
+        props.chibi_head_ratio = round(random.uniform(2.05, 2.35), 2)
+        props.chibi_hair_style = random.choice([
+            'SHORT', 'TWINTAILS', 'BOB', 'SPIKY', 'PONYTAIL', 'AFRO', 'CAP',
+            'MUSHROOM', 'BRAIDS', 'TOPKNOT', 'WAVY_LONG', 'CAT_HOOD', 'KNIT_CAP', 'WITCH_HAT'
+        ])
+        props.chibi_outfit_type = random.choice([
+            'T_SHIRT', 'ONE_PIECE', 'HOODIE', 'OVERALLS', 'KIMONO', 'COAT'
+        ])
+        props.chibi_pattern = random.choice([
+            'PLAIN', 'STRIPED', 'POLKA_DOT', 'ISLAND_LEAF'
+        ])
+        props.chibi_accessory = random.choice([
+            'NONE', 'NONE', 'ROUND_GLASSES', 'CHEEK_BLUSH'  # なしを少し高確率に
+        ])
+        props.chibi_eye_style = random.choice([
+            'OVAL', 'ROUND', 'DROOPY', 'CAT_EYE', 'SMILING'
+        ])
+        props.chibi_eye_scale = round(random.uniform(0.85, 1.15), 2)
+
+        # どうぶつの森らしいポップ＆ナチュラルなカラーパレット抽選
+        skin_palette = [
+            (0.96, 0.82, 0.74, 1.0),  # 明るい標準肌
+            (0.98, 0.87, 0.80, 1.0),  # 色白
+            (0.88, 0.70, 0.58, 1.0),  # 健康的な小麦肌
+            (0.72, 0.54, 0.42, 1.0),  # こんがり日焼け肌
+        ]
+        hair_palette = [
+            (0.25, 0.16, 0.12, 1.0),  # ダークブラウン
+            (0.55, 0.35, 0.20, 1.0),  # チェスナット
+            (0.88, 0.72, 0.35, 1.0),  # ブロンド・金髪
+            (0.12, 0.12, 0.15, 1.0),  # ナチュラルブラック
+            (0.85, 0.45, 0.35, 1.0),  # テラコッタオレンジ
+            (0.85, 0.55, 0.70, 1.0),  # パステルピンク
+            (0.40, 0.70, 0.75, 1.0),  # ミントブルー
+            (0.75, 0.75, 0.80, 1.0),  # アッシュシルバー
+        ]
+        cloth_palette = [
+            (0.18, 0.55, 0.82, 1.0),  # スカイブルー
+            (0.88, 0.28, 0.25, 1.0),  # ポップレッド
+            (0.92, 0.75, 0.20, 1.0),  # マスタードイエロー
+            (0.28, 0.68, 0.42, 1.0),  # フォレストグリーン
+            (0.55, 0.38, 0.70, 1.0),  # ラベンダーパープル
+            (0.90, 0.52, 0.65, 1.0),  # コーラルピンク
+            (0.20, 0.24, 0.32, 1.0),  # シックネイビー
+            (0.82, 0.42, 0.22, 1.0),  # テラコッタ
+        ]
+        shoe_palette = [
+            (0.85, 0.25, 0.22, 1.0),  # レッド
+            (0.22, 0.22, 0.25, 1.0),  # ブラック
+            (0.45, 0.30, 0.18, 1.0),  # ブラウン
+            (0.90, 0.88, 0.85, 1.0),  # ホワイト
+            (0.92, 0.75, 0.20, 1.0),  # イエロー
+        ]
+
+        props.chibi_skin_color = random.choice(skin_palette)
+        props.chibi_hair_color = random.choice(hair_palette)
+        props.chibi_cloth_top_color = random.choice(cloth_palette)
+        props.chibi_shoe_color = random.choice(shoe_palette)
+
+    elif category == "WINDOW":
         props.window_frame_style = random.choice([
             'GOTHIC_POINTED', 'ROMAN_ROUND', 'TUDOR', 'RECTANGLE'
         ])
@@ -396,59 +457,6 @@ def reroll_category_properties(props, category):
         props.chisel_strength = round(random.uniform(0.3, 0.9), 2)
         props.crack_depth = round(random.uniform(0.2, 0.7), 2)
 
-    elif category == "CHIBI_CHARACTER":
-        props.chibi_gender = random.choice(['BOY', 'GIRL'])
-        props.chibi_hair_style = random.choice(['SHORT', 'BOB', 'TWINTAILS', 'SPIKY', 'PONYTAIL', 'AFRO', 'CAP'])
-        props.chibi_outfit_type = random.choice(['T_SHIRT', 'ONE_PIECE']) if props.chibi_gender == 'GIRL' else 'T_SHIRT'
-        props.chibi_eye_style = random.choice(['OVAL', 'ROUND'])
-        props.chibi_eye_scale = round(random.uniform(0.80, 1.15), 2)
-        props.chibi_head_ratio = round(random.uniform(2.0, 2.4), 2)
-
-        # どうぶつの森風の温かみのある肌色パレット
-        skin_palettes = [
-            (0.96, 0.82, 0.74, 1.0), # ライト
-            (0.98, 0.85, 0.76, 1.0), # フェア
-            (0.90, 0.74, 0.62, 1.0), # ナチュラルタン
-            (0.78, 0.58, 0.44, 1.0), # モカ
-            (0.60, 0.42, 0.30, 1.0), # ディープ
-        ]
-        props.chibi_skin_color = random.choice(skin_palettes)
-
-        # 髪色パレット
-        hair_palettes = [
-            (0.35, 0.22, 0.14, 1.0), # ダークブラウン
-            (0.18, 0.14, 0.12, 1.0), # ブラック
-            (0.92, 0.72, 0.35, 1.0), # ブロンド
-            (0.85, 0.40, 0.25, 1.0), # オレンジブラウン
-            (0.88, 0.45, 0.65, 1.0), # パステルピンク
-            (0.30, 0.65, 0.85, 1.0), # アクアブルー
-            (0.40, 0.75, 0.45, 1.0), # ミントグリーン
-            (0.75, 0.75, 0.78, 1.0), # シルバーグレー
-        ]
-        props.chibi_hair_color = random.choice(hair_palettes)
-
-        # 服の色パレット
-        cloth_palettes = [
-            (0.18, 0.55, 0.82, 1.0), # スカイブルー
-            (0.92, 0.35, 0.55, 1.0), # コーラルピンク
-            (0.88, 0.72, 0.20, 1.0), # マスタードイエロー
-            (0.25, 0.68, 0.40, 1.0), # エメラルド
-            (0.85, 0.28, 0.22, 1.0), # レッド
-            (0.55, 0.32, 0.72, 1.0), # ラベンダーパープル
-            (0.20, 0.22, 0.25, 1.0), # チャコール
-            (0.90, 0.55, 0.22, 1.0), # オレンジ
-        ]
-        props.chibi_cloth_top_color = random.choice(cloth_palettes)
-
-        # 靴の色パレット
-        shoe_palettes = [
-            (0.85, 0.25, 0.22, 1.0), # スポーティレッド
-            (0.45, 0.25, 0.15, 1.0), # レザーブラウン
-            (0.15, 0.15, 0.18, 1.0), # スニーカーブラック
-            (0.20, 0.50, 0.80, 1.0), # ブルー
-            (0.90, 0.90, 0.92, 1.0), # ホワイト
-        ]
-        props.chibi_shoe_color = random.choice(shoe_palettes)
 
 
 class MESH_OT_update_selected_prop(bpy.types.Operator):

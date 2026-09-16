@@ -10,6 +10,33 @@ def get_texture_enum_items(self, context):
     return [(f, f, f) for f in tex_files]
 
 
+def update_chibi_character_live(self, context):
+    """
+    キャラクターのパラメータ変更時に、選択中のキャラクターオブジェクトを即座に再生成・リアルタイム反映
+    """
+    if not context or not hasattr(context, 'active_object'):
+        return
+    active_obj = context.active_object
+    if not active_obj:
+        return
+
+    from .generators.core_orchestrator import resolve_prop_root_hierarchy, generate_procedural_prop_mesh, resolve_prop_parameters
+    try:
+        root_obj, all_objs, _, _, _ = resolve_prop_root_hierarchy(active_obj)
+        target = root_obj or active_obj
+        if "Chibi" in target.name or getattr(self, 'prop_category', '') == 'CHIBI_CHARACTER':
+            params = resolve_prop_parameters(self)
+            generate_procedural_prop_mesh(
+                context=context,
+                target_obj=target,
+                name=target.name,
+                seed=getattr(self, 'seed', 0),
+                **params
+            )
+    except Exception:
+        pass
+
+
 def update_category_preset(self, context):
     props = context.scene.prop_studio_props
     cat = props.prop_category
@@ -61,6 +88,8 @@ def update_category_preset(self, context):
         props.chibi_outfit_type = 'T_SHIRT'
         props.chibi_eye_style = 'OVAL'
         props.chibi_eye_scale = 1.0
+        props.chibi_pattern = 'PLAIN'
+        props.chibi_accessory = 'NONE'
         props.uv_mapping_mode = 'FIT'
     elif cat == "STONE_STAIRS":
         props.size_x = 1.8
@@ -2509,12 +2538,14 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('BOY', "👦 男の子 (Boy / Islander)", "ショートヘア・Tシャツ・短パンスタイル"),
             ('GIRL', "👧 女の子 (Girl / Islander)", "ボブ/ツインテール・ワンピーススタイル")
         ],
-        default='BOY'
+        default='BOY',
+        update=update_chibi_character_live
     )
     chibi_head_ratio: bpy.props.FloatProperty(
         name="頭身比 (Head Ratio)",
         default=2.2, min=1.8, max=3.0,
-        description="キャラクターの頭身比（どうぶつの森風は 2.0〜2.5 推奨）"
+        description="キャラクターの頭身比（どうぶつの森風は 2.0〜2.5 推奨）",
+        update=update_chibi_character_live
     )
     chibi_hair_style: bpy.props.EnumProperty(
         name="髪型 (Hair Style)",
@@ -2525,54 +2556,97 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('SPIKY', "⚡ ツンツンヘア (Spiky Hair)", "元気な男の子風のハネ毛・ツンツン髪"),
             ('PONYTAIL', "🐴 ポニーテール (Ponytail)", "スポーティな後ろ結びポニーテール"),
             ('AFRO', "🐑 もこもこアフロ (Fluffy Afro)", "まん丸でボリューミーなポップヘア"),
-            ('CAP', "🧢 つば付きキャップ (Islander Cap)", "島民定番のつば付きベースボールキャップ")
+            ('CAP', "🧢 つば付きキャップ (Islander Cap)", "島民定番のつば付きベースボールキャップ"),
+            ('MUSHROOM', "🍄 マッシュルーム (Mushroom Cut)", "丸いキノコ型マッシュ・どう森大定番"),
+            ('BRAIDS', "👩‍🌾 みつあみ・おさげ (Braids)", "両サイドに垂れる素朴で愛らしい三つ編み"),
+            ('TOPKNOT', "🍙 ちょんまげ/お団子 (Topknot)", "頭頂部にちょこんと乗った結び玉ヘア"),
+            ('WAVY_LONG', "💁‍♀️ ウェーブロング (Wavy Long)", "肩まで届くゆるふわウェーブヘア"),
+            ('CAT_HOOD', "🐱 ネコ耳フード (Cat Ear Hood)", "どうぶつの森らしいネコ耳着ぐるみフード"),
+            ('KNIT_CAP', "🧶 ポンポンニット帽 (Knit Beanie)", "冬の島民スタイル・あったかニット帽"),
+            ('WITCH_HAT', "🧙‍♀️ 魔女のとんがり帽子 (Witch Hat)", "ハロウィン・ファンタジースタイル")
         ],
-        default='SHORT'
+        default='SHORT',
+        update=update_chibi_character_live
     )
     chibi_outfit_type: bpy.props.EnumProperty(
         name="衣装 (Outfit)",
         items=[
             ('T_SHIRT', "👕 Tシャツ＆短パン (T-Shirt & Shorts)", "カジュアルなトップス＆ボトムス"),
-            ('ONE_PIECE', "👗 釣鐘型ワンピース (A-Line Dress)", "裾がふわりと広がる愛らしいワンピースドレス")
+            ('ONE_PIECE', "👗 釣鐘型ワンピース (A-Line Dress)", "裾がふわりと広がる愛らしいワンピースドレス"),
+            ('HOODIE', "🧥 フード付きパーカー (Hoodie)", "ゆったり袖と首元フードのストリート系"),
+            ('OVERALLS', "👖 オーバーオール (Overalls)", "むらびとの大定番・サロペット作業着"),
+            ('KIMONO', "👘 着物・ゆかた (Yukata / Kimono)", "夏祭り・和風の装い"),
+            ('COAT', "🧥 ダッフルコート (Winter Coat)", "襟付きのあったか冬用コート")
         ],
-        default='T_SHIRT'
+        default='T_SHIRT',
+        update=update_chibi_character_live
     )
     chibi_eye_style: bpy.props.EnumProperty(
         name="目の形状 (Eye Style)",
         items=[
             ('OVAL', "🥚 楕円の瞳 (Oval / Anime)", "縦長の愛らしいアニメ調の瞳"),
-            ('ROUND', "⭕ まるい瞳 (Round Dot)", "クリっとした丸いドット瞳")
+            ('ROUND', "⭕ まるい瞳 (Round Dot)", "クリっとした丸いドット瞳"),
+            ('DROOPY', "🥺 たれ目 (Droopy / Gentle)", "おっとり癒やし系の素朴なたれ目"),
+            ('CAT_EYE', "😼 つり目・ネコ目 (Cat Eye)", "クールで勝ち気なネコ目"),
+            ('SMILING', "😊 にっこり三日月目 (Smiling Crescent)", "楽しそうな細目の笑顔")
         ],
-        default='OVAL'
+        default='OVAL',
+        update=update_chibi_character_live
     )
     chibi_eye_scale: bpy.props.FloatProperty(
         name="目のサイズ (Eye Scale)",
         default=1.0, min=0.5, max=1.6,
-        description="瞳の大きさスケール（0.8〜1.0がどうぶつの森風のつぶらな比率）"
+        description="瞳の大きさスケール（0.8〜1.0がどうぶつの森風のつぶらな比率）",
+        update=update_chibi_character_live
+    )
+    chibi_pattern: bpy.props.EnumProperty(
+        name="服の柄 (Clothing Pattern)",
+        items=[
+            ('PLAIN', "⚪ 無地 (Plain Color)", "シンプルな単色カラー"),
+            ('STRIPED', "🦓 ボーダー縞模様 (Horizontal Stripes)", "カジュアルなツートン横シマ模様"),
+            ('POLKA_DOT', "🔴 水玉ドット (Polka Dots)", "どうぶつの森特有のポップな水玉柄"),
+            ('ISLAND_LEAF', "🍃 島の葉っぱマーク (Islander Leaf)", "どう森を象徴する胸の葉っぱワンポイント")
+        ],
+        default='PLAIN',
+        update=update_chibi_character_live
+    )
+    chibi_accessory: bpy.props.EnumProperty(
+        name="アクセサリー (Accessory)",
+        items=[
+            ('NONE', "❌ なし (None)", "装飾なし"),
+            ('ROUND_GLASSES', "👓 丸メガネ (Round Glasses)", "知的な丸型フレームメガネ"),
+            ('CHEEK_BLUSH', "🌸 ほんのりほっぺ (Cheek Blush)", "両頬の可愛いピンクチーク")
+        ],
+        default='NONE',
+        update=update_chibi_character_live
     )
     chibi_skin_color: bpy.props.FloatVectorProperty(
         name="肌色 (Skin Color)",
         subtype='COLOR',
         size=4, min=0.0, max=1.0,
-        default=(0.96, 0.82, 0.74, 1.0)
+        default=(0.96, 0.82, 0.74, 1.0),
+        update=update_chibi_character_live
     )
     chibi_hair_color: bpy.props.FloatVectorProperty(
         name="髪色 (Hair Color)",
         subtype='COLOR',
         size=4, min=0.0, max=1.0,
-        default=(0.35, 0.22, 0.14, 1.0)
+        default=(0.35, 0.22, 0.14, 1.0),
+        update=update_chibi_character_live
     )
     chibi_cloth_top_color: bpy.props.FloatVectorProperty(
         name="服の色 (Cloth Color)",
         subtype='COLOR',
         size=4, min=0.0, max=1.0,
-        default=(0.18, 0.55, 0.82, 1.0)
+        default=(0.18, 0.55, 0.82, 1.0),
+        update=update_chibi_character_live
     )
     chibi_shoe_color: bpy.props.FloatVectorProperty(
         name="靴の色 (Shoe Color)",
         subtype='COLOR',
         size=4, min=0.0, max=1.0,
-        default=(0.85, 0.25, 0.22, 1.0)
+        default=(0.85, 0.25, 0.22, 1.0),
+        update=update_chibi_character_live
     )
 
 
