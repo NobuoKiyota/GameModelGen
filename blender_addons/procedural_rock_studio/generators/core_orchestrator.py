@@ -528,6 +528,7 @@ def resolve_prop_parameters(props):
         "chibi_outfit_type": getattr(props, 'chibi_outfit_type', 'T_SHIRT'),
         "chibi_eye_style": getattr(props, 'chibi_eye_style', 'OVAL'),
         "chibi_eye_scale": getattr(props, 'chibi_eye_scale', 1.0),
+        "chibi_eyebrow_style": getattr(props, 'chibi_eyebrow_style', 'ARCH'),
         "chibi_pattern": getattr(props, 'chibi_pattern', 'PLAIN'),
         "chibi_accessory": getattr(props, 'chibi_accessory', 'NONE'),
         "chibi_skin_color": tuple(getattr(props, 'chibi_skin_color', (0.96, 0.82, 0.74, 1.0))),
@@ -763,6 +764,7 @@ def generate_procedural_prop_mesh(
         chibi_outfit = kwargs.get('chibi_outfit_type', 'T_SHIRT')
         chibi_eye = kwargs.get('chibi_eye_style', 'OVAL')
         chibi_eye_sc = kwargs.get('chibi_eye_scale', 1.0)
+        chibi_eyebrow = kwargs.get('chibi_eyebrow_style', 'ARCH')
         chibi_pat = kwargs.get('chibi_pattern', 'PLAIN')
         chibi_acc = kwargs.get('chibi_accessory', 'NONE')
         chibi_skin_c = kwargs.get('chibi_skin_color', (0.96, 0.82, 0.74, 1.0))
@@ -780,6 +782,7 @@ def generate_procedural_prop_mesh(
             outfit_type=chibi_outfit,
             eye_style=chibi_eye,
             eye_scale=chibi_eye_sc,
+            eyebrow_style=chibi_eyebrow,
             pattern=chibi_pat,
             accessory=chibi_acc,
             skin_color=chibi_skin_c,

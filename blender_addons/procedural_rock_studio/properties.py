@@ -88,6 +88,7 @@ def update_category_preset(self, context):
         props.chibi_outfit_type = 'T_SHIRT'
         props.chibi_eye_style = 'OVAL'
         props.chibi_eye_scale = 1.0
+        props.chibi_eyebrow_style = 'ARCH'
         props.chibi_pattern = 'PLAIN'
         props.chibi_accessory = 'NONE'
         props.uv_mapping_mode = 'FIT'
@@ -2550,22 +2551,31 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     chibi_hair_style: bpy.props.EnumProperty(
         name="髪型 (Hair Style)",
         items=[
-            ('SHORT', "✂️ ショートヘア (Short Bangs)", "少しハネ感のある男の子風ショート"),
+            ('SHORT', "✂️ 王道ショート (Natural Bangs)", "毛束感と前髪の自然なウェーブショート"),
+            ('SHORT_MESSY', "🌾 レイヤー無造作ショート (Messy Layers)", "アシメ前髪と軽やかな毛先の無造作ヘア"),
+            ('MUSHROOM', "🍄 マッシュルーム (Mushroom Cut)", "丸いキノコ型マッシュボウル・どう森大定番"),
             ('BOB', "💇‍♀️ ふんわりボブ (Cute Bob)", "フェイスラインを包む丸い内巻きボブ"),
             ('TWINTAILS', "🎀 お団子/ツインテール (Twintails)", "両サイドのポンポンお団子ヘア"),
-            ('SPIKY', "⚡ ツンツンヘア (Spiky Hair)", "元気な男の子風のハネ毛・ツンツン髪"),
-            ('PONYTAIL', "🐴 ポニーテール (Ponytail)", "スポーティな後ろ結びポニーテール"),
-            ('AFRO', "🐑 もこもこアフロ (Fluffy Afro)", "まん丸でボリューミーなポップヘア"),
-            ('CAP', "🧢 つば付きキャップ (Islander Cap)", "島民定番のつば付きベースボールキャップ"),
-            ('MUSHROOM', "🍄 マッシュルーム (Mushroom Cut)", "丸いキノコ型マッシュ・どう森大定番"),
             ('BRAIDS', "👩‍🌾 みつあみ・おさげ (Braids)", "両サイドに垂れる素朴で愛らしい三つ編み"),
+            ('PONYTAIL', "🐴 ポニーテール (Ponytail)", "スポーティな後ろ結びポニーテール"),
             ('TOPKNOT', "🍙 ちょんまげ/お団子 (Topknot)", "頭頂部にちょこんと乗った結び玉ヘア"),
+            ('SPIKY', "⚡ ツンツンヘア (Spiky Hair)", "元気な男の子風のハネ毛・ツンツン髪"),
             ('WAVY_LONG', "💁‍♀️ ウェーブロング (Wavy Long)", "肩まで届くゆるふわウェーブヘア"),
-            ('CAT_HOOD', "🐱 ネコ耳フード (Cat Ear Hood)", "どうぶつの森らしいネコ耳着ぐるみフード"),
-            ('KNIT_CAP', "🧶 ポンポンニット帽 (Knit Beanie)", "冬の島民スタイル・あったかニット帽"),
-            ('WITCH_HAT', "🧙‍♀️ 魔女のとんがり帽子 (Witch Hat)", "ハロウィン・ファンタジースタイル")
+            ('CENTER_PART', "🧑‍💼 センター分け (Center Part)", "大人っぽい前髪分け・知的なスタイル"),
+            ('AFRO', "🐑 もこもこアフロ (Fluffy Afro)", "まん丸でボリューミーなポップヘア")
         ],
         default='SHORT',
+        update=update_chibi_character_live
+    )
+    chibi_eyebrow_style: bpy.props.EnumProperty(
+        name="眉毛 (Eyebrows)",
+        items=[
+            ('ARCH', "⌒ なだらかアーチ (Gentle Arch)", "素朴で優しい標準アーチ眉"),
+            ('DOT', "⭕ まる眉 / 麻呂眉 (Round Dot)", "ちょこんとした丸い点眉・愛らしい表情"),
+            ('STRAIGHT', "➖ まっすぐ眉 (Straight)", "キリッとした水平ストレート眉"),
+            ('NONE', "❌ なし (None)", "眉毛なし")
+        ],
+        default='ARCH',
         update=update_chibi_character_live
     )
     chibi_outfit_type: bpy.props.EnumProperty(

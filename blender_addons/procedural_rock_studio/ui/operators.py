@@ -280,8 +280,12 @@ def reroll_category_properties(props, category):
         props.chibi_gender = random.choice(['BOY', 'GIRL'])
         props.chibi_head_ratio = round(random.uniform(2.05, 2.35), 2)
         props.chibi_hair_style = random.choice([
-            'SHORT', 'TWINTAILS', 'BOB', 'SPIKY', 'PONYTAIL', 'AFRO', 'CAP',
-            'MUSHROOM', 'BRAIDS', 'TOPKNOT', 'WAVY_LONG', 'CAT_HOOD', 'KNIT_CAP', 'WITCH_HAT'
+            'SHORT', 'SHORT_MESSY', 'CENTER_PART', 'BOB', 'MUSHROOM',
+            'TWINTAILS', 'BRAIDS', 'PONYTAIL', 'TOPKNOT', 'SPIKY',
+            'WAVY_LONG', 'AFRO'
+        ])
+        props.chibi_eyebrow_style = random.choice([
+            'ARCH', 'DOT', 'STRAIGHT', 'NONE'
         ])
         props.chibi_outfit_type = random.choice([
             'T_SHIRT', 'ONE_PIECE', 'HOODIE', 'OVERALLS', 'KIMONO', 'COAT'

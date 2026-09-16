@@ -163,4 +163,15 @@ def create_chibi_character_shader(mat_name, part_type="SKIN", color=(0.96, 0.82,
         set_bsdf_input_safe(node_bsdf, ['Base Color'], (0.95, 0.45, 0.55, 1.0))
         set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.8)
 
+    elif part_type == "EYEBROW":
+        # まゆ毛（髪色に馴染むマットな質感）
+        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.55)
+        set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.30)
+
+    elif part_type == "BUTTON":
+        # 衣服の小さなボタン（光沢のあるプラスチック・金具調）
+        set_bsdf_input_safe(node_bsdf, ['Base Color'], color or (0.92, 0.88, 0.82, 1.0))
+        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.30)
+        set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.65)
+
     return mat

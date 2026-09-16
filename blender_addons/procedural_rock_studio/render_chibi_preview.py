@@ -13,89 +13,105 @@ from procedural_rock_studio.generators import create_procedural_chibi_character
 bpy.ops.wm.read_factory_settings(use_empty=True)
 rock_studio_addon.register()
 
-# 1. キノコマッシュ・水玉ワンピ・丸メガネの女の子 (左端)
+# 1. ショートヘア（前髪フリンジ＆もみあげ）・丸眉・Tシャツ（ボタン付き）・ウインクまばたき表情の男の子 (左正面)
 char1 = create_procedural_chibi_character(
     context=bpy.context,
-    name="Mushroom_Girl",
-    gender="GIRL",
-    head_ratio=2.15,
-    total_height=1.10,
-    hair_style="MUSHROOM",
-    outfit_type="ONE_PIECE",
-    eye_style="DROOPY",
-    pattern="POLKA_DOT",
-    accessory="ROUND_GLASSES",
-    skin_color=(0.98, 0.86, 0.78, 1.0),
-    hair_color=(0.28, 0.16, 0.12, 1.0),
-    cloth_top_color=(0.88, 0.28, 0.35, 1.0), # 赤白水玉
-    shoe_color=(0.22, 0.22, 0.25, 1.0),
-    seed=101
-)
-char1.location = (-1.05, 0.15, 0.0)
-char1.rotation_euler = (0, 0, 0.20)
-
-# 2. ツンツン髪・ボーダーパーカーの男の子 (中央左)
-char2 = create_procedural_chibi_character(
-    context=bpy.context,
-    name="Spiky_Hoodie_Boy",
+    name="ShortHair_Front_Boy",
     gender="BOY",
-    head_ratio=2.25,
-    total_height=1.16,
-    hair_style="SPIKY",
-    outfit_type="HOODIE",
-    eye_style="CAT_EYE",
+    head_ratio=2.2,
+    total_height=1.15,
+    hair_style="SHORT",
+    eyebrow_style="DOT",
+    outfit_type="T_SHIRT",
+    eye_style="OVAL",
     pattern="STRIPED",
     accessory="NONE",
     skin_color=(0.96, 0.82, 0.74, 1.0),
-    hair_color=(0.88, 0.68, 0.25, 1.0), # 金髪
-    cloth_top_color=(0.18, 0.55, 0.85, 1.0), # 青白ボーダーパーカー
+    hair_color=(0.32, 0.18, 0.12, 1.0), # ダークブラウン
+    cloth_top_color=(0.18, 0.55, 0.85, 1.0), # 青白ボーダーTシャツ（首元ボタン）
     shoe_color=(0.85, 0.25, 0.22, 1.0),
-    seed=202
+    seed=101
 )
-char2.location = (-0.35, 0.0, 0.0)
-char2.rotation_euler = (0, 0, 0.08)
+char1.location = (-0.95, 0.05, 0.0)
+char1.rotation_euler = (0, 0, 0.15)
+# 目のシェイプキー（ウインク/片目まばたき）を適用
+for c in char1.children:
+    if "Eyes" in c.name and c.data.shape_keys:
+        kb = c.data.shape_keys.key_blocks
+        if "Blink" in kb:
+            kb["Blink"].value = 0.85
 
-# 3. みつあみ・オーバーオール・葉っぱマーク・笑顔チークの女の子 (中央右)
+# 2. ショートヘアの背面・首筋襟足V/Wカーブ確認用キャラクター (中央左・後ろ向き)
+char2 = create_procedural_chibi_character(
+    context=bpy.context,
+    name="ShortHair_Back_Boy",
+    gender="BOY",
+    head_ratio=2.2,
+    total_height=1.15,
+    hair_style="SHORT",
+    eyebrow_style="ARCH",
+    outfit_type="COAT",
+    eye_style="OVAL",
+    pattern="PLAIN",
+    accessory="NONE",
+    skin_color=(0.96, 0.82, 0.74, 1.0),
+    hair_color=(0.32, 0.18, 0.12, 1.0),
+    cloth_top_color=(0.75, 0.28, 0.24, 1.0), # レッドコート（金ボタン）
+    shoe_color=(0.20, 0.20, 0.22, 1.0),
+    seed=102
+)
+char2.location = (-0.30, 0.20, 0.0)
+char2.rotation_euler = (0, 0, math.radians(165)) # 後頭部・襟足が見える後ろ斜め向き
+
+# 3. センターパート・オーバーオール（左右肩紐ボタン）・アーチ眉・笑顔シェイプキーの女の子 (中央右正面)
 char3 = create_procedural_chibi_character(
     context=bpy.context,
-    name="Braids_Overalls_Girl",
+    name="CenterPart_Overalls_Girl",
     gender="GIRL",
-    head_ratio=2.10,
+    head_ratio=2.15,
     total_height=1.12,
-    hair_style="BRAIDS",
+    hair_style="CENTER_PART",
+    eyebrow_style="ARCH",
     outfit_type="OVERALLS",
-    eye_style="SMILING",
-    pattern="ISLAND_LEAF",
+    eye_style="OVAL",
+    pattern="PLAIN",
     accessory="CHEEK_BLUSH",
-    skin_color=(0.90, 0.74, 0.62, 1.0), # 健康的な小麦肌
-    hair_color=(0.85, 0.42, 0.25, 1.0), # オレンジブラウンおさげ
-    cloth_top_color=(0.25, 0.65, 0.38, 1.0), # グリーン葉っぱオーバーオール
+    skin_color=(0.98, 0.86, 0.78, 1.0),
+    hair_color=(0.88, 0.70, 0.35, 1.0), # アッシュゴールド
+    cloth_top_color=(0.25, 0.65, 0.40, 1.0), # グリーンオーバーオール（肩紐金ボタン）
     shoe_color=(0.45, 0.25, 0.15, 1.0),
     seed=303
 )
 char3.location = (0.35, 0.0, 0.0)
-char3.rotation_euler = (0, 0, -0.08)
+char3.rotation_euler = (0, 0, -0.10)
+# 笑顔シェイプキーを適用
+for c in char3.children:
+    if "Eyes" in c.name and c.data.shape_keys:
+        kb = c.data.shape_keys.key_blocks
+        if "Smile" in kb:
+            kb["Smile"].value = 1.0
 
-# 4. 魔女帽子・和装ゆかたのファンタジー島民 (右端)
+# 4. 無造作ショート（SHORT_MESSY）・まっすぐ眉・コート（前立てボタン）・丸メガネの島民 (右端)
 char4 = create_procedural_chibi_character(
     context=bpy.context,
-    name="Witch_Kimono_Char",
-    gender="GIRL",
+    name="Messy_Coat_Char",
+    gender="BOY",
     head_ratio=2.20,
     total_height=1.14,
-    hair_style="WITCH_HAT",
-    outfit_type="KIMONO",
+    hair_style="SHORT_MESSY",
+    eyebrow_style="STRAIGHT",
+    outfit_type="COAT",
     eye_style="ROUND",
     pattern="PLAIN",
-    accessory="CHEEK_BLUSH",
-    skin_color=(0.98, 0.88, 0.82, 1.0),
-    hair_color=(0.55, 0.32, 0.68, 1.0), # パープル魔女帽子
-    cloth_top_color=(0.52, 0.35, 0.68, 1.0), # 紫着物
-    shoe_color=(0.85, 0.22, 0.25, 1.0),
+    accessory="ROUND_GLASSES",
+    skin_color=(0.92, 0.76, 0.65, 1.0), # 小麦肌
+    hair_color=(0.18, 0.18, 0.22, 1.0), # ナチュラルブラック
+    cloth_top_color=(0.35, 0.45, 0.60, 1.0), # ダッフルコート
+    shoe_color=(0.85, 0.45, 0.20, 1.0),
     seed=404
 )
-char4.location = (1.05, 0.15, 0.0)
-char4.rotation_euler = (0, 0, -0.20)
+char4.location = (1.00, 0.10, 0.0)
+char4.rotation_euler = (0, 0, -0.22)
 
 # 3. ワールド環境光（アンビエント光）
 world = bpy.context.scene.world
