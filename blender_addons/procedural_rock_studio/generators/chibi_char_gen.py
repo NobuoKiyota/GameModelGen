@@ -52,8 +52,8 @@ def build_chibi_body_mesh(context, name="Chibi_Body", gender="BOY", head_ratio=2
     # 脚
     hip_x = 0.075
     v_hip = bm.verts.new((hip_x, 0.0, base_z + leg_len * 0.95))
-    v_knee = bm.verts.new((hip_x, 0.0, base_z + leg_len * 0.50))
-    v_ankle = bm.verts.new((hip_x, 0.01, base_z + 0.06))
+    v_knee = bm.verts.new((hip_x, 0.0, base_z + leg_len * 0.45))
+    v_ankle = bm.verts.new((hip_x, 0.01, base_z + 0.025))
 
     # エッジ接続
     bm.edges.new((v_crotch, v_belly))
@@ -102,25 +102,25 @@ def build_chibi_body_mesh(context, name="Chibi_Body", gender="BOY", head_ratio=2
         skin_data[9].radius = (0.07, 0.07)
 
     mod_sub = obj.modifiers.new(name="Subdivision", type='SUBSURF')
-    mod_sub.levels = 2
-    mod_sub.render_levels = 2
+    mod_sub.levels = 3
+    mod_sub.render_levels = 3
 
     return obj
 
 
 def build_chibi_head_mesh(context, name="Chibi_Head", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
-    """どうぶつの森風の愛らしい横長・ふっくら頭部"""
+    """どうぶつの森風の愛らしい横長・ふっくら頭部（ハイポリUV球ベース）"""
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
 
     bm = bmesh.new()
-    bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=24, radius=0.5)
     sx, sy, sz = head_size[0], head_size[1], head_size[2]
     for v in bm.verts:
-        # 下膨れ（頬をふっくら）の形状変形
-        y_fac = 1.0 + (1.0 - v.co.z) * 0.12
-        x_fac = 1.0 + (1.0 - v.co.z) * 0.16
+        norm_z = v.co.z / 0.5
+        y_fac = 1.0 + max(0.0, -norm_z) * 0.12
+        x_fac = 1.0 + max(0.0, -norm_z) * 0.16
         v.co.x *= sx * x_fac
         v.co.y *= sy * y_fac
         v.co.z *= sz
@@ -137,16 +137,16 @@ def build_chibi_head_mesh(context, name="Chibi_Head", head_center=(0, 0, 0.72), 
 
 
 def build_chibi_ears_mesh(context, name="Chibi_Ears", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
-    """両耳メッシュ（Mirror）"""
+    """両耳メッシュ（ハイポリMirror）"""
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
 
     bm = bmesh.new()
     ear_pos = Vector((head_size[0] * 0.52, -0.02, head_center[2] - 0.02))
-    res = bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=8, radius=0.065)
+    res = bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=16, radius=0.065)
     for v in res['verts']:
-        v.co.x *= 0.35  # 耳の厚みを薄く
+        v.co.x *= 0.35
         v.co.y *= 0.9
         v.co += ear_pos
 
@@ -162,7 +162,7 @@ def build_chibi_ears_mesh(context, name="Chibi_Ears", head_center=(0, 0, 0.72), 
 
 
 def build_chibi_eyes_mesh(context, name="Chibi_Eyes", eye_style="OVAL", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
-    """デフォルメされた瞳メッシュ ＋ キラキラハイライト（左右対称ミラー）"""
+    """デフォルメされた瞳メッシュ ＋ キラキラハイライト（ハイポリ32セグメント・ミラー）"""
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
@@ -175,23 +175,22 @@ def build_chibi_eyes_mesh(context, name="Chibi_Eyes", eye_style="OVAL", head_cen
 
     rx = 0.046
     rz = 0.068 if eye_style == "OVAL" else 0.048
-    # 瞳本体
-    res_pupil = bmesh.ops.create_circle(bm, cap_ends=True, radius=1.0, segments=16)
+    # 瞳本体 (32 segments)
+    res_pupil = bmesh.ops.create_circle(bm, cap_ends=True, radius=1.0, segments=32)
     for v in res_pupil['verts']:
         vx = v.co.x * rx
         vz = v.co.y * rz
         vy = -(vx * vx + vz * vz) * 0.4
         v.co = Vector((vx, vy, vz)) + eye_pos
 
-    # 瞳ハイライト（白丸）
+    # 瞳ハイライト（白丸 16 segments）
     hl_pos = eye_pos + Vector((rx * 0.35, -0.008, rz * 0.35))
-    res_hl = bmesh.ops.create_circle(bm, cap_ends=True, radius=1.0, segments=12)
+    res_hl = bmesh.ops.create_circle(bm, cap_ends=True, radius=1.0, segments=16)
     for v in res_hl['verts']:
         vx = v.co.x * 0.016
         vz = v.co.y * 0.016
         v.co = Vector((vx, -0.002, vz)) + hl_pos
 
-    # ハイライト面の material_index を 1 に設定
     for f in bm.faces:
         if any(v in res_hl['verts'] for v in f.verts):
             f.material_index = 1
@@ -200,7 +199,6 @@ def build_chibi_eyes_mesh(context, name="Chibi_Eyes", eye_style="OVAL", head_cen
 
     bm.to_mesh(mesh)
     bm.free()
-
 
     mod_mirror = obj.modifiers.new(name="Mirror", type='MIRROR')
     mod_mirror.use_axis[0] = True
@@ -211,14 +209,14 @@ def build_chibi_eyes_mesh(context, name="Chibi_Eyes", eye_style="OVAL", head_cen
 
 
 def build_chibi_nose_mesh(context, name="Chibi_Nose", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
-    """ちょこんとした小さな三角/丸鼻"""
+    """ちょこんとした小さな三角/丸鼻（ハイポリ24セグメント）"""
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
 
     bm = bmesh.new()
     nose_pos = Vector((0.0, -head_size[1] * 0.535, head_center[2] - 0.045))
-    res = bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.024, radius2=0.006, depth=0.022)
+    res = bmesh.ops.create_cone(bm, cap_ends=True, segments=24, radius1=0.024, radius2=0.006, depth=0.022)
     for v in res['verts']:
         vy = -v.co.z
         vz = v.co.y
@@ -234,49 +232,74 @@ def build_chibi_nose_mesh(context, name="Chibi_Nose", head_center=(0, 0, 0.72), 
 
 
 def build_chibi_hair_mesh(context, name="Chibi_Hair", gender="BOY", hair_style="SHORT", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
-    """髪型メッシュ（ショート、ボブ、ツインテール）"""
+    """
+    髪型メッシュ（ハイポリUV球ベース・滑らかな生え際カーブ）
+    ギザギザ・ファセットのない美しい曲面を実現
+    """
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
 
     bm = bmesh.new()
     hc = Vector(head_center)
-    hsx, hsy, hsz = head_size[0] * 1.08, head_size[1] * 1.08, head_size[2] * 1.08
+    hsx, hsy, hsz = head_size[0], head_size[1], head_size[2]
 
-    # 頭部を覆うヘルメットベース
-    res_base = bmesh.ops.create_cube(bm, size=1.0)
-    for v in res_base['verts']:
-        v.co.x *= hsx
-        v.co.y *= hsy
-        v.co.z = (v.co.z + 0.15) * hsz
-        v.co += hc
+    # 高解像度UV球（36 segments, 24 rings）からヘルメットベースを作成
+    bmesh.ops.create_uvsphere(bm, u_segments=36, v_segments=24, radius=0.5)
+
+    # 生え際以下の頂点を滑らかな関数でカット
+    verts_to_delete = []
+    for v in bm.verts:
+        norm_z = v.co.z / 0.5
+        norm_y = v.co.y / 0.5
+        norm_x = v.co.x / 0.5
+
+        # 前方のおでこ生え際：滑らかなM字アーチ
+        forehead_line = 0.05 + 0.10 * math.cos(norm_x * math.pi)
+        if norm_y < -0.10 and norm_z < forehead_line:
+            verts_to_delete.append(v)
+        elif norm_z < -0.20:
+            # 後頭部・襟足のカットライン
+            verts_to_delete.append(v)
+
+    bmesh.ops.delete(bm, geom=verts_to_delete, context='VERTS')
+
+    # 残った頂点を頭部に合わせてスケール＆頭部中心 hc に配置
+    for v in bm.verts:
+        norm_z = v.co.z / 0.5
+        y_fac = 1.0 + max(0.0, -norm_z) * 0.12
+        x_fac = 1.0 + max(0.0, -norm_z) * 0.15
+        vx = v.co.x * hsx * x_fac * 1.06
+        vy = v.co.y * hsy * y_fac * 1.06
+        vz = v.co.z * hsz * 1.06
+        v.co = Vector((vx, vy, vz)) + hc
 
     # スタイルごとの特徴造形
     if hair_style == "SHORT" or gender == "BOY":
-        # 男の子ショート: 前髪のハネ感
+        # 男の子ショート: 前髪の自然なウェーブ束感
         for v in bm.verts:
-            if v.co.y < hc.y - 0.1 and v.co.z > hc.z:
-                v.co.y -= 0.03
-                v.co.z -= 0.02
+            if v.co.y < hc.y - 0.10 and v.co.z > hc.z - 0.05:
+                wave = math.sin((v.co.x - hc.x) * 22.0) * 0.008
+                v.co.y += wave - 0.006
+                v.co.z -= 0.005
     elif hair_style == "TWINTAILS":
-        # 両サイドのお団子/ツインテール
+        # 女の子お団子ツインテール
         for side in (-1.0, 1.0):
-            bun_pos = hc + Vector((side * hsx * 0.62, -0.02, hsz * 0.28))
-            res_bun = bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=8, radius=0.11)
+            bun_pos = hc + Vector((side * hsx * 0.55, -0.02, hsz * 0.22))
+            res_bun = bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=16, radius=0.10)
             for v in res_bun['verts']:
                 v.co += bun_pos
     elif hair_style == "BOB":
-        # 女の子ボブ: 裾が内巻きに広がる
         for v in bm.verts:
             if v.co.z < hc.z + 0.05:
-                v.co.x *= 1.12
-                v.co.y *= 1.08
+                v.co.x *= 1.10
+                v.co.y *= 1.06
 
     bm.to_mesh(mesh)
     bm.free()
 
     mod_sol = obj.modifiers.new(name="Solidify", type='SOLIDIFY')
-    mod_sol.thickness = 0.025
+    mod_sol.thickness = 0.020
     mod_sub = obj.modifiers.new(name="Subdivision", type='SUBSURF')
     mod_sub.levels = 2
     mod_sub.render_levels = 2
@@ -284,8 +307,11 @@ def build_chibi_hair_mesh(context, name="Chibi_Hair", gender="BOY", hair_style="
     return obj
 
 
+
 def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_type="T_SHIRT", base_z=0.05, body_height=0.63):
-    """衣装メッシュ（Tシャツ短パン、またはワンピースドレス）"""
+    """
+    衣装メッシュ（ハイポリ36セグメント ＋ 袖Sleevesによる貫通完全ガード）
+    """
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
@@ -295,31 +321,48 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
     torso_len = body_height * 0.62
 
     if outfit_type == "ONE_PIECE" or gender == "GIRL":
-        # 釣鐘型ワンピースドレス
+        # 釣鐘型ワンピースドレス（36セグメントで滑らか）
         dress_z = base_z + leg_len * 0.35
         dress_top_z = base_z + leg_len + torso_len * 0.95
         depth = dress_top_z - dress_z
 
-        bmesh.ops.create_cone(
-            bm, cap_ends=False, segments=16,
-            radius1=0.24, radius2=0.14, depth=depth
+        res_d = bmesh.ops.create_cone(
+            bm, cap_ends=False, segments=36,
+            radius1=0.25, radius2=0.165, depth=depth
         )
-        for v in bm.verts:
+        for v in res_d['verts']:
             v.co.z += dress_z + depth * 0.5
-            v.co.y *= 0.92
+            v.co.y *= 0.90
     else:
-        # Tシャツ（半袖胴体＋裾）
+        # Tシャツ（半袖胴体 36 segments ＋ 短い袖で腕の貫通を完全ブロック！）
         t_z = base_z + leg_len * 0.65
-        t_top_z = base_z + leg_len + torso_len * 0.96
+        t_top_z = base_z + leg_len + torso_len * 0.98
         depth = t_top_z - t_z
 
+        # 胴体部
         res_t = bmesh.ops.create_cone(
-            bm, cap_ends=False, segments=16,
-            radius1=0.20, radius2=0.155, depth=depth
+            bm, cap_ends=False, segments=36,
+            radius1=0.215, radius2=0.185, depth=depth
         )
         for v in res_t['verts']:
             v.co.z += t_z + depth * 0.5
             v.co.y *= 0.88
+
+        # 左右の短い袖（Sleeves）
+        sh_z = base_z + leg_len + torso_len * 0.74
+        for side in (-1.0, 1.0):
+            res_sl = bmesh.ops.create_cone(
+                bm, cap_ends=False, segments=24,
+                radius1=0.095, radius2=0.115, depth=0.15
+            )
+            for v in res_sl['verts']:
+                vx = v.co.x
+                vy = v.co.y
+                vz = v.co.z
+                # 腕の角度に合わせて斜めに配置
+                v.co.x = vx * 0.82 + side * vz * 0.48 + side * 0.14
+                v.co.y = vy * 0.95 - 0.01
+                v.co.z = -side * vx * 0.48 + vz * 0.82 + sh_z
 
     bm.to_mesh(mesh)
     bm.free()
@@ -328,14 +371,15 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
     mod_sol.thickness = 0.018
     mod_sub = obj.modifiers.new(name="Subdivision", type='SUBSURF')
     mod_sub.levels = 2
+    mod_sub.render_levels = 2
 
     return obj
 
 
 def build_chibi_shoes_mesh(context, name="Chibi_Shoes", foot_spacing=0.075, shoe_size=(0.10, 0.15, 0.085)):
     """
-    コロンとした丸い靴（Mirror）
-    重要: 接地位置を厳密に Z=0.0 に配置し、足音Surface判定用スロットを完備
+    コロンとした丸い靴（ハイポリMirror）
+    接地位置を厳密に Z=0.0 に配置し、足音Surface判定用スロットを完備
     """
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
@@ -344,12 +388,15 @@ def build_chibi_shoes_mesh(context, name="Chibi_Shoes", foot_spacing=0.075, shoe
     bm = bmesh.new()
     sx, sy, sz = shoe_size
 
+    # キューブを作成後、細分化して丸みを向上
     bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.subdivide_edges(bm, edges=list(bm.edges), cuts=1, use_grid_fill=True)
+
     for v in bm.verts:
         y_fac = 1.0 + (v.co.y + 0.5) * 0.18
         vx = v.co.x * sx * y_fac + foot_spacing
         vy = v.co.y * sy + 0.02
-        vz = (v.co.z + 0.5) * sz  # Z=0.0 接地
+        vz = (v.co.z + 0.5) * sz
         v.co = Vector((vx, vy, vz))
 
     bm.to_mesh(mesh)
@@ -359,8 +406,10 @@ def build_chibi_shoes_mesh(context, name="Chibi_Shoes", foot_spacing=0.075, shoe
     mod_mirror.use_axis[0] = True
     mod_sub = obj.modifiers.new(name="Subdivision", type='SUBSURF')
     mod_sub.levels = 2
+    mod_sub.render_levels = 2
 
     return obj
+
 
 
 
