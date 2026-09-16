@@ -100,6 +100,7 @@ def test_chibi_character_generation():
     real_props.chibi_hair_style = 'SHORT'
     real_props.chibi_outfit_type = 'T_SHIRT'
     real_props.chibi_eye_style = 'OVAL'
+    real_props.chibi_eye_scale = 1.0
     real_props.size_z = 1.15
 
     params = resolve_prop_parameters(real_props)

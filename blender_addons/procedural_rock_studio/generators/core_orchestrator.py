@@ -527,6 +527,7 @@ def resolve_prop_parameters(props):
         "chibi_hair_style": getattr(props, 'chibi_hair_style', 'SHORT'),
         "chibi_outfit_type": getattr(props, 'chibi_outfit_type', 'T_SHIRT'),
         "chibi_eye_style": getattr(props, 'chibi_eye_style', 'OVAL'),
+        "chibi_eye_scale": getattr(props, 'chibi_eye_scale', 1.0),
         "chibi_skin_color": tuple(getattr(props, 'chibi_skin_color', (0.96, 0.82, 0.74, 1.0))),
         "chibi_hair_color": tuple(getattr(props, 'chibi_hair_color', (0.35, 0.22, 0.14, 1.0))),
         "chibi_cloth_top_color": tuple(getattr(props, 'chibi_cloth_top_color', (0.18, 0.55, 0.82, 1.0))),
@@ -758,6 +759,8 @@ def generate_procedural_prop_mesh(
         chibi_ratio = kwargs.get('chibi_head_ratio', 2.2)
         chibi_hair = kwargs.get('chibi_hair_style', 'SHORT')
         chibi_outfit = kwargs.get('chibi_outfit_type', 'T_SHIRT')
+        chibi_eye = kwargs.get('chibi_eye_style', 'OVAL')
+        chibi_eye_sc = kwargs.get('chibi_eye_scale', 1.0)
         chibi_skin_c = kwargs.get('chibi_skin_color', (0.96, 0.82, 0.74, 1.0))
         chibi_hair_c = kwargs.get('chibi_hair_color', (0.35, 0.22, 0.14, 1.0))
         chibi_cloth_c = kwargs.get('chibi_cloth_top_color', (0.18, 0.55, 0.82, 1.0))
@@ -771,6 +774,8 @@ def generate_procedural_prop_mesh(
             total_height=size_z if size_z > 0.6 else 1.15,
             hair_style=chibi_hair,
             outfit_type=chibi_outfit,
+            eye_style=chibi_eye,
+            eye_scale=chibi_eye_sc,
             skin_color=chibi_skin_c,
             hair_color=chibi_hair_c,
             cloth_top_color=chibi_cloth_c,

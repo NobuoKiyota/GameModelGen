@@ -60,6 +60,7 @@ def update_category_preset(self, context):
         props.chibi_hair_style = 'SHORT'
         props.chibi_outfit_type = 'T_SHIRT'
         props.chibi_eye_style = 'OVAL'
+        props.chibi_eye_scale = 1.0
         props.uv_mapping_mode = 'FIT'
     elif cat == "STONE_STAIRS":
         props.size_x = 1.8
@@ -2539,6 +2540,11 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('ROUND', "⭕ まるい瞳 (Round Dot)", "クリっとした丸いドット瞳")
         ],
         default='OVAL'
+    )
+    chibi_eye_scale: bpy.props.FloatProperty(
+        name="目のサイズ (Eye Scale)",
+        default=1.0, min=0.5, max=1.6,
+        description="瞳の大きさスケール（0.8〜1.0がどうぶつの森風のつぶらな比率）"
     )
     chibi_skin_color: bpy.props.FloatVectorProperty(
         name="肌色 (Skin Color)",

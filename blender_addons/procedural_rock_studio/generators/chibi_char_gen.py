@@ -162,34 +162,47 @@ def build_chibi_ears_mesh(context, name="Chibi_Ears", head_center=(0, 0, 0.72), 
     return obj
 
 
-def build_chibi_eyes_mesh(context, name="Chibi_Eyes", eye_style="OVAL", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
-    """表情の要となる瞳メッシュ ＋ キラキラハイライト（20セグメントで綺麗かつ軽量）"""
+def build_chibi_eyes_mesh(context, name="Chibi_Eyes", eye_style="OVAL", eye_scale=1.0, head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
+    """
+    どうぶつの森風のつぶらで愛らしい瞳メッシュ ＋ ハイライト（顔全高の約19%の黄金比）
+    """
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
 
     bm = bmesh.new()
-    eye_x = head_size[0] * 0.26
-    eye_y = -head_size[1] * 0.515
-    eye_z = head_center[2] - 0.03
+    eye_x = head_size[0] * 0.235
+    eye_z = head_center[2] - 0.040
+
+    # 頭部曲面（下膨れ楕円体）にフィットするY座標を正確に計算
+    norm_z = (eye_z - head_center[2]) / (head_size[2] * 0.5)
+    y_fac = 1.0 + max(0.0, -norm_z) * 0.12
+    x_fac = 1.0 + max(0.0, -norm_z) * 0.16
+    nx = eye_x / max(0.01, head_size[0] * x_fac * 0.5)
+    nz = (eye_z - head_center[2]) / max(0.01, head_size[2] * 0.5)
+    ny_sq = max(0.05, 1.0 - nx * nx - nz * nz)
+    eye_y = head_center[1] - math.sqrt(ny_sq) * 0.5 * head_size[1] * y_fac - 0.003
     eye_pos = Vector((eye_x, eye_y, eye_z))
 
-    rx = 0.046
-    rz = 0.068 if eye_style == "OVAL" else 0.048
+    # どうぶつの森らしいつぶらな瞳サイズ（前回の約60%スケール）
+    rx = 0.026 * eye_scale
+    rz = (0.040 if eye_style == "OVAL" else 0.027) * eye_scale
+
     # 瞳本体 (20 segments)
     res_pupil = bmesh.ops.create_circle(bm, cap_ends=True, radius=1.0, segments=20)
     for v in res_pupil['verts']:
         vx = v.co.x * rx
         vz = v.co.y * rz
-        vy = -(vx * vx + vz * vz) * 0.4
+        vy = -(vx * vx + vz * vz) * 0.5
         v.co = Vector((vx, vy, vz)) + eye_pos
 
-    # 瞳ハイライト（白丸 12 segments）
-    hl_pos = eye_pos + Vector((rx * 0.35, -0.008, rz * 0.35))
+    # 瞳ハイライト（白丸 12 segments: つぶらな瞳の右上にちょこんと配置）
+    hl_pos = eye_pos + Vector((rx * 0.32, -0.003, rz * 0.32))
+    hl_r = 0.0085 * eye_scale
     res_hl = bmesh.ops.create_circle(bm, cap_ends=True, radius=1.0, segments=12)
     for v in res_hl['verts']:
-        vx = v.co.x * 0.016
-        vz = v.co.y * 0.016
+        vx = v.co.x * hl_r
+        vz = v.co.y * hl_r
         v.co = Vector((vx, -0.002, vz)) + hl_pos
 
     for f in bm.faces:
@@ -204,20 +217,29 @@ def build_chibi_eyes_mesh(context, name="Chibi_Eyes", eye_style="OVAL", head_cen
     mod_mirror = obj.modifiers.new(name="Mirror", type='MIRROR')
     mod_mirror.use_axis[0] = True
     mod_sol = obj.modifiers.new(name="Solidify", type='SOLIDIFY')
-    mod_sol.thickness = 0.008
+    mod_sol.thickness = 0.006
 
     return obj
 
 
 def build_chibi_nose_mesh(context, name="Chibi_Nose", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
-    """ちょこんとした小さな三角/丸鼻（12セグメント）"""
+    """
+    ちょこんとした愛らしい三角小鼻（目とのバランスを最適化）
+    """
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
 
     bm = bmesh.new()
-    nose_pos = Vector((0.0, -head_size[1] * 0.535, head_center[2] - 0.045))
-    res = bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.024, radius2=0.006, depth=0.022)
+    nose_z = head_center[2] - 0.054
+    norm_z = (nose_z - head_center[2]) / (head_size[2] * 0.5)
+    y_fac = 1.0 + max(0.0, -norm_z) * 0.12
+    nz = (nose_z - head_center[2]) / max(0.01, head_size[2] * 0.5)
+    ny_sq = max(0.05, 1.0 - nz * nz)
+    nose_y = head_center[1] - math.sqrt(ny_sq) * 0.5 * head_size[1] * y_fac - 0.002
+    nose_pos = Vector((0.0, nose_y, nose_z))
+
+    res = bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.017, radius2=0.004, depth=0.016)
     for v in res['verts']:
         vy = -v.co.z
         vz = v.co.y
@@ -412,6 +434,8 @@ def create_procedural_chibi_character(
     total_height=1.15,
     hair_style="SHORT",
     outfit_type="T_SHIRT",
+    eye_style="OVAL",
+    eye_scale=1.0,
     skin_color=(0.96, 0.82, 0.74, 1.0),
     hair_color=(0.35, 0.22, 0.14, 1.0),
     cloth_top_color=(0.18, 0.55, 0.82, 1.0),
@@ -435,7 +459,7 @@ def create_procedural_chibi_character(
     body_obj = build_chibi_body_mesh(context, f"{name}_Body", gender, head_ratio, total_height)
     head_obj = build_chibi_head_mesh(context, f"{name}_Head", (0, 0, head_center_z), head_size)
     ears_obj = build_chibi_ears_mesh(context, f"{name}_Ears", (0, 0, head_center_z), head_size)
-    eyes_obj = build_chibi_eyes_mesh(context, f"{name}_Eyes", "OVAL", (0, 0, head_center_z), head_size)
+    eyes_obj = build_chibi_eyes_mesh(context, f"{name}_Eyes", eye_style, eye_scale, (0, 0, head_center_z), head_size)
     nose_obj = build_chibi_nose_mesh(context, f"{name}_Nose", (0, 0, head_center_z), head_size)
     hair_obj = build_chibi_hair_mesh(context, f"{name}_Hair", gender, hair_style, (0, 0, head_center_z), head_size)
     outfit_obj = build_chibi_outfit_mesh(context, f"{name}_Outfit", gender, outfit_type, 0.05, body_height)

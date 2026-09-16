@@ -62,6 +62,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 box_parts.prop(props, "chibi_hair_style", text="髪型")
                 box_parts.prop(props, "chibi_outfit_type", text="衣装")
                 box_parts.prop(props, "chibi_eye_style", text="目の形")
+                box_parts.prop(props, "chibi_eye_scale", text="目のサイズ", slider=True)
 
                 box_colors = box_chibi.box()
                 box_colors.label(text="カラーパレット (Colors):", icon='COLOR')
