@@ -286,13 +286,6 @@ def reroll_category_properties(props, category):
             'TWINTAILS', 'BRAIDS', 'PONYTAIL', 'TOPKNOT', 'SPIKY',
             'WAVY_LONG', 'AFRO'
         ])
-        props.chibi_hair_front = random.choice([
-            'SHORT', 'SHORT_MESSY', 'CENTER_PART', 'MUSHROOM'
-        ])
-        props.chibi_hair_back = random.choice([
-            'SHORT_NAPE', 'BOB', 'WAVY_LONG', 'TWINTAILS', 'BRAIDS',
-            'PONYTAIL', 'TOPKNOT', 'SPIKY', 'AFRO'
-        ])
         props.chibi_eyebrow_style = random.choice([
             'ARCH', 'DOT', 'STRAIGHT', 'NONE'
         ])

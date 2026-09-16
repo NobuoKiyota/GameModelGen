@@ -46,7 +46,7 @@ def test_chibi_character_generation():
     child_names = [c.name for c in children]
     print(f"Child names: {child_names}")
 
-    expected_parts = ["Head", "Ears", "Eyes", "Eyebrows", "Nose", "Hair_Front", "Hair_Back", "Outfit", "Shoes"]
+    expected_parts = ["Head", "Ears", "Eyes", "Eyebrows", "Nose", "Hair", "Outfit", "Shoes"]
     for part in expected_parts:
         matched = any(part in c_name for c_name in child_names)
         assert matched, f"Missing child part: {part}"
@@ -94,8 +94,7 @@ def test_chibi_character_generation():
         gender="GIRL",
         head_ratio=2.1,
         total_height=1.10,
-        hair_front="CENTER_PART",
-        hair_back="TWINTAILS",
+        hair_style="TWINTAILS",
         eyebrow_style="ARCH",
         outfit_type="ONE_PIECE",
         skin_color=(0.98, 0.85, 0.76, 1.0),
@@ -107,8 +106,8 @@ def test_chibi_character_generation():
 
     assert girl_root is not None, "Girl root object is None!"
     girl_children = girl_root.children
-    assert len(girl_children) >= 9, f"Girl children count too low: {len(girl_children)}"
-    print("PASS: Girl character with center-part bangs, twintails and one-piece dress verified!")
+    assert len(girl_children) >= 8, f"Girl children count too low: {len(girl_children)}"
+    print("PASS: Girl character with twintails and one-piece dress verified!")
 
     # 3. オーケストレーター経由でのディスパッチ＆クリーンアップ検証
     print("\n=== [TEST 3] Testing Core Orchestrator Dispatch & Regeneration ===")
@@ -117,8 +116,6 @@ def test_chibi_character_generation():
     real_props.chibi_gender = 'BOY'
     real_props.chibi_head_ratio = 2.2
     real_props.chibi_hair_style = 'SHORT'
-    real_props.chibi_hair_front = 'SHORT'
-    real_props.chibi_hair_back = 'SHORT_NAPE'
     real_props.chibi_eyebrow_style = 'ARCH'
     real_props.chibi_outfit_type = 'T_SHIRT'
     real_props.chibi_eye_style = 'OVAL'
@@ -145,30 +142,29 @@ def test_chibi_character_generation():
         seed=888,
         **params
     )
-    # 4. 前髪 × 後ろ髪 × 眉毛 × 衣装の網羅生成テスト
-    print("\n=== [TEST 4] Testing Separated Hair Combinations, Outfits & Eyebrows ===")
-    fronts = ["SHORT", "SHORT_MESSY", "CENTER_PART", "MUSHROOM", "NONE"]
-    backs = ["SHORT_NAPE", "BOB", "WAVY_LONG", "TWINTAILS", "BRAIDS", "PONYTAIL", "TOPKNOT", "SPIKY", "AFRO"]
+    # 4. 一体型髪型 × 眉毛 × 衣装の網羅生成テスト
+    print("\n=== [TEST 4] Testing Unified Hairstyles, Outfits & Eyebrows ===")
+    styles = ["SHORT", "SHORT_MESSY", "CENTER_PART", "BOB", "MUSHROOM", "TWINTAILS", "BRAIDS", "PONYTAIL", "TOPKNOT", "SPIKY", "WAVY_LONG", "AFRO"]
     eyebrows = ["ARCH", "DOT", "STRAIGHT", "NONE"]
     outfits = ["T_SHIRT", "ONE_PIECE", "HOODIE", "OVERALLS", "KIMONO", "COAT"]
 
-    for i in range(len(backs)):
-        front = fronts[i % len(fronts)]
-        back = backs[i]
+    for i, style in enumerate(styles):
         outfit = outfits[i % len(outfits)]
         eyebrow = eyebrows[i % len(eyebrows)]
         char_obj = create_procedural_chibi_character(
             context=bpy.context,
-            name=f"Test_Combo_{i}_Char",
+            name=f"Test_Style_{style}_Char",
             gender="BOY" if i % 2 == 0 else "GIRL",
-            hair_front=front,
-            hair_back=back,
+            hair_style=style,
             eyebrow_style=eyebrow,
             outfit_type=outfit,
             seed=200 + i
         )
-        assert char_obj is not None, f"Failed generating combo Front={front}, Back={back}!"
-        print(f"  - Verified: Front={front}, Back={back}, Eyebrow={eyebrow}, Outfit={outfit}")
+        assert char_obj is not None, f"Failed generating hairstyle {style}!"
+        # Hair 子パーツが1つだけ存在することを確認
+        hair_children = [c for c in char_obj.children if "_Hair" in c.name and "_Hair_Front" not in c.name and "_Hair_Back" not in c.name]
+        assert len(hair_children) == 1, f"Expected 1 unified Hair child, got {len(hair_children)}"
+        print(f"  - Verified: Hairstyle={style}, Eyebrow={eyebrow}, Outfit={outfit}")
 
     # 5. ランダム要素抽選（Re-Roll）オペレーター実行テスト（ReferenceError再発防止検証）
     print("\n=== [TEST 5] Testing Random Gacha Operator Execution (Bug Fix Verification) ===")

@@ -13,15 +13,14 @@ from procedural_rock_studio.generators import create_procedural_chibi_character
 bpy.ops.wm.read_factory_settings(use_empty=True)
 rock_studio_addon.register()
 
-# 1. ワンピース（ONE_PIECE）× 水玉ドット（POLKA_DOT）× ラウンドショルダー（左正面）
+# 1. ワンピース（ONE_PIECE）× 水玉ドット（POLKA_DOT）× ショートヘア（左正面）
 char1 = create_procedural_chibi_character(
     context=bpy.context,
     name="Dress_PolkaDot_Girl",
     gender="GIRL",
     head_ratio=2.15,
     total_height=1.12,
-    hair_front="SHORT",
-    hair_back="SHORT_NAPE",
+    hair_style="SHORT",
     eyebrow_style="ARCH",
     outfit_type="ONE_PIECE",
     eye_style="OVAL",
@@ -43,8 +42,7 @@ char2 = create_procedural_chibi_character(
     gender="BOY",
     head_ratio=2.2,
     total_height=1.15,
-    hair_front="SHORT_MESSY",
-    hair_back="SHORT_NAPE",
+    hair_style="SHORT_MESSY",
     eyebrow_style="ARCH",
     outfit_type="HOODIE",
     eye_style="OVAL",
@@ -59,15 +57,14 @@ char2 = create_procedural_chibi_character(
 char2.location = (-0.32, 0.10, 0.0)
 char2.rotation_euler = (0, 0, math.radians(145)) # 背面斜めから大型フードのふっくら立体感をアピール
 
-# 3. パーカー（HOODIE）× 丸メガネ（ROUND_GLASSES）× 笑顔（中央右・正面）
+# 3. パーカー（HOODIE）× ボブヘア × 丸メガネ（ROUND_GLASSES）× 笑顔（中央右・正面）
 char3 = create_procedural_chibi_character(
     context=bpy.context,
     name="Hoodie_Glasses_Front_Char",
     gender="BOY",
     head_ratio=2.20,
     total_height=1.14,
-    hair_front="CENTER_PART",
-    hair_back="BOB",
+    hair_style="BOB",
     eyebrow_style="ARCH",
     outfit_type="HOODIE",
     eye_style="OVAL",
@@ -87,15 +84,14 @@ for c in char3.children:
         if "Smile" in kb:
             kb["Smile"].value = 0.9
 
-# 4. 前髪MUSHROOM × 後ろ髪TWINTAILS・丸メガネ・コート（右端・斜めアングルでテンプルの耳への自然なフィット）
+# 4. お団子ツインテール（TWINTAILS）× 丸メガネ × コート（右端・斜めアングル）
 char4 = create_procedural_chibi_character(
     context=bpy.context,
     name="Torus_Glasses_Profile_Girl",
     gender="GIRL",
     head_ratio=2.15,
     total_height=1.12,
-    hair_front="MUSHROOM",
-    hair_back="TWINTAILS",
+    hair_style="TWINTAILS",
     eyebrow_style="STRAIGHT",
     outfit_type="COAT",
     eye_style="ROUND",

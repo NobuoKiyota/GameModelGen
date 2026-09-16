@@ -18,48 +18,6 @@ def update_chibi_hair_preset(self, context):
     global _is_updating_props
     if _is_updating_props:
         return
-    style = self.chibi_hair_style
-    _is_updating_props = True
-    try:
-        if style == 'SHORT':
-            self.chibi_hair_front = 'SHORT'
-            self.chibi_hair_back = 'SHORT_NAPE'
-        elif style == 'SHORT_MESSY':
-            self.chibi_hair_front = 'SHORT_MESSY'
-            self.chibi_hair_back = 'SHORT_NAPE'
-        elif style == 'CENTER_PART':
-            self.chibi_hair_front = 'CENTER_PART'
-            self.chibi_hair_back = 'SHORT_NAPE'
-        elif style == 'MUSHROOM':
-            self.chibi_hair_front = 'MUSHROOM'
-            self.chibi_hair_back = 'BOB'
-        elif style == 'BOB':
-            self.chibi_hair_front = 'SHORT'
-            self.chibi_hair_back = 'BOB'
-        elif style == 'TWINTAILS':
-            self.chibi_hair_front = 'SHORT'
-            self.chibi_hair_back = 'TWINTAILS'
-        elif style == 'BRAIDS':
-            self.chibi_hair_front = 'SHORT'
-            self.chibi_hair_back = 'BRAIDS'
-        elif style == 'PONYTAIL':
-            self.chibi_hair_front = 'SHORT'
-            self.chibi_hair_back = 'PONYTAIL'
-        elif style == 'TOPKNOT':
-            self.chibi_hair_front = 'CENTER_PART'
-            self.chibi_hair_back = 'TOPKNOT'
-        elif style == 'SPIKY':
-            self.chibi_hair_front = 'SHORT_MESSY'
-            self.chibi_hair_back = 'SPIKY'
-        elif style == 'WAVY_LONG':
-            self.chibi_hair_front = 'SHORT'
-            self.chibi_hair_back = 'WAVY_LONG'
-        elif style == 'AFRO':
-            self.chibi_hair_front = 'NONE'
-            self.chibi_hair_back = 'AFRO'
-    finally:
-        _is_updating_props = False
-
     update_chibi_character_live(self, context)
 
 

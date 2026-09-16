@@ -778,8 +778,6 @@ def generate_procedural_prop_mesh(
         chibi_gen = kwargs.get('chibi_gender', 'BOY')
         chibi_ratio = kwargs.get('chibi_head_ratio', 2.2)
         chibi_hair = kwargs.get('chibi_hair_style', 'SHORT')
-        chibi_h_front = kwargs.get('chibi_hair_front', 'SHORT')
-        chibi_h_back = kwargs.get('chibi_hair_back', 'SHORT_NAPE')
         chibi_outfit = kwargs.get('chibi_outfit_type', 'T_SHIRT')
         chibi_eye = kwargs.get('chibi_eye_style', 'OVAL')
         chibi_eye_sc = kwargs.get('chibi_eye_scale', 1.0)
@@ -799,8 +797,6 @@ def generate_procedural_prop_mesh(
             head_ratio=chibi_ratio,
             total_height=chibi_height,
             hair_style=chibi_hair,
-            hair_front=chibi_h_front,
-            hair_back=chibi_h_back,
             outfit_type=chibi_outfit,
             eye_style=chibi_eye,
             eye_scale=chibi_eye_sc,
