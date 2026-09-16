@@ -174,4 +174,16 @@ def create_chibi_character_shader(mat_name, part_type="SKIN", color=(0.96, 0.82,
         set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.30)
         set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.65)
 
+    elif part_type == "EYELASH":
+        # 上まつ毛・アイライン（目力を引き立てる上質ダークトーン）
+        set_bsdf_input_safe(node_bsdf, ['Base Color'], color or (0.08, 0.07, 0.08, 1.0))
+        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.35)
+        set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.40)
+
+    elif part_type == "MOUTH":
+        # お口・リップライン（自然で愛らしいピンクトーン）
+        set_bsdf_input_safe(node_bsdf, ['Base Color'], color or (0.85, 0.42, 0.45, 1.0))
+        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.50)
+        set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.35)
+
     return mat

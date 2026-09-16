@@ -109,19 +109,48 @@ def build_chibi_body_mesh(context, name="Chibi_Body", gender="BOY", head_ratio=2
 
 
 def build_chibi_head_mesh(context, name="Chibi_Head", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
-    """どうぶつの森風の愛らしい横長・ふっくら頭部（顔正面重視・後頭部最適化）"""
+    """
+    アニメ調＆どうぶつの森風の愛らしいふっくら頭部
+    むえん氏のアニメモデリング技法を反映:
+    - ぷにっと愛らしい頬（チーク）のふくらみ
+    - 顎先は丸みを保ちつつ、エラから顎先へキュッと絞るナチュラルVライン
+    - 顎裏（ネック境界）の引き締めによる美しい首元ライン
+    """
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
 
     bm = bmesh.new()
-    # 後頭部・頭頂部は髪で隠れるため 16x12 の適正解像度
-    bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=12, radius=0.5)
+    bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=18, radius=0.5)
     sx, sy, sz = head_size[0], head_size[1], head_size[2]
     for v in bm.verts:
-        norm_z = v.co.z / 0.5
-        y_fac = 1.0 + max(0.0, -norm_z) * 0.12
-        x_fac = 1.0 + max(0.0, -norm_z) * 0.16
+        norm_z = v.co.z / 0.5  # -1.0(顎先) ~ +1.0(頭頂)
+        norm_y = v.co.y / 0.5  # -1.0(顔正面) ~ +1.0(後頭部)
+        norm_x = v.co.x / 0.5  # -1.0(左) ~ +1.0(右)
+
+        # 1. 頬（チーク）の愛らしい丸みふくらみ（目の下〜口横の正面側）
+        if -0.50 < norm_z < 0.15 and norm_y < 0.10:
+            z_w = max(0.0, 1.0 - ((norm_z - (-0.12)) / 0.32) ** 2)
+            cheek_y = max(0.0, -norm_y) * z_w * 0.12
+            cheek_x = abs(norm_x) * z_w * 0.08
+            v.co.y -= cheek_y * 0.4
+            v.co.x *= (1.0 + cheek_x)
+
+        # 2. 顎（Chin）のナチュラルVライン（尖りすぎず愛らしい丸みを保持）
+        if norm_z < -0.20:
+            chin_depth = min(1.0, (-norm_z - 0.20) / 0.80)
+            # 顎先に向かって左右を適度にシェイプ（極端な尖りを防止）
+            v.co.x *= (1.0 - chin_depth * 0.18)
+            if norm_y < 0:
+                v.co.y *= (1.0 - chin_depth * 0.10)
+            else:
+                # 顎裏（首元）の引き締め
+                v.co.z += chin_depth * norm_y * 0.06
+                v.co.y *= (1.0 - chin_depth * 0.18)
+
+        # 全体比率
+        y_fac = 1.0 + max(0.0, -norm_z) * 0.06
+        x_fac = 1.0 + max(0.0, -norm_z) * 0.06
         v.co.x *= sx * x_fac
         v.co.y *= sy * y_fac
         v.co.z *= sz
@@ -130,7 +159,6 @@ def build_chibi_head_mesh(context, name="Chibi_Head", head_center=(0, 0, 0.72), 
     bm.to_mesh(mesh)
     bm.free()
 
-    # Subdiv Level 1 で十分滑らか（無駄な頂点爆発を抑制）
     mod_sub = obj.modifiers.new(name="Subdivision", type='SUBSURF')
     mod_sub.levels = 1
     mod_sub.render_levels = 1
@@ -145,7 +173,7 @@ def build_chibi_ears_mesh(context, name="Chibi_Ears", head_center=(0, 0, 0.72), 
     context.collection.objects.link(obj)
 
     bm = bmesh.new()
-    ear_pos = Vector((head_size[0] * 0.52, -0.02, head_center[2] - 0.02))
+    ear_pos = Vector((head_size[0] * 0.50, -0.02, head_center[2] - 0.02))
     res = bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=8, radius=0.065)
     for v in res['verts']:
         v.co.x *= 0.35
@@ -157,95 +185,152 @@ def build_chibi_ears_mesh(context, name="Chibi_Ears", head_center=(0, 0, 0.72), 
 
     mod_mirror = obj.modifiers.new(name="Mirror", type='MIRROR')
     mod_mirror.use_axis[0] = True
-    # スムーズシェードのみで十分丸いためSubdiv削除（約3000頂点を大幅間引き）
 
     return obj
 
 
 def build_chibi_eyes_mesh(context, name="Chibi_Eyes", eye_style="OVAL", eye_scale=1.0, head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
     """
-    どうぶつの森風の愛らしい瞳メッシュ ＋ ハイライト
-    ゲーム・アニメーション用シェイプキー（Basis, Blink, Smile, Wide, Squint）を完全装備
+    むえん氏のアニメモデリング技法を取り入れた愛らしく目力のあるパッチリ立体アニメアイ
+    - 瞳（Pupil: Slot 0）
+    - ハイライト（Highlight: Slot 1）
+    - 立体上まつ毛・アイライン（Upper Eyelash: Slot 2, 目尻のキュッとしたハネ付き）
+    - 表情差分シェイプキー（Basis, Blink, Smile, Wide, Squint）完全連動
     """
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
 
     bm = bmesh.new()
-    eye_x = head_size[0] * 0.235
-    eye_z = head_center[2] - 0.040
+    # 目の横間隔を黄金比率（中央寄りで愛らしいバランス）に配置
+    eye_x = head_size[0] * 0.205
+    eye_z = head_center[2] - 0.032
 
-    # 頭部曲面（下膨れ楕円体）にフィットするY座標を正確に計算
+    # 頭部曲面にフィットするY座標
     norm_z = (eye_z - head_center[2]) / (head_size[2] * 0.5)
-    y_fac = 1.0 + max(0.0, -norm_z) * 0.12
-    x_fac = 1.0 + max(0.0, -norm_z) * 0.16
+    y_fac = 1.0 + max(0.0, -norm_z) * 0.06
+    x_fac = 1.0 + max(0.0, -norm_z) * 0.06
     nx = eye_x / max(0.01, head_size[0] * x_fac * 0.5)
     nz = (eye_z - head_center[2]) / max(0.01, head_size[2] * 0.5)
     ny_sq = max(0.05, 1.0 - nx * nx - nz * nz)
-    eye_y = head_center[1] - math.sqrt(ny_sq) * 0.5 * head_size[1] * y_fac - 0.003
+    eye_y = head_center[1] - math.sqrt(ny_sq) * 0.5 * head_size[1] * y_fac - 0.005
     eye_pos = Vector((eye_x, eye_y, eye_z))
 
     has_highlight = True
     hl_pos = eye_pos
-    hl_r = 0.0085 * eye_scale
 
-    if eye_style == "SMILING":
-        # にっこり三日月目（アーチ形状の細長い笑顔目）
+    # チビキャラとしてパッチリ大きな愛らしい瞳スケール（卵型アニメ黄金比）
+    rx = 0.038 * eye_scale
+    if eye_style == "ROUND":
+        rz = 0.038 * eye_scale
+    elif eye_style == "DROOPY":
+        rz = 0.044 * eye_scale
+    elif eye_style == "CAT_EYE":
+        rz = 0.042 * eye_scale
+    elif eye_style == "SMILING":
+        rz = 0.022 * eye_scale
         has_highlight = False
+    else:  # OVAL
+        rz = 0.045 * eye_scale
+
+    hl_r = 0.011 * eye_scale
+
+    # 1. 瞳メッシュ（Pupil）
+    res_pupil_verts = []
+    if eye_style == "SMILING":
         res_pupil = bmesh.ops.create_circle(bm, cap_ends=True, radius=1.0, segments=16)
-        rx = 0.032 * eye_scale
-        rz = 0.018 * eye_scale
         for v in res_pupil['verts']:
-            vx = v.co.x * rx
-            norm_vx = vx / rx
+            vx = v.co.x * (0.038 * eye_scale)
+            norm_vx = vx / (0.038 * eye_scale)
             arch_z = (1.0 - norm_vx * norm_vx) * rz * 0.85
             vz = v.co.y * rz * 0.35 + arch_z
-            vy = -(vx * vx + vz * vz) * 0.5
+            vy = -(vx * vx + vz * vz) * 0.25
             v.co = Vector((vx, vy, vz)) + eye_pos
+        res_pupil_verts = res_pupil['verts']
         res_hl = {'verts': []}
-
     else:
-        rx = 0.026 * eye_scale
-        if eye_style == "ROUND":
-            rz = 0.026 * eye_scale
-        elif eye_style == "DROOPY":
-            rz = 0.038 * eye_scale
-        elif eye_style == "CAT_EYE":
-            rz = 0.034 * eye_scale
-        else:  # OVAL
-            rz = 0.040 * eye_scale
-
         res_pupil = bmesh.ops.create_circle(bm, cap_ends=True, radius=1.0, segments=20)
         for v in res_pupil['verts']:
             vx = v.co.x * rx
             vz = v.co.y * rz
-
             if eye_style == "DROOPY":
-                vz -= vx * 0.28
+                vz -= vx * 0.25
             elif eye_style == "CAT_EYE":
-                vz += vx * 0.35
-
-            vy = -(vx * vx + vz * vz) * 0.5
+                vz += vx * 0.30
+            vy = -(vx * vx + vz * vz) * 0.25
             v.co = Vector((vx, vy, vz)) + eye_pos
+        res_pupil_verts = res_pupil['verts']
 
+        # 2. ハイライト（Highlight）
         if eye_style == "DROOPY":
             hl_pos = eye_pos + Vector((rx * 0.20, -0.003, -rz * 0.15))
-            hl_r = 0.0075 * eye_scale
+            hl_r = 0.009 * eye_scale
         elif eye_style == "CAT_EYE":
             hl_pos = eye_pos + Vector((-rx * 0.15, -0.003, rz * 0.25))
-            hl_r = 0.0075 * eye_scale
+            hl_r = 0.009 * eye_scale
         else:
-            hl_pos = eye_pos + Vector((rx * 0.32, -0.003, rz * 0.32))
-            hl_r = 0.0085 * eye_scale
+            hl_pos = eye_pos + Vector((rx * 0.28, -0.003, rz * 0.28))
+            hl_r = 0.011 * eye_scale
 
         res_hl = bmesh.ops.create_circle(bm, cap_ends=True, radius=1.0, segments=12)
         for v in res_hl['verts']:
             vx = v.co.x * hl_r
             vz = v.co.y * hl_r
-            v.co = Vector((vx, -0.002, vz)) + hl_pos
+            v.co = Vector((vx, -0.003, vz)) + hl_pos
 
+    # 3. 🌟 立体上まつ毛・アイライン（Upper Eyelash / Eye Line）
+    eyelash_faces = []
+    eyelash_verts_bot = []
+    eyelash_verts_top = []
+
+    lash_segs = 8
+    for i in range(lash_segs + 1):
+        t = i / lash_segs
+        rel_x = -rx * 0.90 + t * (rx * 2.15)
+        norm_x = rel_x / max(0.001, rx)
+
+        clamped_nx = max(-1.0, min(1.0, norm_x))
+        arch_height = rz * math.sqrt(max(0.0, 1.0 - clamped_nx * clamped_nx))
+        if eye_style == "DROOPY":
+            arch_height -= rel_x * 0.25
+        elif eye_style == "CAT_EYE":
+            arch_height += rel_x * 0.30
+
+        # 目尻のキュッとしたアニメ跳ね上げ（Flick / Wing）
+        wing_lift = 0.0
+        if t > 0.65:
+            w_factor = (t - 0.65) / 0.35
+            wing_lift = (w_factor ** 1.5) * (0.014 * eye_scale)
+
+        base_z = arch_height + wing_lift
+        lash_thick = (0.007 + t * 0.012) * eye_scale
+
+        # 下辺頂点（瞳上縁に綺麗に重なりつつ前面）
+        vy_bot = -(rel_x * rel_x + base_z * base_z) * 0.25 - 0.0025
+        v_bot = bm.verts.new(eye_pos + Vector((rel_x, vy_bot, base_z)))
+        eyelash_verts_bot.append(v_bot)
+
+        # 上辺頂点（立体的に前と上へ立ち上がる）
+        top_z = base_z + lash_thick
+        vy_top = -(rel_x * rel_x + top_z * top_z) * 0.25 - 0.0050
+        v_top = bm.verts.new(eye_pos + Vector((rel_x, vy_top, top_z)))
+        eyelash_verts_top.append(v_top)
+
+    bm.verts.ensure_lookup_table()
+    for i in range(lash_segs):
+        f = bm.faces.new([
+            eyelash_verts_bot[i],
+            eyelash_verts_bot[i + 1],
+            eyelash_verts_top[i + 1],
+            eyelash_verts_top[i]
+        ])
+        eyelash_faces.append(f)
+
+    # 0: 瞳 (EYE), 1: ハイライト (EYE_HIGHLIGHT), 2: 上まつ毛 (EYELASH)
     for f in bm.faces:
-        if has_highlight and any(v in res_hl['verts'] for v in f.verts):
+        if f in eyelash_faces:
+            f.material_index = 2
+        elif has_highlight and any(v in res_hl['verts'] for v in f.verts):
             f.material_index = 1
         else:
             f.material_index = 0
@@ -253,44 +338,132 @@ def build_chibi_eyes_mesh(context, name="Chibi_Eyes", eye_style="OVAL", eye_scal
     bm.to_mesh(mesh)
     bm.free()
 
-    # 🌟 表情差分アニメーション用シェイプキー（Blend Shapes）の自動装備
+    # 🌟 表情差分アニメーション用シェイプキー
     try:
         obj.shape_key_add(name="Basis", from_mix=False)
 
-        # 1. Blink: まばたき（上下がつぶれて閉じる）
+        # 1. Blink: まばたき（瞳がつぶれてまつ毛が下がる）
         sk_blink = obj.shape_key_add(name="Blink", from_mix=False)
         for pt in sk_blink.data:
+            dx = pt.co.x - eye_pos.x
             dz = pt.co.z - eye_pos.z
-            pt.co.z = eye_pos.z + dz * 0.06
+            pt.co.z = eye_pos.z - rz * 0.15 + dz * 0.05
             pt.co.y += 0.001
 
-        # 2. Smile: にっこり笑顔（上向き凸三日月アーチ）
+        # 2. Smile: にっこり笑顔（瞳が薄くつぶれ、まつ毛が完璧な三日月アーチに）
         sk_smile = obj.shape_key_add(name="Smile", from_mix=False)
         for pt in sk_smile.data:
             dx = (pt.co.x - eye_pos.x) / max(0.001, rx)
-            arch = (1.0 - min(1.0, dx * dx)) * 0.016
-            pt.co.z = eye_pos.z + (pt.co.z - eye_pos.z) * 0.20 + arch
+            arch = (1.0 - min(1.2, dx * dx)) * 0.016
+            # 瞳とハイライトはまつ毛の下に隠れるように偏平化
+            pt.co.z = eye_pos.z + (pt.co.z - eye_pos.z) * 0.10 + arch
             pt.co.y += 0.0015
 
-        # 3. Wide: 驚き見開き（1.25倍拡大）
+        # 3. Wide: 驚き見開き
         sk_wide = obj.shape_key_add(name="Wide", from_mix=False)
         for pt in sk_wide.data:
-            pt.co.x = eye_pos.x + (pt.co.x - eye_pos.x) * 1.25
-            pt.co.z = eye_pos.z + (pt.co.z - eye_pos.z) * 1.25
+            pt.co.x = eye_pos.x + (pt.co.x - eye_pos.x) * 1.18
+            pt.co.z = eye_pos.z + (pt.co.z - eye_pos.z) * 1.20
 
-        # 4. Squint: ジト目（上半分が下がる）
+        # 4. Squint: ジト目
         sk_squint = obj.shape_key_add(name="Squint", from_mix=False)
         for pt in sk_squint.data:
             dz = pt.co.z - eye_pos.z
             if dz > 0:
-                pt.co.z = eye_pos.z + dz * 0.25
+                pt.co.z = eye_pos.z + dz * 0.20
     except Exception:
         pass
 
     mod_mirror = obj.modifiers.new(name="Mirror", type='MIRROR')
     mod_mirror.use_axis[0] = True
     mod_sol = obj.modifiers.new(name="Solidify", type='SOLIDIFY')
-    mod_sol.thickness = 0.006
+    mod_sol.thickness = 0.004
+    mod_sol.offset = 1.0  # 前方（法線方向）へ厚み付けして頭部へのめり込みを完全解消
+
+    return obj
+
+
+def build_chibi_mouth_mesh(context, name="Chibi_Mouth", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
+    """
+    アニメ調の小さくキュッと結んだ可愛いお口（リップパーツ）
+    むえん氏の作例に合わせた自然な配置と表情シェイプキー
+    """
+    mesh = bpy.data.meshes.new(name + "_Mesh")
+    obj = bpy.data.objects.new(name, mesh)
+    context.collection.objects.link(obj)
+
+    bm = bmesh.new()
+    mouth_x = 0.0
+    mouth_z = head_center[2] - 0.072  # 鼻の下、自然なリップライン
+
+    norm_z = (mouth_z - head_center[2]) / (head_size[2] * 0.5)
+    y_fac = 1.0 + max(0.0, -norm_z) * 0.06
+    nz = (mouth_z - head_center[2]) / max(0.01, head_size[2] * 0.5)
+    ny_sq = max(0.05, 1.0 - nz * nz)
+    mouth_y = head_center[1] - math.sqrt(ny_sq) * 0.5 * head_size[1] * y_fac - 0.004
+    mouth_pos = Vector((mouth_x, mouth_y, mouth_z))
+
+    # リップライン生成（幅約 0.032m、中央がわずかに下がった愛らしい微笑みカーブ）
+    mw = 0.016  # 片側半幅
+    mouth_segs = 6
+    v_top_list = []
+    v_bot_list = []
+
+    for i in range(mouth_segs + 1):
+        t = (i / mouth_segs) * 2.0 - 1.0  # -1.0 ~ +1.0
+        vx = t * mw
+        arch = (1.0 - t * t) * (-0.0025)
+        vy_curve = -(vx * vx) * 0.45
+
+        v_top = bm.verts.new(mouth_pos + Vector((vx, vy_curve - 0.002, arch + 0.0035)))
+        v_bot = bm.verts.new(mouth_pos + Vector((vx, vy_curve, arch - 0.0025)))
+        v_top_list.append(v_top)
+        v_bot_list.append(v_bot)
+
+    bm.verts.ensure_lookup_table()
+    for i in range(mouth_segs):
+        bm.faces.new([
+            v_bot_list[i],
+            v_bot_list[i + 1],
+            v_top_list[i + 1],
+            v_top_list[i]
+        ])
+
+    bm.to_mesh(mesh)
+    bm.free()
+
+    # 口の表情差分シェイプキー
+    try:
+        obj.shape_key_add(name="Basis", from_mix=False)
+
+        # 1. Smile: 口角がキュッと上がる
+        sk_smile = obj.shape_key_add(name="Smile", from_mix=False)
+        for pt in sk_smile.data:
+            dx = pt.co.x / max(0.001, mw)
+            smile_lift = (dx * dx) * 0.006
+            pt.co.z += smile_lift
+            pt.co.x *= 1.15
+
+        # 2. Open: お口を縦に開ける
+        sk_open = obj.shape_key_add(name="Open", from_mix=False)
+        for pt in sk_open.data:
+            if pt.co.z > mouth_pos.z:
+                pt.co.z += 0.006
+            else:
+                pt.co.z -= 0.010
+
+        # 3. Pout: むすっと不満口
+        sk_pout = obj.shape_key_add(name="Pout", from_mix=False)
+        for pt in sk_pout.data:
+            dx = pt.co.x / max(0.001, mw)
+            pt.co.z -= (dx * dx) * 0.0045
+    except Exception:
+        pass
+
+    mod_sol = obj.modifiers.new(name="Solidify", type='SOLIDIFY')
+    mod_sol.thickness = 0.005
+    mod_sub = obj.modifiers.new(name="Subdivision", type='SUBSURF')
+    mod_sub.levels = 1
 
     return obj
 
@@ -298,9 +471,6 @@ def build_chibi_eyes_mesh(context, name="Chibi_Eyes", eye_style="OVAL", eye_scal
 def build_chibi_eyebrows_mesh(context, name="Chibi_Eyebrows", eyebrow_style="ARCH", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
     """
     愛らしい眉毛メッシュ（Mirror対称 ＋ 頭部曲面自動フィット）
-    - ARCH: なだらかアーチ眉
-    - DOT: ちょこんとした丸眉（麻呂眉）
-    - STRAIGHT: キリッとしたまっすぐ眉
     """
     if eyebrow_style == "NONE":
         return None
@@ -310,30 +480,27 @@ def build_chibi_eyebrows_mesh(context, name="Chibi_Eyebrows", eyebrow_style="ARC
     context.collection.objects.link(obj)
 
     bm = bmesh.new()
-    brow_x = head_size[0] * 0.235
-    brow_z = head_center[2] + 0.006  # 目の上方約0.046m
+    brow_x = head_size[0] * 0.205
+    brow_z = head_center[2] + 0.032  # まつ毛の少し上、前髪の下からチラッと見える愛らしい位置
 
-    # 頭部曲面に沿うY座標
     norm_z = (brow_z - head_center[2]) / (head_size[2] * 0.5)
-    y_fac = 1.0 + max(0.0, -norm_z) * 0.12
-    x_fac = 1.0 + max(0.0, -norm_z) * 0.16
+    y_fac = 1.0 + max(0.0, -norm_z) * 0.06
+    x_fac = 1.0 + max(0.0, -norm_z) * 0.06
     nx = brow_x / max(0.01, head_size[0] * x_fac * 0.5)
     nz = (brow_z - head_center[2]) / max(0.01, head_size[2] * 0.5)
     ny_sq = max(0.05, 1.0 - nx * nx - nz * nz)
-    brow_y = head_center[1] - math.sqrt(ny_sq) * 0.5 * head_size[1] * y_fac - 0.003
+    brow_y = head_center[1] - math.sqrt(ny_sq) * 0.5 * head_size[1] * y_fac - 0.005
     brow_pos = Vector((brow_x, brow_y, brow_z))
 
     if eyebrow_style == "DOT":
-        # まる眉（麻呂眉）
-        r = 0.014
+        r = 0.016
         res = bmesh.ops.create_circle(bm, cap_ends=True, radius=r, segments=14)
         for v in res['verts']:
             v.co = Vector((v.co.x, -(v.co.x*v.co.x + v.co.y*v.co.y)*0.5, v.co.y)) + brow_pos
 
     elif eyebrow_style == "STRAIGHT":
-        # まっすぐ眉
-        bw = 0.024
-        bh = 0.0065
+        bw = 0.030
+        bh = 0.008
         res = bmesh.ops.create_cube(bm, size=1.0)
         for v in res['verts']:
             vx = v.co.x * bw * 2.0
@@ -344,12 +511,12 @@ def build_chibi_eyebrows_mesh(context, name="Chibi_Eyebrows", eyebrow_style="ARC
     else:
         # ARCH: なだらかアーチ眉
         res = bmesh.ops.create_circle(bm, cap_ends=True, radius=1.0, segments=16)
-        rx = 0.026
-        rz = 0.007
+        rx = 0.032
+        rz = 0.009
         for v in res['verts']:
             vx = v.co.x * rx
             norm_vx = vx / rx
-            arch_z = (1.0 - norm_vx * norm_vx) * 0.0075 - norm_vx * 0.003
+            arch_z = (1.0 - norm_vx * norm_vx) * 0.009 - norm_vx * 0.003
             vz = v.co.y * rz + arch_z
             vy = -(vx * vx + vz * vz) * 0.5
             v.co = Vector((vx, vy, vz)) + brow_pos
@@ -361,32 +528,36 @@ def build_chibi_eyebrows_mesh(context, name="Chibi_Eyebrows", eyebrow_style="ARC
     mod_mirror.use_axis[0] = True
     mod_sol = obj.modifiers.new(name="Solidify", type='SOLIDIFY')
     mod_sol.thickness = 0.005
+    mod_sol.offset = 1.0
 
     return obj
 
 
 def build_chibi_nose_mesh(context, name="Chibi_Nose", head_center=(0, 0, 0.72), head_size=(0.48, 0.42, 0.40)):
     """
-    ちょこんとした愛らしい三角小鼻（目とのバランスを最適化）
+    ちょこんと上品でツンと上を向いた三角ドーム型ボタンノーズ
+    むえん氏のアニメキャラモデリングに即した小ぶりで滑らかな造形
     """
     mesh = bpy.data.meshes.new(name + "_Mesh")
     obj = bpy.data.objects.new(name, mesh)
     context.collection.objects.link(obj)
 
     bm = bmesh.new()
-    nose_z = head_center[2] - 0.054
+    nose_z = head_center[2] - 0.048
     norm_z = (nose_z - head_center[2]) / (head_size[2] * 0.5)
-    y_fac = 1.0 + max(0.0, -norm_z) * 0.12
+    y_fac = 1.0 + max(0.0, -norm_z) * 0.06
     nz = (nose_z - head_center[2]) / max(0.01, head_size[2] * 0.5)
     ny_sq = max(0.05, 1.0 - nz * nz)
-    nose_y = head_center[1] - math.sqrt(ny_sq) * 0.5 * head_size[1] * y_fac - 0.002
+    nose_y = head_center[1] - math.sqrt(ny_sq) * 0.5 * head_size[1] * y_fac - 0.003
     nose_pos = Vector((0.0, nose_y, nose_z))
 
-    res = bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.017, radius2=0.004, depth=0.016)
+    # 小さな三角ドーム（UV半球ベースで先端をわずかにツンと上向きにチルト）
+    res = bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=10, radius=0.013)
     for v in res['verts']:
-        vy = -v.co.z
-        vz = v.co.y
-        v.co = Vector((v.co.x, vy, vz)) + nose_pos
+        vx = v.co.x * 1.15
+        vy = min(0.002, v.co.y * 0.85)
+        vz = v.co.z * 1.05 + max(0.0, -vy) * 0.30
+        v.co = Vector((vx, vy, vz)) + nose_pos
 
     bm.to_mesh(mesh)
     bm.free()
@@ -1293,7 +1464,8 @@ def create_procedural_chibi_character(
     head_height = total_height / head_ratio
     body_height = total_height - head_height
     head_center_z = body_height + head_height * 0.38
-    head_size = (head_height * 0.95, head_height * 0.85, head_height * 0.80)
+    # アニメ調の小顔・黄金比率（横幅を適度に引き締めて美しいセルルック輪郭に）
+    head_size = (head_height * 0.84, head_height * 0.82, head_height * 0.80)
 
     # hair_style プリセットからのフォールバック分解
     if hair_front is None or hair_back is None:
@@ -1333,6 +1505,7 @@ def create_procedural_chibi_character(
     eyes_obj = build_chibi_eyes_mesh(context, f"{name}_Eyes", eye_style, eye_scale, (0, 0, head_center_z), head_size)
     eyebrow_obj = build_chibi_eyebrows_mesh(context, f"{name}_Eyebrows", eyebrow_style, (0, 0, head_center_z), head_size)
     nose_obj = build_chibi_nose_mesh(context, f"{name}_Nose", (0, 0, head_center_z), head_size)
+    mouth_obj = build_chibi_mouth_mesh(context, f"{name}_Mouth", (0, 0, head_center_z), head_size)
 
     # 単一統合ヘアスタイルメッシュ生成（継ぎ目なし・耳逃げ穴クリアランス）
     hair_obj = build_chibi_hair_mesh(context, f"{name}_Hair", gender, hair_style, (0, 0, head_center_z), head_size)
@@ -1346,10 +1519,12 @@ def create_procedural_chibi_character(
     mat_hair = create_chibi_character_shader(f"{name}_Hair_Mat", "HAIR", hair_color, 0.45, seed)
     mat_top = create_chibi_character_shader(f"{name}_ClothTop_Mat", "CLOTH_TOP", cloth_top_color, 0.7, seed, pattern=pattern)
     mat_button = create_chibi_character_shader(f"{name}_Button_Mat", "BUTTON", (0.88, 0.80, 0.45, 1.0), 0.3, seed)
-    mat_eye = create_chibi_character_shader(f"{name}_Eye_Mat", "EYE", (0.12, 0.12, 0.14, 1.0), 0.15, seed)
+    mat_eye = create_chibi_character_shader(f"{name}_Eye_Mat", "EYE", (0.10, 0.09, 0.12, 1.0), 0.15, seed)
     mat_eye_hl = create_chibi_character_shader(f"{name}_Eye_Highlight_Mat", "EYE_HIGHLIGHT", (1.0, 1.0, 1.0, 1.0), 0.05, seed)
+    mat_eyelash = create_chibi_character_shader(f"{name}_Eyelash_Mat", "EYELASH", (0.05, 0.04, 0.05, 1.0), 0.35, seed)
     mat_eyebrow = create_chibi_character_shader(f"{name}_Eyebrow_Mat", "EYEBROW", hair_color, 0.55, seed)
-    mat_nose = create_chibi_character_shader(f"{name}_Nose_Mat", "FACE_FEATURE", (skin_color[0]*0.9, skin_color[1]*0.75, skin_color[2]*0.7, 1.0), 0.5, seed)
+    mat_nose = create_chibi_character_shader(f"{name}_Nose_Mat", "FACE_FEATURE", (skin_color[0]*0.86, skin_color[1]*0.62, skin_color[2]*0.58, 1.0), 0.45, seed)
+    mat_mouth = create_chibi_character_shader(f"{name}_Mouth_Mat", "MOUTH", (0.82, 0.30, 0.35, 1.0), 0.40, seed)
     
     # Unity / Unreal Engine の足音・サーフェス判定用スロット
     mat_footstep = create_chibi_character_shader(f"{name}_Footstep_Surface_Mat", "FOOTSTEP_SURFACE", (0.2, 0.2, 0.2, 1.0), 0.85, seed)
@@ -1366,9 +1541,11 @@ def create_procedural_chibi_character(
     outfit_obj.data.materials.append(mat_button)  # スロット1: 衣装装飾ボタン（オーバーオール留め具・コート・Tシャツ等）
     eyes_obj.data.materials.append(mat_eye)
     eyes_obj.data.materials.append(mat_eye_hl)
+    eyes_obj.data.materials.append(mat_eyelash)  # スロット2: 上まつ毛・アイライン
     if eyebrow_obj:
         eyebrow_obj.data.materials.append(mat_eyebrow)
     nose_obj.data.materials.append(mat_nose)
+    mouth_obj.data.materials.append(mat_mouth)
 
     # 靴にはアッパー用と足音判定用（Footstep）の2スロットを確実に付与
     shoes_obj.data.materials.append(mat_shoe)
@@ -1384,7 +1561,7 @@ def create_procedural_chibi_character(
             acc_obj.data.materials.append(mat_acc)
 
     # 4. 親子付け（Body を Root として階層化）
-    child_parts = [head_obj, ears_obj, eyes_obj, nose_obj, outfit_obj, shoes_obj]
+    child_parts = [head_obj, ears_obj, eyes_obj, nose_obj, mouth_obj, outfit_obj, shoes_obj]
     if hair_obj:
         child_parts.append(hair_obj)
     if eyebrow_obj:

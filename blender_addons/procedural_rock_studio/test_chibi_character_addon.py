@@ -46,13 +46,13 @@ def test_chibi_character_generation():
     child_names = [c.name for c in children]
     print(f"Child names: {child_names}")
 
-    expected_parts = ["Head", "Ears", "Eyes", "Eyebrows", "Nose", "Hair", "Outfit", "Shoes"]
+    expected_parts = ["Head", "Ears", "Eyes", "Eyebrows", "Nose", "Mouth", "Hair", "Outfit", "Shoes"]
     for part in expected_parts:
         matched = any(part in c_name for c_name in child_names)
         assert matched, f"Missing child part: {part}"
         print(f"  - Verified part: {part}")
 
-    # 目のシェイプキー（Blend Shapes: Basis, Blink, Smile, Wide, Squint）の検証
+    # 目のシェイプキー（Blend Shapes: Basis, Blink, Smile, Wide, Squint）および立体まつ毛の検証
     eyes_obj = next(c for c in children if "Eyes" in c.name)
     assert eyes_obj.data.shape_keys is not None, "Shape keys missing on Eyes!"
     key_blocks = eyes_obj.data.shape_keys.key_blocks
@@ -61,6 +61,21 @@ def test_chibi_character_generation():
     for exp_key in ["Basis", "Blink", "Smile", "Wide", "Squint"]:
         assert exp_key in key_names, f"Missing shape key: {exp_key}"
     print("PASS: Facial Expression Shape Keys (Blend Shapes) verified on Eyes for animation!")
+
+    # まつ毛マテリアルスロット（Slot 2: Eyelash）の検証
+    eyes_mat_names = [m.name for m in eyes_obj.data.materials if m]
+    print(f"Eyes materials: {eyes_mat_names}")
+    assert any("Eyelash" in m for m in eyes_mat_names), "Eyelash material missing on Eyes!"
+    print("PASS: 3D Eyelash / Eye line material slot verified on Eyes!")
+
+    # 口パーツ（Mouth）および口のシェイプキーの検証
+    mouth_obj = next(c for c in children if "Mouth" in c.name)
+    assert mouth_obj.data.shape_keys is not None, "Shape keys missing on Mouth!"
+    mouth_key_names = [kb.name for kb in mouth_obj.data.shape_keys.key_blocks]
+    print(f"Mouth Shape Keys: {mouth_key_names}")
+    for exp_key in ["Basis", "Smile", "Open", "Pout"]:
+        assert exp_key in mouth_key_names, f"Missing shape key on Mouth: {exp_key}"
+    print("PASS: Mouth object & expression shape keys verified!")
 
     # 衣装のボタンマテリアル（Button Mat）の検証
     outfit_obj = next(c for c in children if "Outfit" in c.name)
