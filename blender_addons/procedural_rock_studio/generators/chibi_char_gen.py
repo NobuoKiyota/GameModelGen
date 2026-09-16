@@ -1,7 +1,7 @@
 import bpy
 import bmesh
 import math
-from mathutils import Vector, Matrix
+from mathutils import Vector, Matrix, Euler
 
 
 def create_cube_bmesh(size=(1.0, 1.0, 1.0), offset=(0, 0, 0)):
@@ -753,20 +753,45 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
     sh_z = base_z + leg_len + torso_len * 0.80
 
     if outfit_type == "ONE_PIECE":
-        # 釣鐘型ワンピース
+        # 釣鐘型ワンピース（丸い撫で肩・ラウンドショルダー ＋ Aラインスカート ＋ 丸い袖）
         dress_z = base_z + leg_len * 0.35
-        dress_top_z = base_z + leg_len + torso_len * 0.95
+        dress_top_z = base_z + leg_len + torso_len * 0.96
         depth = dress_top_z - dress_z
         res_d = bmesh.ops.create_cone(
             bm, cap_ends=False, segments=24,
-            radius1=0.25, radius2=0.165, depth=depth
+            radius1=0.255, radius2=0.175, depth=depth
         )
         for v in res_d['verts']:
             v.co.z += dress_z + depth * 0.5
             v.co.y *= 0.90
+            # 撫で肩カーブ（首元が高く、肩先に向かってなだらかに下がる）
+            if v.co.z > dress_top_z - 0.10:
+                fac = (v.co.z - (dress_top_z - 0.10)) / 0.10
+                drop = ((abs(v.co.x) / 0.175) ** 1.8) * 0.038 * fac
+                v.co.z -= drop
+                if abs(v.co.x) > 0.11:
+                    v.co.x *= (1.0 - (abs(v.co.x) - 0.11) * 0.35 * fac)
+
+        # 丸い袖（フレンチスリーブ／パフスリーブ：肩から腕の接続を滑らかに包み込み、脇のギザギザをカバー）
+        sleeve_len = 0.085
+        for side in (-1.0, 1.0):
+            sh_x = side * 0.120
+            center_x = sh_x + side * (sleeve_len * 0.5 * sin_theta)
+            center_z = sh_z - (sleeve_len * 0.5 * cos_theta) + 0.005
+            res_sl = bmesh.ops.create_cone(bm, cap_ends=False, segments=16, radius1=0.088, radius2=0.102, depth=sleeve_len)
+            for v in res_sl['verts']:
+                vx, vy, vz = v.co.x, v.co.y, v.co.z
+                if vz > 0:
+                    vx *= 0.80
+                    vy *= 0.85
+                v.co.x = vx * cos_theta - side * vz * sin_theta + center_x
+                v.co.y = vy * 0.92 - 0.01
+                v.co.z = side * vx * sin_theta + vz * cos_theta + center_z
+                if v.co.z > sh_z - 0.03 and abs(v.co.x) > 0.12:
+                    v.co.z -= (abs(v.co.x) - 0.12) * 0.32
 
     elif outfit_type == "KIMONO":
-        # 和服・浴衣（ストレートに足元まで伸びる裾 ＋ 角型振袖）
+        # 和服・浴衣（ストレートに足元まで伸びる裾 ＋ 角型振袖 ＋ 丸い撫で肩）
         kimono_z = base_z + leg_len * 0.15
         kimono_top_z = base_z + leg_len + torso_len * 0.96
         depth = kimono_top_z - kimono_z
@@ -777,6 +802,9 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
         for v in res_k['verts']:
             v.co.z += kimono_z + depth * 0.5
             v.co.y *= 0.92
+            if v.co.z > kimono_top_z - 0.08:
+                fac = (v.co.z - (kimono_top_z - 0.08)) / 0.08
+                v.co.z -= ((abs(v.co.x) / 0.175) ** 1.8) * 0.030 * fac
 
         # 帯（Obi: 腰の太いベルト）
         obi_z = base_z + leg_len + torso_len * 0.38
@@ -795,14 +823,17 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
                 v.co.z = v.co.z * 0.16 + sleeve_p.z
 
     elif outfit_type == "OVERALLS":
-        # サロペット・オーバーオール（胴体 ＋ 肩紐サスペンダー）
+        # サロペット・オーバーオール（胴体 ＋ 肩紐サスペンダー ＋ 丸い撫で肩）
         t_z = base_z + leg_len * 0.25
-        t_top_z = base_z + leg_len + torso_len * 0.92
+        t_top_z = base_z + leg_len + torso_len * 0.93
         depth = t_top_z - t_z
         res_ov = bmesh.ops.create_cone(bm, cap_ends=False, segments=20, radius1=0.22, radius2=0.18, depth=depth)
         for v in res_ov['verts']:
             v.co.z += t_z + depth * 0.5
             v.co.y *= 0.89
+            if v.co.z > t_top_z - 0.08:
+                fac = (v.co.z - (t_top_z - 0.08)) / 0.08
+                v.co.z -= ((abs(v.co.x) / 0.18) ** 1.8) * 0.032 * fac
 
         # 肩紐サスペンダー（左右の帯）
         for side in (-1.0, 1.0):
@@ -813,7 +844,7 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
                 v.co.z = v.co.z * 0.02 + (base_z + leg_len + torso_len * 0.92)
 
     elif outfit_type == "HOODIE":
-        # パーカー（少しゆったり胴体 ＋ 長袖 ＋ 背中フード ＋ 丸い撫で肩）
+        # パーカー（少しゆったり胴体 ＋ 長袖 ＋ 背中大型立体フード ＋ 丸い撫で肩）
         t_z = base_z + leg_len * 0.55
         t_top_z = base_z + leg_len + torso_len * 0.96
         depth = t_top_z - t_z
@@ -822,8 +853,11 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
             v.co.z += t_z + depth * 0.5
             v.co.y *= 0.91
             # 撫で肩カーブ
-            if v.co.z > t_top_z - 0.07:
-                v.co.z -= (abs(v.co.x) / 0.18) ** 2 * 0.022
+            if v.co.z > t_top_z - 0.08:
+                fac = (v.co.z - (t_top_z - 0.08)) / 0.08
+                v.co.z -= ((abs(v.co.x) / 0.18) ** 1.8) * 0.035 * fac
+                if abs(v.co.x) > 0.12:
+                    v.co.x *= (1.0 - (abs(v.co.x) - 0.12) * 0.32 * fac)
 
         # 長袖（丸いラウンドスリーブ）
         sleeve_len = 0.18
@@ -843,14 +877,31 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
                 if v.co.z > sh_z - 0.04 and abs(v.co.x) > 0.13:
                     v.co.z -= (abs(v.co.x) - 0.13) * 0.35
 
-        # 背中のフード（ふっくら垂れ下がった袋状メッシュ）
-        res_hood = bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=10, radius=0.12)
-        hood_p = Vector((0.0, 0.13, base_z + leg_len + torso_len * 0.82))
+        # 背中の大型立体フード（首の後ろから背中にふっくら垂れ下がった存在感のある袋状フード）
+        res_hood = bmesh.ops.create_uvsphere(bm, u_segments=20, v_segments=14, radius=0.15)
+        hood_p = Vector((0.0, 0.145, base_z + leg_len + torso_len * 0.78))
         for v in res_hood['verts']:
-            v.co.x *= 0.95
-            v.co.y *= 0.75
-            v.co.z *= 0.80
+            v.co.x *= 1.35  # 幅 0.28m
+            v.co.y *= 1.05  # 奥行 0.16m
+            v.co.z *= 1.25  # 高さ 0.22m
+            if v.co.y < 0:
+                v.co.y *= 0.65
             v.co += hood_p
+
+        # フードの折り返し襟・開口部リップ（首周りの立体的な布の厚み）
+        res_lip = bmesh.ops.create_cone(bm, cap_ends=False, segments=18, radius1=0.14, radius2=0.11, depth=0.06)
+        lip_p = Vector((0.0, 0.06, base_z + leg_len + torso_len * 0.92))
+        for v in res_lip['verts']:
+            v.co.x *= 1.15
+            v.co.y *= 1.20
+            v.co += lip_p
+
+        # フードのドローコード（胸元に垂れる2本の紐）
+        for side in (-1.0, 1.0):
+            res_str = bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=0.005, radius2=0.004, depth=0.09)
+            str_p = Vector((side * 0.045, -0.162, base_z + leg_len + torso_len * 0.84))
+            for v in res_str['verts']:
+                v.co += str_p
 
     elif outfit_type == "COAT":
         # ダッフルコート（腰下長め ＋ 折り返し襟 ＋ 長袖 ＋ 丸い撫で肩）
@@ -862,8 +913,11 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
             v.co.z += c_z + depth * 0.5
             v.co.y *= 0.90
             # 撫で肩カーブ
-            if v.co.z > c_top_z - 0.07:
-                v.co.z -= (abs(v.co.x) / 0.18) ** 2 * 0.022
+            if v.co.z > c_top_z - 0.08:
+                fac = (v.co.z - (c_top_z - 0.08)) / 0.08
+                v.co.z -= ((abs(v.co.x) / 0.185) ** 1.8) * 0.035 * fac
+                if abs(v.co.x) > 0.12:
+                    v.co.x *= (1.0 - (abs(v.co.x) - 0.12) * 0.32 * fac)
 
         # 長袖
         sleeve_len = 0.18
@@ -900,8 +954,11 @@ def build_chibi_outfit_mesh(context, name="Chibi_Outfit", gender="BOY", outfit_t
             v.co.z += t_z + depth * 0.5
             v.co.y *= 0.88
             # 撫で肩カーブ（首元が高く、肩端に向かってなだらかに下がる）
-            if v.co.z > t_top_z - 0.07:
-                v.co.z -= (abs(v.co.x) / 0.18) ** 2 * 0.022
+            if v.co.z > t_top_z - 0.08:
+                fac = (v.co.z - (t_top_z - 0.08)) / 0.08
+                v.co.z -= ((abs(v.co.x) / 0.18) ** 1.8) * 0.035 * fac
+                if abs(v.co.x) > 0.12:
+                    v.co.x *= (1.0 - (abs(v.co.x) - 0.12) * 0.32 * fac)
 
         sleeve_len = 0.125
         for side in (-1.0, 1.0):
@@ -1027,27 +1084,71 @@ def build_chibi_accessories_mesh(context, name="Chibi_Accessory", accessory_type
         eye_x = hsx * 0.235
         eye_z = hc.z - 0.038
         glasses_y = hc.y - hsy * 0.535
-        r_lens = 0.054
+        r_lens = 0.052
+        pipe_r = 0.0052
 
+        # 1. 滑らかな丸パイプ（トーラス）による左右のレンズリム
         for side in (-1.0, 1.0):
-            res_ring = bmesh.ops.create_circle(bm, cap_ends=False, radius=r_lens, segments=18)
-            for v in res_ring['verts']:
-                v.co = Vector((side * eye_x + v.co.x, glasses_y, eye_z + v.co.y))
+            center = Vector((side * eye_x, glasses_y, eye_z))
+            yaw = -side * 0.09  # 顔の球面に沿ったラップ角（約5.2度）
+            cos_y = math.cos(yaw)
+            sin_y = math.sin(yaw)
 
-            temple_p = Vector((side * (eye_x + r_lens * 0.95), glasses_y, eye_z))
-            res_tmp = bmesh.ops.create_cone(bm, cap_ends=False, segments=6, radius1=0.006, radius2=0.006, depth=0.22)
+            major_segs = 22
+            minor_segs = 8
+            grid = []
+            for i in range(major_segs):
+                theta = 2.0 * math.pi * i / major_segs
+                ring = []
+                for j in range(minor_segs):
+                    phi = 2.0 * math.pi * j / minor_segs
+                    r = r_lens + pipe_r * math.cos(phi)
+                    lx = r * math.cos(theta)
+                    lz = r * math.sin(theta)
+                    ly = pipe_r * math.sin(phi)
+                    rx = lx * cos_y + ly * sin_y
+                    ry = -lx * sin_y + ly * cos_y
+                    rz = lz
+                    v_pos = Vector((rx, ry, rz)) + center
+                    ring.append(bm.verts.new(v_pos))
+                grid.append(ring)
+
+            for i in range(major_segs):
+                i_next = (i + 1) % major_segs
+                for j in range(minor_segs):
+                    j_next = (j + 1) % minor_segs
+                    bm.faces.new((grid[i][j], grid[i_next][j], grid[i_next][j_next], grid[i][j_next]))
+
+            # 2. テンプル（つる: リム外端から耳元へ自然に伸びる滑らかなパイプ）
+            start_x = side * (eye_x + r_lens * 0.94)
+            start_p = Vector((start_x, glasses_y + 0.008, eye_z + 0.004))
+            end_p = Vector((side * (hsx * 0.44), hc.y + 0.02, hc.z - 0.015))
+            t_depth = (end_p - start_p).length
+            t_dir = (end_p - start_p).normalized()
+
+            res_tmp = bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=0.0045, radius2=0.0040, depth=t_depth)
+            mid_p = (start_p + end_p) * 0.5
+            rot_quat = Vector((0.0, 0.0, 1.0)).rotation_difference(t_dir)
             for v in res_tmp['verts']:
-                v.co = Vector((temple_p.x, temple_p.y + (v.co.z + 0.11) * 1.0, temple_p.z + v.co.y))
+                v.co = rot_quat @ v.co + mid_p
 
-        res_brg = bmesh.ops.create_cone(bm, cap_ends=False, segments=6, radius1=0.007, radius2=0.007, depth=eye_x * 0.85)
+        # 3. ブリッジ（鼻の上の滑らかなアーチ型パイプ）
+        brg_width = (eye_x - r_lens * 0.90) * 2.0
+        res_brg = bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.0048, radius2=0.0048, depth=brg_width)
+        rot_brg = Euler((0.0, math.pi * 0.5, 0.0)).to_matrix()
         for v in res_brg['verts']:
-            v.co = Vector((v.co.z, glasses_y + 0.005, eye_z + 0.005 + v.co.y))
+            # X軸に沿って配置し、中央部を前・上にアーチさせる
+            v.co = rot_brg @ v.co
+            arch_fac = max(0.0, 1.0 - (abs(v.co.x) / (brg_width * 0.5)) ** 2)
+            v.co.z += arch_fac * 0.007 + eye_z + 0.006
+            v.co.y += -arch_fac * 0.005 + glasses_y - 0.002
 
         bm.to_mesh(mesh)
         bm.free()
 
-        mod_sol = obj.modifiers.new(name="Solidify", type='SOLIDIFY')
-        mod_sol.thickness = 0.012
+        mod_sub = obj.modifiers.new(name="Subdivision", type='SUBSURF')
+        mod_sub.levels = 1
+        mod_sub.render_levels = 1
 
     elif accessory_type == "CHEEK_BLUSH":
         for side in (-1.0, 1.0):

@@ -63,6 +63,70 @@ def update_chibi_hair_preset(self, context):
     update_chibi_character_live(self, context)
 
 
+def update_chibi_material_live(self, context):
+    """
+    服の柄・カラー等のマテリアル更新時、メッシュを破棄再生成せず、
+    マテリアルシェーダーのみを直接差し替えて超高速かつサイズ変動ゼロで更新する。
+    """
+    global _is_updating_props
+    if _is_updating_props:
+        return
+    if not context or not hasattr(context, 'active_object'):
+        return
+    active_obj = context.active_object
+    if not active_obj or not hasattr(active_obj, 'name') or active_obj.name not in bpy.data.objects:
+        return
+
+    from .generators.core_orchestrator import resolve_prop_root_hierarchy
+    from .materials.character_shaders import create_chibi_character_shader
+    try:
+        root_obj, all_objs, _, _, _ = resolve_prop_root_hierarchy(active_obj)
+        target = root_obj or active_obj
+        if not target or target.name not in bpy.data.objects:
+            return
+
+        import re
+        base_name = re.sub(r'(_Body|_Head|_Hair|_Hair_Front|_Hair_Back|_Eyes|_Eyebrows|_Ears|_Nose|_Outfit|_Shoes|_Accessory)+$', '', target.name).strip() or "Chibi_Character"
+        seed_val = getattr(self, 'seed', 0)
+
+        updated_any = False
+        for obj in all_objs:
+            if not obj or not obj.data or not hasattr(obj.data, 'materials'):
+                continue
+            name = obj.name
+            mats = obj.data.materials
+
+            if "_Outfit" in name and len(mats) > 0:
+                cloth_c = tuple(getattr(self, 'chibi_cloth_top_color', (0.18, 0.55, 0.82, 1.0)))
+                pat = getattr(self, 'chibi_pattern', 'PLAIN')
+                new_mat = create_chibi_character_shader(f"{base_name}_ClothTop_Mat", "CLOTH_TOP", cloth_c, 0.7, seed_val, pattern=pat)
+                mats[0] = new_mat
+                updated_any = True
+
+            elif ("_Hair_Front" in name or "_Hair_Back" in name or "_Hair" in name or "_Eyebrows" in name) and len(mats) > 0:
+                hair_c = tuple(getattr(self, 'chibi_hair_color', (0.35, 0.22, 0.14, 1.0)))
+                new_mat = create_chibi_character_shader(f"{base_name}_Hair_Mat", "HAIR", hair_c, 0.55, seed_val)
+                mats[0] = new_mat
+                updated_any = True
+
+            elif ("_Body" in name or "_Head" in name or "_Ears" in name) and len(mats) > 0:
+                skin_c = tuple(getattr(self, 'chibi_skin_color', (0.96, 0.82, 0.74, 1.0)))
+                new_mat = create_chibi_character_shader(f"{base_name}_Skin_Mat", "SKIN", skin_c, 0.65, seed_val)
+                mats[0] = new_mat
+                updated_any = True
+
+            elif "_Shoes" in name and len(mats) > 0:
+                shoe_c = tuple(getattr(self, 'chibi_shoe_color', (0.85, 0.25, 0.22, 1.0)))
+                new_mat = create_chibi_character_shader(f"{base_name}_Shoe_Mat", "LEATHER", shoe_c, 0.45, seed_val)
+                mats[0] = new_mat
+                updated_any = True
+
+        if not updated_any:
+            update_chibi_character_live(self, context)
+    except Exception:
+        update_chibi_character_live(self, context)
+
+
 def update_chibi_character_live(self, context):
     """
     キャラクターのパラメータ変更時に、選択中のキャラクターオブジェクトを安全にリアルタイム反映
@@ -85,11 +149,13 @@ def update_chibi_character_live(self, context):
         if not target or target.name not in bpy.data.objects:
             return
         if "Chibi" in target.name or getattr(self, 'prop_category', '') == 'CHIBI_CHARACTER':
+            import re
+            clean_name = re.sub(r'(_Body|_Head|_Hair|_Hair_Front|_Hair_Back|_Eyes|_Eyebrows|_Ears|_Nose|_Outfit|_Shoes|_Accessory)+$', '', target.name).strip() or "Chibi_Character"
             params = resolve_prop_parameters(self)
             generate_procedural_prop_mesh(
                 context=context,
                 target_obj=target,
-                name=target.name,
+                name=clean_name,
                 seed=getattr(self, 'seed', 0),
                 **params
             )
@@ -2714,7 +2780,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('ISLAND_LEAF', "🍃 島の葉っぱマーク (Islander Leaf)", "どう森を象徴する胸の葉っぱワンポイント")
         ],
         default='PLAIN',
-        update=update_chibi_character_live
+        update=update_chibi_material_live
     )
     chibi_accessory: bpy.props.EnumProperty(
         name="アクセサリー (Accessory)",
@@ -2731,28 +2797,28 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         subtype='COLOR',
         size=4, min=0.0, max=1.0,
         default=(0.96, 0.82, 0.74, 1.0),
-        update=update_chibi_character_live
+        update=update_chibi_material_live
     )
     chibi_hair_color: bpy.props.FloatVectorProperty(
         name="髪色 (Hair Color)",
         subtype='COLOR',
         size=4, min=0.0, max=1.0,
         default=(0.35, 0.22, 0.14, 1.0),
-        update=update_chibi_character_live
+        update=update_chibi_material_live
     )
     chibi_cloth_top_color: bpy.props.FloatVectorProperty(
         name="服の色 (Cloth Color)",
         subtype='COLOR',
         size=4, min=0.0, max=1.0,
         default=(0.18, 0.55, 0.82, 1.0),
-        update=update_chibi_character_live
+        update=update_chibi_material_live
     )
     chibi_shoe_color: bpy.props.FloatVectorProperty(
         name="靴の色 (Shoe Color)",
         subtype='COLOR',
         size=4, min=0.0, max=1.0,
         default=(0.85, 0.25, 0.22, 1.0),
-        update=update_chibi_character_live
+        update=update_chibi_material_live
     )
 
 

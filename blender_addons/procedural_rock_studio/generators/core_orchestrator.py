@@ -769,7 +769,11 @@ def generate_procedural_prop_mesh(
             prev_loc = tuple(root.location)
             prev_rot = tuple(root.rotation_euler)
 
-        cleanup_old_chibi_character(context, target_obj, name)
+        import re
+        clean_name = re.sub(r'(_Body|_Head|_Hair|_Hair_Front|_Hair_Back|_Eyes|_Eyebrows|_Ears|_Nose|_Outfit|_Shoes|_Accessory)+$', '', name).strip()
+        clean_name = clean_name or "Chibi_Character"
+
+        cleanup_old_chibi_character(context, target_obj, clean_name)
 
         chibi_gen = kwargs.get('chibi_gender', 'BOY')
         chibi_ratio = kwargs.get('chibi_head_ratio', 2.2)
@@ -786,13 +790,14 @@ def generate_procedural_prop_mesh(
         chibi_hair_c = kwargs.get('chibi_hair_color', (0.35, 0.22, 0.14, 1.0))
         chibi_cloth_c = kwargs.get('chibi_cloth_top_color', (0.18, 0.55, 0.82, 1.0))
         chibi_shoe_c = kwargs.get('chibi_shoe_color', (0.85, 0.25, 0.22, 1.0))
+        chibi_height = kwargs.get('chibi_total_height', 1.15)
 
         root_obj = create_procedural_chibi_character(
             context=context,
-            name=name,
+            name=clean_name,
             gender=chibi_gen,
             head_ratio=chibi_ratio,
-            total_height=size_z if size_z > 0.6 else 1.15,
+            total_height=chibi_height,
             hair_style=chibi_hair,
             hair_front=chibi_h_front,
             hair_back=chibi_h_back,

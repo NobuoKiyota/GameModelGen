@@ -181,6 +181,61 @@ def test_chibi_character_generation():
         assert res == {'FINISHED'}, f"Reroll operator failed with result {res}"
         print(f"  - Step {step+1}: Reroll operator succeeded without ReferenceError! Active={bpy.context.active_object.name}")
 
+    # 6. 新機能検証: 柄変更時のサイズ不変性、大型立体フード、丸メガネ、ワンピースラウンドショルダー
+    print("\n=== [TEST 6] Testing Pattern Size Invariance, 3D Hood, Glasses, and Dress Shoulders ===")
+    test_char = create_procedural_chibi_character(
+        context=bpy.context,
+        name="Test_Size_Invariance_Char",
+        gender="BOY",
+        outfit_type="HOODIE",
+        accessory="ROUND_GLASSES",
+        pattern="PLAIN",
+        seed=333
+    )
+    bpy.context.view_layer.objects.active = test_char
+    test_char.select_set(True)
+
+    # 初期バウンディングボックスの計測
+    outfit_child = next((c for c in test_char.children if "_Outfit" in c.name), None)
+    assert outfit_child is not None, "Outfit child not found!"
+    initial_bb_z = outfit_child.dimensions.z
+    initial_body_z = test_char.dimensions.z
+
+    # 柄を全種類変更して、マテリアル更新後にサイズが1ミリも変わらないことを確認
+    for pat in ["STRIPED", "POLKA_DOT", "ISLAND_LEAF", "PLAIN"]:
+        real_props.chibi_pattern = pat
+        current_bb_z = outfit_child.dimensions.z
+        current_body_z = test_char.dimensions.z
+        diff = abs(current_bb_z - initial_bb_z)
+        assert diff < 1e-4, f"Outfit size changed on pattern change! Diff={diff}"
+        diff_body = abs(current_body_z - initial_body_z)
+        assert diff_body < 1e-4, f"Body size changed on pattern change! Diff={diff_body}"
+    print("PASS: Outfit & Body bounding boxes strictly invariant across all patterns (Size stability verified!)")
+
+    # 大型フードの検証（頂点数と寸法）
+    assert outfit_child.dimensions.y > 0.28, f"Hoodie Y depth should be prominent with large hood! Got: {outfit_child.dimensions.y}"
+    print("PASS: Prominent 3D Hood depth verified on HOODIE outfit!")
+
+    # 丸メガネ（ROUND_GLASSES）の検証
+    glasses_child = next((c for c in test_char.children if "_Accessory" in c.name), None)
+    assert glasses_child is not None, "ROUND_GLASSES accessory child not found!"
+    assert len(glasses_child.data.polygons) > 200, f"Glasses should have smooth torus topology! Polys: {len(glasses_child.data.polygons)}"
+    print("PASS: High-quality smooth Torus Glasses topology verified!")
+
+    # ワンピース（ONE_PIECE）の検証
+    dress_char = create_procedural_chibi_character(
+        context=bpy.context,
+        name="Test_Dress_Char",
+        gender="GIRL",
+        outfit_type="ONE_PIECE",
+        seed=444
+    )
+    dress_child = next((c for c in dress_char.children if "_Outfit" in c.name), None)
+    assert dress_child is not None, "ONE_PIECE outfit not found!"
+    # フレンチスリーブによりX幅が肩幅より広くなっていることを確認
+    assert dress_child.dimensions.x > 0.38, f"ONE_PIECE should include round sleeves! Width: {dress_child.dimensions.x}"
+    print("PASS: ONE_PIECE rounded shoulder and french sleeves verified!")
+
     print("\n=======================================================")
     print("  ALL CHIBI CHARACTER COMPREHENSIVE TESTS PASSED 100%!")
     print("=======================================================")

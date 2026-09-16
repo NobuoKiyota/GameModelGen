@@ -13,109 +13,102 @@ from procedural_rock_studio.generators import create_procedural_chibi_character
 bpy.ops.wm.read_factory_settings(use_empty=True)
 rock_studio_addon.register()
 
-# 1. 前髪SHORT × 後ろ髪SHORT_NAPE・丸眉・丸い肩のTシャツ（左正面）
+# 1. ワンピース（ONE_PIECE）× 水玉ドット（POLKA_DOT）× ラウンドショルダー（左正面）
 char1 = create_procedural_chibi_character(
     context=bpy.context,
-    name="ShortHair_Front_Boy",
-    gender="BOY",
-    head_ratio=2.2,
-    total_height=1.15,
+    name="Dress_PolkaDot_Girl",
+    gender="GIRL",
+    head_ratio=2.15,
+    total_height=1.12,
     hair_front="SHORT",
     hair_back="SHORT_NAPE",
-    eyebrow_style="DOT",
-    outfit_type="T_SHIRT",
+    eyebrow_style="ARCH",
+    outfit_type="ONE_PIECE",
     eye_style="OVAL",
-    pattern="STRIPED",
+    pattern="POLKA_DOT",
     accessory="NONE",
     skin_color=(0.96, 0.82, 0.74, 1.0),
     hair_color=(0.32, 0.18, 0.12, 1.0), # ダークブラウン
-    cloth_top_color=(0.18, 0.55, 0.85, 1.0), # 青白ボーダーTシャツ（丸い撫で肩）
+    cloth_top_color=(0.92, 0.78, 0.35, 1.0), # イエロー水玉ワンピース（丸い肩・フレンチスリーブ）
     shoe_color=(0.85, 0.25, 0.22, 1.0),
     seed=101
 )
 char1.location = (-1.00, 0.05, 0.0)
-char1.rotation_euler = (0, 0, 0.12)
-# 目のシェイプキー（ウインク/片目まばたき）を適用
-for c in char1.children:
-    if "Eyes" in c.name and c.data.shape_keys:
-        kb = c.data.shape_keys.key_blocks
-        if "Blink" in kb:
-            kb["Blink"].value = 0.85
+char1.rotation_euler = (0, 0, 0.08)
 
-# 2. 真横プロフィール確認用（耳のめり込み解消＆前髪・後ろ髪のレイヤー確認） (中央左)
+# 2. パーカー（HOODIE）× 背面大型立体フード確認用（中央左・後ろ姿）
 char2 = create_procedural_chibi_character(
     context=bpy.context,
-    name="Profile_Ear_Clearance_Char",
+    name="Hoodie_Back_Large_Hood_Char",
     gender="BOY",
     head_ratio=2.2,
     total_height=1.15,
     hair_front="SHORT_MESSY",
     hair_back="SHORT_NAPE",
     eyebrow_style="ARCH",
-    outfit_type="COAT",
+    outfit_type="HOODIE",
     eye_style="OVAL",
     pattern="PLAIN",
     accessory="NONE",
     skin_color=(0.96, 0.82, 0.74, 1.0),
     hair_color=(0.32, 0.18, 0.12, 1.0),
-    cloth_top_color=(0.75, 0.28, 0.24, 1.0), # レッドコート（丸い肩）
+    cloth_top_color=(0.75, 0.28, 0.24, 1.0), # レッドパーカー（大型立体フード）
     shoe_color=(0.20, 0.20, 0.22, 1.0),
     seed=102
 )
 char2.location = (-0.32, 0.10, 0.0)
-char2.rotation_euler = (0, 0, math.radians(78)) # 真横に近い角度で耳と髪の隙間をアピール
+char2.rotation_euler = (0, 0, math.radians(145)) # 背面斜めから大型フードのふっくら立体感をアピール
 
-# 3. 前髪CENTER_PART × 後ろ髪TWINTAILS（お団子ツインテ）・オーバーオール・笑顔 (中央右)
+# 3. パーカー（HOODIE）× 丸メガネ（ROUND_GLASSES）× 笑顔（中央右・正面）
 char3 = create_procedural_chibi_character(
     context=bpy.context,
-    name="CenterPart_Twintails_Girl",
-    gender="GIRL",
-    head_ratio=2.15,
-    total_height=1.12,
+    name="Hoodie_Glasses_Front_Char",
+    gender="BOY",
+    head_ratio=2.20,
+    total_height=1.14,
     hair_front="CENTER_PART",
-    hair_back="TWINTAILS",
+    hair_back="BOB",
     eyebrow_style="ARCH",
-    outfit_type="OVERALLS",
+    outfit_type="HOODIE",
     eye_style="OVAL",
     pattern="PLAIN",
-    accessory="CHEEK_BLUSH",
+    accessory="ROUND_GLASSES",
     skin_color=(0.98, 0.86, 0.78, 1.0),
     hair_color=(0.88, 0.70, 0.35, 1.0), # アッシュゴールド
-    cloth_top_color=(0.25, 0.65, 0.40, 1.0), # グリーンオーバーオール（丸い肩）
+    cloth_top_color=(0.22, 0.55, 0.78, 1.0), # ブルーパーカー（丸い肩・ドローコード）
     shoe_color=(0.45, 0.25, 0.15, 1.0),
     seed=303
 )
 char3.location = (0.35, 0.0, 0.0)
-char3.rotation_euler = (0, 0, -0.10)
-# 笑顔シェイプキーを適用
+char3.rotation_euler = (0, 0, -0.05)
 for c in char3.children:
     if "Eyes" in c.name and c.data.shape_keys:
         kb = c.data.shape_keys.key_blocks
         if "Smile" in kb:
-            kb["Smile"].value = 1.0
+            kb["Smile"].value = 0.9
 
-# 4. 前髪MUSHROOM（おかっぱ） × 後ろ髪PONYTAIL・丸メガネ・ダッフルコート (右端)
+# 4. 前髪MUSHROOM × 後ろ髪TWINTAILS・丸メガネ・コート（右端・斜めアングルでテンプルの耳への自然なフィット）
 char4 = create_procedural_chibi_character(
     context=bpy.context,
-    name="Mushroom_Ponytail_Char",
-    gender="BOY",
-    head_ratio=2.20,
-    total_height=1.14,
+    name="Torus_Glasses_Profile_Girl",
+    gender="GIRL",
+    head_ratio=2.15,
+    total_height=1.12,
     hair_front="MUSHROOM",
-    hair_back="PONYTAIL",
+    hair_back="TWINTAILS",
     eyebrow_style="STRAIGHT",
     outfit_type="COAT",
     eye_style="ROUND",
-    pattern="PLAIN",
+    pattern="STRIPED",
     accessory="ROUND_GLASSES",
-    skin_color=(0.92, 0.76, 0.65, 1.0), # 小麦肌
+    skin_color=(0.92, 0.76, 0.65, 1.0),
     hair_color=(0.18, 0.18, 0.22, 1.0), # ナチュラルブラック
-    cloth_top_color=(0.35, 0.45, 0.60, 1.0), # ダッフルコート（丸い肩）
+    cloth_top_color=(0.35, 0.65, 0.45, 1.0), # グリーンコート（丸い肩）
     shoe_color=(0.85, 0.45, 0.20, 1.0),
     seed=404
 )
 char4.location = (1.02, 0.10, 0.0)
-char4.rotation_euler = (0, 0, -0.22)
+char4.rotation_euler = (0, 0, -0.35) # 斜めアングルでメガネの側面カーブとつるをアピール
 
 # 3. ワールド環境光（アンビエント光）
 world = bpy.context.scene.world
