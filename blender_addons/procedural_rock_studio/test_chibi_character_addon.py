@@ -62,11 +62,15 @@ def test_chibi_character_generation():
         assert exp_key in key_names, f"Missing shape key: {exp_key}"
     print("PASS: Facial Expression Shape Keys (Blend Shapes) verified on Eyes for animation!")
 
-    # まつ毛マテリアルスロット（Slot 2: Eyelash）の検証
+    # 目パーツ（Eyes）の4スロット構造（白目, 瞳, ハイライト, まつ毛）の検証
     eyes_mat_names = [m.name for m in eyes_obj.data.materials if m]
     print(f"Eyes materials: {eyes_mat_names}")
+    assert any("Sclera" in m for m in eyes_mat_names), "Sclera material missing on Eyes!"
+    assert any("Eye" in m and "Sclera" not in m and "Highlight" not in m and "lash" not in m for m in eyes_mat_names), "Iris/Pupil material missing on Eyes!"
+    assert any("Highlight" in m for m in eyes_mat_names), "Highlight material missing on Eyes!"
     assert any("Eyelash" in m for m in eyes_mat_names), "Eyelash material missing on Eyes!"
-    print("PASS: 3D Eyelash / Eye line material slot verified on Eyes!")
+    assert len(eyes_obj.data.materials) >= 4, f"Expected at least 4 material slots on Eyes, got {len(eyes_obj.data.materials)}"
+    print("PASS: 4-slot Eye System (Sclera, Iris, Highlight, 3D Eyelash) verified on Eyes!")
 
     # 口パーツ（Mouth）および口のシェイプキーの検証
     mouth_obj = next(c for c in children if "Mouth" in c.name)
@@ -122,7 +126,12 @@ def test_chibi_character_generation():
     assert girl_root is not None, "Girl root object is None!"
     girl_children = girl_root.children
     assert len(girl_children) >= 8, f"Girl children count too low: {len(girl_children)}"
-    print("PASS: Girl character with twintails and one-piece dress verified!")
+    girl_eyes = next(c for c in girl_children if "Eyes" in c.name)
+    assert girl_eyes is not None, "Girl Eyes missing!"
+    girl_eyes_mats = [m.name for m in girl_eyes.data.materials if m]
+    assert len(girl_eyes_mats) >= 4, f"Girl eyes materials count < 4: {girl_eyes_mats}"
+    print(f"Girl Eyes Materials: {girl_eyes_mats}")
+    print("PASS: Girl character with twintails, 4-slot anime eyes, and one-piece dress verified!")
 
     # 3. オーケストレーター経由でのディスパッチ＆クリーンアップ検証
     print("\n=== [TEST 3] Testing Core Orchestrator Dispatch & Regeneration ===")

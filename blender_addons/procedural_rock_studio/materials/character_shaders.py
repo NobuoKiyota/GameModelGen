@@ -47,10 +47,11 @@ def create_chibi_character_shader(mat_name, part_type="SKIN", color=(0.96, 0.82,
     set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.25)
 
     if part_type == "SKIN":
-        # 肌のトイ調・アニメ調のほんのりとしたSubsurface
-        set_bsdf_input_safe(node_bsdf, ['Subsurface', 'Subsurface Weight'], 0.12)
-        set_bsdf_input_safe(node_bsdf, ['Subsurface Radius'], (1.0, 0.4, 0.2))
-        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.6)
+        # 肌のトイ調・アニメ調のほんのりとしたSubsurface（EEVEEでの暗転を防ぐ適正値）
+        set_bsdf_input_safe(node_bsdf, ['Subsurface', 'Subsurface Weight'], 0.04)
+        set_bsdf_input_safe(node_bsdf, ['Subsurface Radius'], (1.0, 0.5, 0.3))
+        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.45)
+        set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.35)
 
     elif part_type == "HAIR":
         set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.45)
@@ -143,11 +144,19 @@ def create_chibi_character_shader(mat_name, part_type="SKIN", color=(0.96, 0.82,
         set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.8)
         set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.15)
 
+    elif part_type == "EYE_SCLERA":
+        # 白目（わずかに温かみのある角膜光沢）
+        set_bsdf_input_safe(node_bsdf, ['Base Color'], (0.96, 0.95, 0.94, 1.0))
+        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.20)
+        set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.6)
+
     elif part_type == "EYE":
+        set_bsdf_input_safe(node_bsdf, ['Base Color'], color)
         set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.15)
         set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.8)
 
     elif part_type == "EYE_HIGHLIGHT":
+        set_bsdf_input_safe(node_bsdf, ['Base Color'], (1.0, 1.0, 1.0, 1.0))
         set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.05)
         set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 1.0)
         set_bsdf_input_safe(node_bsdf, ['Emission Color'], (1.0, 1.0, 1.0, 1.0))
