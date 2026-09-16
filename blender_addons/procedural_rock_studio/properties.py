@@ -46,11 +46,22 @@ def update_category_preset(self, context):
         'CANDLE_STAND': "Antique_Candle_Stand",
         'HOUSEPLANT': "Houseplant_Studio",
         'SPIRAL_STAIRS': "Spiral_Stairs_Asset",
-        'STONE_STAIRS': "Stone_Stairs_Asset"
+        'STONE_STAIRS': "Stone_Stairs_Asset",
+        'CHIBI_CHARACTER': "Chibi_Character"
     }
     props.asset_name = name_map.get(cat, "Prop_Asset")
 
-    if cat == "STONE_STAIRS":
+    if cat == "CHIBI_CHARACTER":
+        props.size_x = 0.6
+        props.size_y = 0.5
+        props.size_z = 1.15
+        props.chibi_gender = 'BOY'
+        props.chibi_head_ratio = 2.2
+        props.chibi_hair_style = 'SHORT'
+        props.chibi_outfit_type = 'T_SHIRT'
+        props.chibi_eye_style = 'OVAL'
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "STONE_STAIRS":
         props.size_x = 1.8
         props.size_y = 4.2
         props.size_z = 2.16
@@ -455,6 +466,7 @@ class PropStudioProperties(bpy.types.PropertyGroup):
     prop_category: bpy.props.EnumProperty(
         name="Category",
         items=[
+            ('CHIBI_CHARACTER', "🐻 どうぶつの森風 キャラクター (Animal Crossing Style Chibi)", "動画準拠のSingle Vert+Skin骨格・2〜2.5頭身・男の子/女の子・髪型/衣装/靴・表情モジュール・足音Footstepマテリアル連動"),
             ('STONE_STAIRS', "🪨 年季の入った石畳の地下階段 (Dungeon / Cellar Stone Stairs)", "動画準拠のクラシカル壺型バラスター・彫刻親柱・斜め笠木・長年の歩行による中央すり減り・苔・風化チッピング"),
             ('SPIRAL_STAIRS', "🪜 手すり付き螺旋階段 (Spiral Stairs)", "完全パラメトリック螺旋階段（扇形ステップ・センター支柱・連続螺旋手すり・バラスター装飾）"),
             ('HOUSEPLANT', "🌿 観葉植物・鉢植え (Houseplant / Potted Foliage)", "マクラメ吊り下げハンギング鉢・脚付き聖杯鉢・床置き大型ヤシ・サンスベリア・アイビー・モンステラ"),
@@ -2486,6 +2498,73 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         default=True,
         description="石段・欄干手すり・親柱を1つのメッシュオブジェクトに結合"
     )
+
+    # =========================================================================
+    # 🐻 どうぶつの森風 デフォルメキャラクター (Chibi / Animal Crossing Style Character)
+    # =========================================================================
+    chibi_gender: bpy.props.EnumProperty(
+        name="スタイル/性別 (Style)",
+        items=[
+            ('BOY', "👦 男の子 (Boy / Islander)", "ショートヘア・Tシャツ・短パンスタイル"),
+            ('GIRL', "👧 女の子 (Girl / Islander)", "ボブ/ツインテール・ワンピーススタイル")
+        ],
+        default='BOY'
+    )
+    chibi_head_ratio: bpy.props.FloatProperty(
+        name="頭身比 (Head Ratio)",
+        default=2.2, min=1.8, max=3.0,
+        description="キャラクターの頭身比（どうぶつの森風は 2.0〜2.5 推奨）"
+    )
+    chibi_hair_style: bpy.props.EnumProperty(
+        name="髪型 (Hair Style)",
+        items=[
+            ('SHORT', "✂️ ショートヘア (Short Bangs)", "少しハネ感のある男の子風ショート"),
+            ('BOB', "💇‍♀️ ふんわりボブ (Cute Bob)", "フェイスラインを包む丸い内巻きボブ"),
+            ('TWINTAILS', "🎀 お団子/ツインテール (Twintails)", "両サイドのポンポンお団子ヘア")
+        ],
+        default='SHORT'
+    )
+    chibi_outfit_type: bpy.props.EnumProperty(
+        name="衣装 (Outfit)",
+        items=[
+            ('T_SHIRT', "👕 Tシャツ＆短パン (T-Shirt & Shorts)", "カジュアルなトップス＆ボトムス"),
+            ('ONE_PIECE', "👗 釣鐘型ワンピース (A-Line Dress)", "裾がふわりと広がる愛らしいワンピースドレス")
+        ],
+        default='T_SHIRT'
+    )
+    chibi_eye_style: bpy.props.EnumProperty(
+        name="目の形状 (Eye Style)",
+        items=[
+            ('OVAL', "🥚 楕円の瞳 (Oval / Anime)", "縦長の愛らしいアニメ調の瞳"),
+            ('ROUND', "⭕ まるい瞳 (Round Dot)", "クリっとした丸いドット瞳")
+        ],
+        default='OVAL'
+    )
+    chibi_skin_color: bpy.props.FloatVectorProperty(
+        name="肌色 (Skin Color)",
+        subtype='COLOR',
+        size=4, min=0.0, max=1.0,
+        default=(0.96, 0.82, 0.74, 1.0)
+    )
+    chibi_hair_color: bpy.props.FloatVectorProperty(
+        name="髪色 (Hair Color)",
+        subtype='COLOR',
+        size=4, min=0.0, max=1.0,
+        default=(0.35, 0.22, 0.14, 1.0)
+    )
+    chibi_cloth_top_color: bpy.props.FloatVectorProperty(
+        name="服の色 (Cloth Color)",
+        subtype='COLOR',
+        size=4, min=0.0, max=1.0,
+        default=(0.18, 0.55, 0.82, 1.0)
+    )
+    chibi_shoe_color: bpy.props.FloatVectorProperty(
+        name="靴の色 (Shoe Color)",
+        subtype='COLOR',
+        size=4, min=0.0, max=1.0,
+        default=(0.85, 0.25, 0.22, 1.0)
+    )
+
 
 
 

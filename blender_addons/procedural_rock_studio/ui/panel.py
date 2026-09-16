@@ -49,8 +49,36 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
         # 🌟 4. Tab 1: Shape & Dimensions & Specific Controls
         if props.studio_tab == 'SHAPE':
+            # 🐻 Chibi / Animal Crossing Style Character Specific
+            if props.prop_category == 'CHIBI_CHARACTER':
+                box_chibi = layout.box()
+                box_chibi.label(text="🐻 どうぶつの森風 キャラクター設定:", icon='COMMUNITY')
+                row_gen = box_chibi.row(align=True)
+                row_gen.prop(props, "chibi_gender", text="タイプ")
+                row_gen.prop(props, "chibi_head_ratio", text="頭身比")
+
+                box_parts = box_chibi.box()
+                box_parts.label(text="モジュール・パーツ設定:", icon='MODIFIER')
+                box_parts.prop(props, "chibi_hair_style", text="髪型")
+                box_parts.prop(props, "chibi_outfit_type", text="衣装")
+                box_parts.prop(props, "chibi_eye_style", text="目の形")
+
+                box_colors = box_chibi.box()
+                box_colors.label(text="カラーパレット (Colors):", icon='COLOR')
+                row_c1 = box_colors.row(align=True)
+                row_c1.prop(props, "chibi_skin_color", text="肌色")
+                row_c1.prop(props, "chibi_hair_color", text="髪色")
+                row_c2 = box_colors.row(align=True)
+                row_c2.prop(props, "chibi_cloth_top_color", text="服")
+                row_c2.prop(props, "chibi_shoe_color", text="靴")
+
+                col_btn = box_chibi.column(align=True)
+                col_btn.scale_y = 1.3
+                col_btn.operator("mesh.update_selected_prop", text="🔄 キャラクター再生成・更新", icon='FILE_REFRESH')
+                col_btn.operator("mesh.create_new_prop", text="➕ 新規キャラクター生成", icon='ADD')
+
             # Speaker Specific
-            if props.prop_category == 'SPEAKER':
+            elif props.prop_category == 'SPEAKER':
                 box_spk = layout.box()
                 box_spk.label(text="🔊 スタジオモニター・スピーカー設定:", icon='SPEAKER')
                 box_spk.prop(props, "speaker_style", text="様式")

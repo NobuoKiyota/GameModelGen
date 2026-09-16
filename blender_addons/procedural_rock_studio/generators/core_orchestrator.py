@@ -521,6 +521,16 @@ def resolve_prop_parameters(props):
         "castle_wall_batter": getattr(props, 'castle_wall_batter', 0.18),
         "castle_wall_roughness": getattr(props, 'castle_wall_roughness', 0.14),
         "castle_wall_combine": getattr(props, 'castle_wall_combine', True),
+        # Chibi Character parameters
+        "chibi_gender": getattr(props, 'chibi_gender', 'BOY'),
+        "chibi_head_ratio": getattr(props, 'chibi_head_ratio', 2.2),
+        "chibi_hair_style": getattr(props, 'chibi_hair_style', 'SHORT'),
+        "chibi_outfit_type": getattr(props, 'chibi_outfit_type', 'T_SHIRT'),
+        "chibi_eye_style": getattr(props, 'chibi_eye_style', 'OVAL'),
+        "chibi_skin_color": tuple(getattr(props, 'chibi_skin_color', (0.96, 0.82, 0.74, 1.0))),
+        "chibi_hair_color": tuple(getattr(props, 'chibi_hair_color', (0.35, 0.22, 0.14, 1.0))),
+        "chibi_cloth_top_color": tuple(getattr(props, 'chibi_cloth_top_color', (0.18, 0.55, 0.82, 1.0))),
+        "chibi_shoe_color": tuple(getattr(props, 'chibi_shoe_color', (0.85, 0.25, 0.22, 1.0))),
     }
 
 
@@ -737,6 +747,37 @@ def generate_procedural_prop_mesh(
             target_obj=target_obj
         )
         return floor_obj
+
+    # 🐻 Chibi Character Preset (どうぶつの森風 デフォルメキャラクター: 骨格・頭部・髪・衣装・靴)
+    if category == "CHIBI_CHARACTER":
+        from .cleanup_helper import cleanup_old_chibi_character
+        from .chibi_char_gen import create_procedural_chibi_character
+        cleanup_old_chibi_character(context, target_obj, name)
+
+        chibi_gen = kwargs.get('chibi_gender', 'BOY')
+        chibi_ratio = kwargs.get('chibi_head_ratio', 2.2)
+        chibi_hair = kwargs.get('chibi_hair_style', 'SHORT')
+        chibi_outfit = kwargs.get('chibi_outfit_type', 'T_SHIRT')
+        chibi_skin_c = kwargs.get('chibi_skin_color', (0.96, 0.82, 0.74, 1.0))
+        chibi_hair_c = kwargs.get('chibi_hair_color', (0.35, 0.22, 0.14, 1.0))
+        chibi_cloth_c = kwargs.get('chibi_cloth_top_color', (0.18, 0.55, 0.82, 1.0))
+        chibi_shoe_c = kwargs.get('chibi_shoe_color', (0.85, 0.25, 0.22, 1.0))
+
+        root_obj = create_procedural_chibi_character(
+            context=context,
+            name=name,
+            gender=chibi_gen,
+            head_ratio=chibi_ratio,
+            total_height=size_z if size_z > 0.6 else 1.15,
+            hair_style=chibi_hair,
+            outfit_type=chibi_outfit,
+            skin_color=chibi_skin_c,
+            hair_color=chibi_hair_c,
+            cloth_top_color=chibi_cloth_c,
+            shoe_color=chibi_shoe_c,
+            seed=seed
+        )
+        return root_obj
 
     # 🔭 Telescope Preset (天体望遠鏡: 三脚・マウント・鏡筒 独立階層)
     if category == "TELESCOPE":

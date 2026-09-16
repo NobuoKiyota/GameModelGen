@@ -22,6 +22,8 @@ from .curtain_mat import (
     create_curtain_rod_material,
     CURTAIN_MATERIAL_PRESETS
 )
+from .character_shaders import create_chibi_character_shader
+
 
 __all__ = [
     'get_mix_input',
@@ -42,5 +44,6 @@ __all__ = [
     'DICTIONARY_COLOR_PALETTES',
     'create_curtain_fabric_material',
     'create_curtain_rod_material',
-    'CURTAIN_MATERIAL_PRESETS'
+    'CURTAIN_MATERIAL_PRESETS',
+    'create_chibi_character_shader'
 ]

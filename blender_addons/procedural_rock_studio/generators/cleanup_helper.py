@@ -1,4 +1,4 @@
-﻿import bpy
+import bpy
 
 def cleanup_old_telescope(context, target_obj, base_name):
     """望遠鏡の親Root・子パーツ（Tripod, Mount, OTA）を一括完全クリーンアップ"""
@@ -31,3 +31,35 @@ def cleanup_old_telescope(context, target_obj, base_name):
                     bpy.data.objects.remove(o, do_unlink=True)
         except Exception:
             pass
+
+
+def cleanup_old_chibi_character(context, target_obj, base_name):
+    """どうぶつの森風キャラクターの親Root・子パーツ（Head, Hair, Outfit, Shoes, Face）を一括完全クリーンアップ"""
+    to_delete = set()
+    
+    if target_obj and target_obj.name in context.scene.objects:
+        root = target_obj
+        while root.parent:
+            root = root.parent
+        to_delete.add(root)
+        for child in root.children_recursive:
+            to_delete.add(child)
+
+    chibi_suffixes = ("_Head", "_Hair", "_Outfit", "_Shoes", "_Eyes", "_Ears", "_Nose", "_Root", "_Body")
+    for o in list(bpy.data.objects):
+        if o.name == base_name or o.name.startswith(base_name + "_") or any(o.name.startswith(base_name + s) for s in chibi_suffixes):
+            to_delete.add(o)
+
+    for o in to_delete:
+        try:
+            if o.name in bpy.data.objects:
+                if o.type == 'MESH' and o.data:
+                    m = o.data
+                    bpy.data.objects.remove(o, do_unlink=True)
+                    if m.users == 0:
+                        bpy.data.meshes.remove(m)
+                else:
+                    bpy.data.objects.remove(o, do_unlink=True)
+        except Exception:
+            pass
+

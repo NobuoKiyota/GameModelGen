@@ -37,9 +37,12 @@ from .houseplant_gen import generate_houseplant
 from .spiral_stairs_gen import generate_spiral_stairs
 from .stone_stairs_gen import generate_stone_stairs
 from .window_gen import generate_western_window
+from .chibi_char_gen import create_procedural_chibi_character
 from .core_orchestrator import generate_procedural_prop_mesh, resolve_prop_parameters, cleanup_old_debris
 
+
 __all__ = [
+    'create_procedural_chibi_character',
     'generate_western_window',
     'generate_stone_stairs',
     'generate_spiral_stairs',
