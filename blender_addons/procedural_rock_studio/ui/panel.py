@@ -22,7 +22,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
         col_act.scale_y = 1.35
         row_main = col_act.row(align=True)
         row_main.operator("mesh.update_selected_prop", text="🔄 選択中を反映・更新 (In-Place)", icon='FILE_REFRESH')
-        row_main.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
+        row_main.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='FILE_REFRESH')
         
         row_sub_act = col_act.row(align=True)
         row_sub_act.operator("mesh.create_new_prop", text="➕ 新規作成", icon='ADD')
@@ -57,7 +57,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 # 🎲 ガチャ要素抽選ボタン（目立つ位置に配置）
                 row_gacha = box_chibi.row(align=True)
                 row_gacha.scale_y = 1.3
-                row_gacha.operator("mesh.reroll_selected_prop", text="🎲 キャラクター要素をランダム抽選 (ガチャ)", icon='DICE')
+                row_gacha.operator("mesh.reroll_selected_prop", text="🎲 キャラクター要素をランダム抽選 (ガチャ)", icon='FILE_REFRESH')
 
                 row_gen = box_chibi.row(align=True)
                 row_gen.prop(props, "chibi_gender", text="タイプ")
@@ -81,7 +81,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
 
                 col_btn = box_chibi.column(align=True)
                 col_btn.scale_y = 1.3
-                col_btn.operator("mesh.reroll_selected_prop", text="🎲 要素をランダム再抽選 (Re-Roll)", icon='DICE')
+                col_btn.operator("mesh.reroll_selected_prop", text="🎲 要素をランダム再抽選 (Re-Roll)", icon='FILE_REFRESH')
                 col_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新", icon='FILE_REFRESH')
                 col_btn.operator("mesh.create_new_prop", text="➕ 新規キャラクター生成", icon='ADD')
 
@@ -732,7 +732,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 col_a_btn.scale_y = 1.3
                 col_a_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新 (選択中を更新)", icon='FILE_REFRESH')
                 row_a_sub = col_a_btn.row(align=True)
-                row_a_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
+                row_a_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='FILE_REFRESH')
                 row_a_sub.operator("mesh.create_new_prop", text="➕ 新規アーチを生成", icon='ADD')
 
             # Modular Relief Wall Preset Specific
@@ -772,7 +772,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 col_rw_btn.scale_y = 1.3
                 col_rw_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新 (選択中を更新)", icon='FILE_REFRESH')
                 row_rw_sub = col_rw_btn.row(align=True)
-                row_rw_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
+                row_rw_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='FILE_REFRESH')
                 row_rw_sub.operator("mesh.create_new_prop", text="➕ 新規レリーフ壁を生成", icon='ADD')
 
             # Realistic Western Window Preset Specific
@@ -845,7 +845,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 col_w_btn.scale_y = 1.3
                 col_w_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新 (選択中を更新)", icon='FILE_REFRESH')
                 row_w_sub = col_w_btn.row(align=True)
-                row_w_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
+                row_w_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='FILE_REFRESH')
                 row_w_sub.operator("mesh.create_new_prop", text="➕ 新規西洋窓を生成", icon='ADD')
 
             # 📖 Dictionary (Single Book) Specific
@@ -974,7 +974,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 col_st_btn.scale_y = 1.3
                 col_st_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新 (選択中を更新)", icon='FILE_REFRESH')
                 row_st_sub = col_st_btn.row(align=True)
-                row_st_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
+                row_st_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='FILE_REFRESH')
                 row_st_sub.operator("mesh.create_new_prop", text="➕ 新規石畳階段を生成", icon='ADD')
 
             # 🪜 Spiral Stairs Specific
@@ -1022,7 +1022,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 col_s_btn.scale_y = 1.3
                 col_s_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新 (選択中を更新)", icon='FILE_REFRESH')
                 row_s_sub = col_s_btn.row(align=True)
-                row_s_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='DICE')
+                row_s_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='FILE_REFRESH')
                 row_s_sub.operator("mesh.create_new_prop", text="➕ 新規螺旋階段を生成", icon='ADD')
 
             # 🌿 Houseplant Specific
