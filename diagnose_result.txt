@@ -1,0 +1,15 @@
+=== Loaded module file ===
+C:\Users\kiyot\AppData\Roaming\Blender Foundation\Blender\3.6\scripts\addons\procedural_rock_studio\generators\chibi_char_gen.py
+
+=== Fix markers present in the RUNNING module? ===
+compute_chibi_body_layout: True
+place_ellipsoid (new eyes): True
+OLD ear box-cutoff (should be False): False
+
+=== Freshly generated test hair mesh (this run) ===
+Boundary edge count: 66
+Boundary vertex X range: (-0.25053492188453674, 0.2505350708961487)
+
+=== Blender executable / version ===
+C:\Program Files\Blender Foundation\Blender 3.6\3.6\python\bin\python.exe
+3.6.2

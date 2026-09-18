@@ -426,6 +426,26 @@ def resolve_prop_parameters(props):
         "window_has_hinges": getattr(props, 'window_has_hinges', True),
         "window_sash_material": getattr(props, 'window_sash_material', 'DARK_WOOD'),
         "window_combine": getattr(props, 'window_combine', False),
+        # Western Door parameters
+        "door_arch_style": getattr(props, 'door_arch_style', 'ROMAN_ROUND'),
+        "door_pillar_shape": getattr(props, 'door_pillar_shape', 'SQUARE_PIER'),
+        "door_pillar_width": getattr(props, 'door_pillar_width', 0.42),
+        "door_column_height": getattr(props, 'door_column_height', 1.7),
+        "door_has_keystone": getattr(props, 'door_has_keystone', True),
+        "door_strap_style": getattr(props, 'door_strap_style', 'CROSS_Z'),
+        "door_stud_pattern": getattr(props, 'door_stud_pattern', 'GRID'),
+        "door_handle_style": getattr(props, 'door_handle_style', 'RING_PULL'),
+        "door_has_hinges": getattr(props, 'door_has_hinges', True),
+        "door_has_edge_trim": getattr(props, 'door_has_edge_trim', True),
+        "door_edge_trim_width": getattr(props, 'door_edge_trim_width', 0.05),
+        "door_wood_material": getattr(props, 'door_wood_material', 'WEATHERED_OAK'),
+        "door_iron_style": getattr(props, 'door_iron_style', 'BLACK_FORGED'),
+        "door_damage": getattr(props, 'door_damage', 0.35),
+        "door_weathering": getattr(props, 'door_weathering', 0.55),
+        "door_moss_amount": getattr(props, 'door_moss_amount', 0.20),
+        "door_open_angle": getattr(props, 'door_open_angle', 0.0),
+        "door_open_direction": getattr(props, 'door_open_direction', 'OUTWARD'),
+        "door_combine": getattr(props, 'door_combine', False),
         # Dictionary parameters
         "dictionary_rib_count": getattr(props, 'dictionary_rib_count', 4),
         "dictionary_color_preset": getattr(props, 'dictionary_color_preset', 'NAVY'),
@@ -1010,6 +1030,45 @@ def generate_procedural_prop_mesh(
             has_hinges=kwargs.get('window_has_hinges', True),
             sash_material=kwargs.get('window_sash_material', 'DARK_WOOD'),
             combine_mesh=kwargs.get('window_combine', False),
+            location=old_loc if old_loc is not None else (0, 0, 0),
+            rotation=old_rot if old_rot is not None else (0, 0, 0),
+            seed=seed,
+            name=name
+        )
+        return created[0] if created else None
+
+    # 🚪 Western Door Preset (ダンジョン向け・西洋風アーチ両開き扉)
+    if category == "DOOR":
+        old_loc = None
+        old_rot = None
+        if target_obj:
+            root_obj, all_objs, old_loc, old_rot, _ = resolve_prop_root_hierarchy(target_obj)
+            delete_prop_hierarchy(all_objs)
+        from .door_gen import generate_western_door
+        created = generate_western_door(
+            context=context,
+            size_x=size_x,
+            size_y=size_y,
+            size_z=size_z,
+            door_arch_style=kwargs.get('door_arch_style', 'ROMAN_ROUND'),
+            pillar_shape=kwargs.get('door_pillar_shape', 'SQUARE_PIER'),
+            pillar_width=kwargs.get('door_pillar_width', 0.42),
+            column_height=kwargs.get('door_column_height', 1.7),
+            has_keystone=kwargs.get('door_has_keystone', True),
+            strap_style=kwargs.get('door_strap_style', 'CROSS_Z'),
+            stud_pattern=kwargs.get('door_stud_pattern', 'GRID'),
+            handle_style=kwargs.get('door_handle_style', 'RING_PULL'),
+            has_hinges=kwargs.get('door_has_hinges', True),
+            has_edge_trim=kwargs.get('door_has_edge_trim', True),
+            edge_trim_width=kwargs.get('door_edge_trim_width', 0.05),
+            wood_material=kwargs.get('door_wood_material', 'WEATHERED_OAK'),
+            iron_style=kwargs.get('door_iron_style', 'BLACK_FORGED'),
+            damage=kwargs.get('door_damage', 0.35),
+            weathering=kwargs.get('door_weathering', 0.55),
+            moss_amount=kwargs.get('door_moss_amount', 0.20),
+            open_angle=kwargs.get('door_open_angle', 0.0),
+            open_direction=kwargs.get('door_open_direction', 'OUTWARD'),
+            combine_mesh=kwargs.get('door_combine', False),
             location=old_loc if old_loc is not None else (0, 0, 0),
             rotation=old_rot if old_rot is not None else (0, 0, 0),
             seed=seed,

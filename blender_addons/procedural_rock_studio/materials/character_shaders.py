@@ -145,22 +145,24 @@ def create_chibi_character_shader(mat_name, part_type="SKIN", color=(0.96, 0.82,
         set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.15)
 
     elif part_type == "EYE_SCLERA":
-        # 白目（わずかに温かみのある角膜光沢）
-        set_bsdf_input_safe(node_bsdf, ['Base Color'], (0.96, 0.95, 0.94, 1.0))
-        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.20)
-        set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.6)
+        # シンプル2層構成 slot0 = 白目玉（つややかな白磁のような質感）
+        set_bsdf_input_safe(node_bsdf, ['Base Color'], (0.97, 0.97, 0.98, 1.0))
+        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.25)
+        set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.5)
 
     elif part_type == "EYE":
+        # slot1 = 瞳・虹彩（Pupil/Iris）: ツヤのある濃色でハイライトが自然に乗る
         set_bsdf_input_safe(node_bsdf, ['Base Color'], color)
-        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.15)
+        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.12)
         set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.8)
 
     elif part_type == "EYE_HIGHLIGHT":
+        # slot2 = 瞳のキャッチライト（正球、瞳表面に浅く埋め込み）
         set_bsdf_input_safe(node_bsdf, ['Base Color'], (1.0, 1.0, 1.0, 1.0))
         set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.05)
         set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 1.0)
-        set_bsdf_input_safe(node_bsdf, ['Emission Color'], (1.0, 1.0, 1.0, 1.0))
-        set_bsdf_input_safe(node_bsdf, ['Emission Strength'], 0.3)
+        set_bsdf_input_safe(node_bsdf, ['Emission Strength'], 1.2)
+        set_bsdf_input_safe(node_bsdf, ['Emission', 'Emission Color'], (1.0, 1.0, 1.0, 1.0))
 
     elif part_type == "GLASSES":
         set_bsdf_input_safe(node_bsdf, ['Base Color'], (0.15, 0.15, 0.18, 1.0))
@@ -184,10 +186,12 @@ def create_chibi_character_shader(mat_name, part_type="SKIN", color=(0.96, 0.82,
         set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.65)
 
     elif part_type == "EYELASH":
-        # 上まつ毛・アイライン（目力を引き立てる上質ダークトーン）
-        set_bsdf_input_safe(node_bsdf, ['Base Color'], color or (0.08, 0.07, 0.08, 1.0))
-        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.35)
-        set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 0.40)
+        # Option B: slot3 = ハイライト（白、輝点）
+        set_bsdf_input_safe(node_bsdf, ['Base Color'], (1.0, 1.0, 1.0, 1.0))
+        set_bsdf_input_safe(node_bsdf, ['Roughness'], 0.05)
+        set_bsdf_input_safe(node_bsdf, ['Specular', 'Specular IOR Level'], 1.0)
+        set_bsdf_input_safe(node_bsdf, ['Emission Color'], (1.0, 1.0, 1.0, 1.0))
+        set_bsdf_input_safe(node_bsdf, ['Emission Strength'], 0.6)
 
     elif part_type == "MOUTH":
         # お口・リップライン（自然で愛らしいピンクトーン）

@@ -493,3 +493,218 @@ def create_window_brass_material(name="Window_Brass"):
     return mat
 
 
+def _add_height_dirt_mask(nodes, links, node_coord, scale=8.0, detail=4.0, bottom_pos=0.15, top_pos=0.45):
+    """足元ほど汚れる高さマスクを構築（Object Z座標 -> ColorRamp -> Noiseで有機的に乱す）。Color出力を返す。"""
+    node_sep = nodes.new(type='ShaderNodeSeparateXYZ')
+    node_sep.location = (-950, -550)
+    links.new(node_coord.outputs['Object'], node_sep.inputs['Vector'])
+
+    noise_mask = nodes.new(type='ShaderNodeTexNoise')
+    noise_mask.location = (-950, -720)
+    noise_mask.inputs['Scale'].default_value = scale
+    noise_mask.inputs['Detail'].default_value = detail
+    links.new(node_coord.outputs['Object'], noise_mask.inputs['Vector'])
+
+    ramp_mask = nodes.new(type='ShaderNodeValToRGB')
+    ramp_mask.location = (-650, -570)
+    ramp_mask.color_ramp.elements[0].position = bottom_pos
+    ramp_mask.color_ramp.elements[0].color = (1.0, 1.0, 1.0, 1.0)
+    ramp_mask.color_ramp.elements[1].position = top_pos
+    ramp_mask.color_ramp.elements[1].color = (0.0, 0.0, 0.0, 1.0)
+    links.new(node_sep.outputs['Z'], ramp_mask.inputs['Fac'])
+
+    mix_mask = nodes.new(type='ShaderNodeMixRGB')
+    mix_mask.location = (-400, -570)
+    mix_mask.blend_type = 'MULTIPLY'
+    mix_mask.inputs['Fac'].default_value = 0.70
+    links.new(ramp_mask.outputs['Color'], mix_mask.inputs[1])
+    links.new(noise_mask.outputs['Color'], mix_mask.inputs[2])
+
+    return mix_mask.outputs['Color']
+
+
+def create_door_wood_material(name="Door_Wood", wood_type='WEATHERED_OAK', weathering=0.5, moss_amount=0.0, plank_width=0.14, seed=0):
+    """ダンジョン向け・年季の入った西洋扉の板張り木材シェーダー。足元ほど雨染み/苔で汚れる高さマスク付き。"""
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (900, 0)
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (600, 0)
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    node_coord = nodes.new(type='ShaderNodeTexCoord')
+    node_coord.location = (-1200, 0)
+
+    # 木目ノイズ
+    node_grain = nodes.new(type='ShaderNodeTexNoise')
+    node_grain.location = (-650, 200)
+    node_grain.inputs['Scale'].default_value = 18.0
+    node_grain.inputs['Detail'].default_value = 6.0
+    node_grain.inputs['Distortion'].default_value = 0.6
+    links.new(node_coord.outputs['Object'], node_grain.inputs['Vector'])
+
+    node_ramp = nodes.new(type='ShaderNodeValToRGB')
+    node_ramp.location = (-350, 200)
+    if wood_type == 'DARK_WALNUT':
+        node_ramp.color_ramp.elements[0].position = 0.30
+        node_ramp.color_ramp.elements[0].color = (0.10, 0.06, 0.04, 1.0)
+        node_ramp.color_ramp.elements[1].position = 0.75
+        node_ramp.color_ramp.elements[1].color = (0.22, 0.13, 0.08, 1.0)
+        node_bsdf.inputs['Roughness'].default_value = 0.55
+    elif wood_type == 'BLEACHED_GREY':
+        node_ramp.color_ramp.elements[0].position = 0.30
+        node_ramp.color_ramp.elements[0].color = (0.30, 0.29, 0.27, 1.0)
+        node_ramp.color_ramp.elements[1].position = 0.75
+        node_ramp.color_ramp.elements[1].color = (0.55, 0.53, 0.49, 1.0)
+        node_bsdf.inputs['Roughness'].default_value = 0.70
+    else:  # WEATHERED_OAK
+        node_ramp.color_ramp.elements[0].position = 0.30
+        node_ramp.color_ramp.elements[0].color = (0.16, 0.11, 0.07, 1.0)
+        node_ramp.color_ramp.elements[1].position = 0.75
+        node_ramp.color_ramp.elements[1].color = (0.36, 0.26, 0.17, 1.0)
+        node_bsdf.inputs['Roughness'].default_value = 0.62
+    links.new(node_grain.outputs['Fac'], node_ramp.inputs['Fac'])
+
+    node_bump = nodes.new(type='ShaderNodeBump')
+    node_bump.location = (450, -250)
+    node_bump.inputs['Strength'].default_value = 0.12
+    node_bump.inputs['Distance'].default_value = 0.02
+    links.new(node_grain.outputs['Fac'], node_bump.inputs['Height'])
+
+    # 縦板張りの継ぎ目（プランクの境目）をジオメトリではなくバンプで表現し、ローポリのまま板の質感を出す
+    node_plank_wave = nodes.new(type='ShaderNodeTexWave')
+    node_plank_wave.location = (-650, -50)
+    node_plank_wave.wave_type = 'BANDS'
+    node_plank_wave.bands_direction = 'X'
+    node_plank_wave.inputs['Scale'].default_value = 1.0 / max(0.03, plank_width)
+    node_plank_wave.inputs['Distortion'].default_value = 0.0
+    node_plank_wave.inputs['Detail'].default_value = 0.0
+    links.new(node_coord.outputs['Object'], node_plank_wave.inputs['Vector'])
+
+    node_plank_bump = nodes.new(type='ShaderNodeBump')
+    node_plank_bump.location = (600, -100)
+    node_plank_bump.inputs['Strength'].default_value = 0.35
+    node_plank_bump.inputs['Distance'].default_value = 0.01
+    links.new(node_plank_wave.outputs['Fac'], node_plank_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_plank_bump.inputs['Normal'])
+    links.new(node_plank_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    base_color_socket = node_ramp.outputs['Color']
+
+    # 足元ほど濃くなる雨染み・水垢マスク（weathering強度で乗算）
+    if weathering > 0.01:
+        dirt_mask = _add_height_dirt_mask(nodes, links, node_coord, scale=6.0, detail=3.0, bottom_pos=0.10, top_pos=0.55)
+        node_weath_mul = nodes.new(type='ShaderNodeMath')
+        node_weath_mul.location = (-150, -570)
+        node_weath_mul.operation = 'MULTIPLY'
+        node_weath_mul.inputs[1].default_value = weathering
+        links.new(dirt_mask, node_weath_mul.inputs[0])
+
+        mix_stain = nodes.new(type='ShaderNodeMixRGB')
+        mix_stain.location = (0, 200)
+        mix_stain.blend_type = 'MIX'
+        mix_stain.inputs[2].default_value = (0.05, 0.04, 0.03, 1.0)  # 黒ずんだ雨染み
+        links.new(node_weath_mul.outputs['Value'], mix_stain.inputs['Fac'])
+        links.new(base_color_socket, mix_stain.inputs[1])
+        base_color_socket = mix_stain.outputs['Color']
+
+    # 最下部にじわりと這い上がる苔（moss_amountで強度調整）
+    if moss_amount > 0.01:
+        moss_mask = _add_height_dirt_mask(nodes, links, node_coord, scale=10.0, detail=4.0, bottom_pos=0.02, top_pos=0.18)
+        node_moss_mul = nodes.new(type='ShaderNodeMath')
+        node_moss_mul.location = (-150, -750)
+        node_moss_mul.operation = 'MULTIPLY'
+        node_moss_mul.inputs[1].default_value = moss_amount
+        links.new(moss_mask, node_moss_mul.inputs[0])
+
+        mix_moss = nodes.new(type='ShaderNodeMixRGB')
+        mix_moss.location = (250, 200)
+        mix_moss.blend_type = 'MIX'
+        mix_moss.inputs[2].default_value = (0.09, 0.24, 0.07, 1.0)  # 湿った苔グリーン
+        links.new(node_moss_mul.outputs['Value'], mix_moss.inputs['Fac'])
+        links.new(base_color_socket, mix_moss.inputs[1])
+        base_color_socket = mix_moss.outputs['Color']
+
+    links.new(base_color_socket, node_bsdf.inputs['Base Color'])
+    return mat
+
+
+def create_door_iron_material(name="Door_Iron", iron_style='BLACK_FORGED', weathering=0.5, seed=0):
+    """ダンジョン向け・年季の入った西洋扉の鉄帯金具/鋲シェーダー。足元ほど錆が浮く高さマスク付き。"""
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    node_out = nodes.new(type='ShaderNodeOutputMaterial')
+    node_out.location = (900, 0)
+    node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    node_bsdf.location = (600, 0)
+    links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+    if iron_style == 'RUSTED':
+        node_bsdf.inputs['Base Color'].default_value = (0.16, 0.09, 0.06, 1.0)
+        node_bsdf.inputs['Metallic'].default_value = 0.55
+        node_bsdf.inputs['Roughness'].default_value = 0.65
+    else:  # BLACK_FORGED
+        node_bsdf.inputs['Base Color'].default_value = (0.06, 0.06, 0.07, 1.0)
+        node_bsdf.inputs['Metallic'].default_value = 0.85
+        node_bsdf.inputs['Roughness'].default_value = 0.42
+
+    node_coord = nodes.new(type='ShaderNodeTexCoord')
+    node_coord.location = (-1200, 0)
+
+    node_noise = nodes.new(type='ShaderNodeTexNoise')
+    node_noise.location = (-650, 200)
+    node_noise.inputs['Scale'].default_value = 30.0
+    node_noise.inputs['Detail'].default_value = 5.0
+    links.new(node_coord.outputs['Object'], node_noise.inputs['Vector'])
+
+    node_bump = nodes.new(type='ShaderNodeBump')
+    node_bump.location = (450, -250)
+    node_bump.inputs['Strength'].default_value = 0.08
+    links.new(node_noise.outputs['Fac'], node_bump.inputs['Height'])
+    links.new(node_bump.outputs['Normal'], node_bsdf.inputs['Normal'])
+
+    if weathering > 0.01:
+        rust_mask = _add_height_dirt_mask(nodes, links, node_coord, scale=14.0, detail=5.0, bottom_pos=0.05, top_pos=0.65)
+        node_weath_mul = nodes.new(type='ShaderNodeMath')
+        node_weath_mul.location = (-150, -570)
+        node_weath_mul.operation = 'MULTIPLY'
+        node_weath_mul.inputs[1].default_value = weathering
+        links.new(rust_mask, node_weath_mul.inputs[0])
+
+        mix_rust_col = nodes.new(type='ShaderNodeMixRGB')
+        mix_rust_col.location = (0, 200)
+        mix_rust_col.blend_type = 'MIX'
+        mix_rust_col.inputs[1].default_value = node_bsdf.inputs['Base Color'].default_value
+        mix_rust_col.inputs[2].default_value = (0.34, 0.15, 0.06, 1.0)  # 赤茶の錆
+        links.new(node_weath_mul.outputs['Value'], mix_rust_col.inputs['Fac'])
+        links.new(mix_rust_col.outputs['Color'], node_bsdf.inputs['Base Color'])
+
+        # 錆が浮いた箇所はメタリック/粗さも荒れる
+        mix_rough = nodes.new(type='ShaderNodeMixRGB')
+        mix_rough.location = (0, 0)
+        mix_rough.blend_type = 'MIX'
+        mix_rough.inputs[1].default_value = (node_bsdf.inputs['Roughness'].default_value,) * 3 + (1.0,)
+        mix_rough.inputs[2].default_value = (0.85, 0.85, 0.85, 1.0)
+        links.new(node_weath_mul.outputs['Value'], mix_rough.inputs['Fac'])
+        links.new(mix_rough.outputs['Color'], node_bsdf.inputs['Roughness'])
+
+        mix_metal = nodes.new(type='ShaderNodeMixRGB')
+        mix_metal.location = (0, -150)
+        mix_metal.blend_type = 'MIX'
+        mix_metal.inputs[1].default_value = (node_bsdf.inputs['Metallic'].default_value,) * 3 + (1.0,)
+        mix_metal.inputs[2].default_value = (0.05, 0.05, 0.05, 1.0)
+        links.new(node_weath_mul.outputs['Value'], mix_metal.inputs['Fac'])
+        links.new(mix_metal.outputs['Color'], node_bsdf.inputs['Metallic'])
+
+    return mat
+
+

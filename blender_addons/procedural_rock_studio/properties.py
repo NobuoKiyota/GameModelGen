@@ -150,6 +150,7 @@ def update_category_preset(self, context):
         'CAVE_FLOOR': "Cave_Floor",
         'RELIEF_WALL': "Relief_Wall_Modular",
         'WINDOW': "Western_Window",
+        'DOOR': "Western_Door",
         'DICTIONARY': "Neutral_Dictionary",
         'BOOK_STACK': "Book_Stack",
         'DOCUMENT_STACK': "Document_Stack",
@@ -303,6 +304,30 @@ def update_category_preset(self, context):
         props.window_has_hinges = True
         props.window_sash_material = 'DARK_WOOD'
         props.window_combine = False
+        props.uv_mapping_mode = 'FIT'
+    elif cat == "DOOR":
+        props.size_x = 2.2
+        props.size_y = 0.5
+        props.size_z = 2.6
+        props.door_arch_style = 'ROMAN_ROUND'
+        props.door_pillar_shape = 'SQUARE_PIER'
+        props.door_pillar_width = 0.42
+        props.door_column_height = 1.7
+        props.door_has_keystone = True
+        props.door_strap_style = 'CROSS_Z'
+        props.door_stud_pattern = 'GRID'
+        props.door_handle_style = 'RING_PULL'
+        props.door_has_hinges = True
+        props.door_has_edge_trim = True
+        props.door_edge_trim_width = 0.05
+        props.door_wood_material = 'WEATHERED_OAK'
+        props.door_iron_style = 'BLACK_FORGED'
+        props.door_damage = 0.35
+        props.door_weathering = 0.55
+        props.door_moss_amount = 0.20
+        props.door_open_angle = 0.0
+        props.door_open_direction = 'OUTWARD'
+        props.door_combine = False
         props.uv_mapping_mode = 'FIT'
     elif cat == "RELIEF_WALL":
         props.size_x = 3.0
@@ -626,7 +651,8 @@ class PropStudioProperties(bpy.types.PropertyGroup):
             ('BEAM', "🪵 梁・丸太支柱 (Timber Log Beam)", "textures/Wood/ と自動連動（シリンダー丸太梁）"),
             ('BEAM_ARCH', "🏛️ 建築アーチ・回廊 (Stone Arch / Colonnade)", "ローマ半円/ゴシック尖頭・要石・多段モールディング・連続列廊・ヴォールト天井"),
             ('RELIEF_WALL', "🏛️ モジュラー・レリーフ壁 (Relief Wall)", "付け柱ピラスター・額縁モールディング・多種レリーフ彫刻（薔薇ロゼット/神殿フリーズ/ルーン文字）・風化汚し・連数指定"),
-            ('WINDOW', "🪟 リアル西洋窓 (Western Window)", "十字の窓枠・X字菱形針金/鉛線ガラス・縦鉄格子・三つ葉飾り・ゴシック/半円/四角枠・透過ガラス＆風化石枠")
+            ('WINDOW', "🪟 リアル西洋窓 (Western Window)", "十字の窓枠・X字菱形針金/鉛線ガラス・縦鉄格子・三つ葉飾り・ゴシック/半円/四角枠・透過ガラス＆風化石枠"),
+            ('DOOR', "🚪 西洋風アーチ両開き扉 (Western Arch Door)", "ダンジョン向け・石造アーチ開口＋板張り木製扉・鉄帯金具（たすき掛け）・鋲・リング取っ手・蝶番ピボット付き経年劣化扉")
         ],
         default='WATER',
         update=update_category_preset
@@ -2456,6 +2482,138 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="単一メッシュ結合 (Combine into 1 Mesh)",
         default=False,
         description="オフの場合、UE開閉用にFrameとSashが正確なヒンジピボット付き親子階層で出力されます"
+    )
+
+    # ── WESTERN ARCH DOOR Properties ──
+    door_arch_style: bpy.props.EnumProperty(
+        name="アーチ形状 (Arch Style)",
+        items=[
+            ('ROMAN_ROUND', "🏛️ ローマ半円アーチ (Roman Round)", "古城・修道院の王道スタイル、半円アーチに追従する扉上端"),
+            ('GOTHIC_POINTED', "⛪ ゴシック尖頭アーチ (Gothic Pointed)", "大聖堂・地下聖堂の鋭利な尖頭アーチに追従する扉上端"),
+            ('SEGMENTAL', "🌉 偏平アーチ (Segmental Arch)", "半円より低い緩やかな円弧、天井の低い通路や地下室向け")
+        ],
+        default='ROMAN_ROUND'
+    )
+    door_pillar_shape: bpy.props.EnumProperty(
+        name="石枠支柱形状 (Pillar Shape)",
+        items=[
+            ('SQUARE_PIER', "🧱 角柱・ピアー (Square Pier)", "重厚な角柱支柱＋柱頭モールディング"),
+            ('OCTAGONAL', "💎 八角柱 (Octagonal Pier)", "角を落としたクラシックな八角柱"),
+            ('ROUND_COLUMN', "🏛️ 円柱・コラム (Round Column)", "クラシックな円柱＋ベース台座")
+        ],
+        default='SQUARE_PIER'
+    )
+    door_pillar_width: bpy.props.FloatProperty(
+        name="石枠柱の太さ (Pillar Width)",
+        default=0.42, min=0.15, max=1.2,
+        unit='LENGTH',
+        description="アーチ開口を支える左右の石柱の太さ (m)"
+    )
+    door_column_height: bpy.props.FloatProperty(
+        name="石枠柱の高さ (Column Height)",
+        default=1.7, min=0.6, max=6.0,
+        unit='LENGTH',
+        description="アーチが始まる高さ（柱身の垂直方向の長さ）(m)"
+    )
+    door_has_keystone: bpy.props.BoolProperty(
+        name="🏛️ 中央要石 (Keystone)",
+        default=True,
+        description="アーチ頂点に突出する要石を配置"
+    )
+    door_strap_style: bpy.props.EnumProperty(
+        name="帯金具様式 (Strap Style)",
+        items=[
+            ('CROSS_Z', "⚡ Z字たすき掛け帯金具 (Z-Brace Strap)", "上下横帯＋対角一本の伝統的なZ字補強帯（城門・納屋扉の定番）"),
+            ('DOUBLE_DIAGONAL', "✖️ X字たすき掛け帯金具 (X-Brace Strap)", "上下横帯＋対角二本のX字補強帯、より重厚な防御的印象"),
+            ('HORIZONTAL_BANDS', "☰ 水平帯金具 (Horizontal Bands)", "等間隔に並ぶ3本の水平帯金具のみのシンプルな様式"),
+            ('NONE', "帯金具なし (None)", "帯金具を配置しない板張りのみの扉")
+        ],
+        default='CROSS_Z'
+    )
+    door_stud_pattern: bpy.props.EnumProperty(
+        name="鋲パターン (Stud Pattern)",
+        items=[
+            ('GRID', "⚫ 格子状の鋲 (Grid Studs)", "均等な格子状に並ぶ鍛鉄の鋲(リベット)"),
+            ('DIAMOND', "💠 千鳥格子の鋲 (Diamond Studs)", "一段おきにずらした菱形格子状の鋲"),
+            ('NONE', "鋲なし (None)", "鋲を配置しない")
+        ],
+        default='GRID'
+    )
+    door_handle_style: bpy.props.EnumProperty(
+        name="取っ手様式 (Handle Style)",
+        items=[
+            ('RING_PULL', "⭕ 鉄リング取っ手 (Ring Pull)", "台座プレート＋円形の鍛鉄リング取っ手"),
+            ('DROP_KNOCKER', "🔔 ドロップノッカー (Drop Knocker)", "台座プレートから垂れ下がる大きめのリング型ノッカー"),
+            ('NONE', "取っ手なし (None)", "取っ手を配置しない")
+        ],
+        default='RING_PULL'
+    )
+    door_has_hinges: bpy.props.BoolProperty(
+        name="🔩 蝶番帯金具 (Strap Hinges)",
+        default=True,
+        description="蝶番側から扉面に伸びる装飾的な補強帯金具を配置"
+    )
+    door_has_edge_trim: bpy.props.BoolProperty(
+        name="🔲 縁取り金属フレーム (Edge Trim)",
+        default=True,
+        description="扉の外周（底辺・左右・アーチ弧）を一周する金属の縁取り帯を配置。木材とは別のironマテリアルスロットになるため、独立してテクスチャを差し替え可能"
+    )
+    door_edge_trim_width: bpy.props.FloatProperty(
+        name="縁取りの幅 (Edge Trim Width)",
+        default=0.05, min=0.02, max=0.15,
+        unit='LENGTH',
+        description="外周を縁取る金属帯の幅 (m)"
+    )
+    door_wood_material: bpy.props.EnumProperty(
+        name="木材質感 (Wood Material)",
+        items=[
+            ('WEATHERED_OAK', "🪵 風化したオーク材 (Weathered Oak)", "褐色でざらついた、年季の入った標準的な扉材"),
+            ('DARK_WALNUT', "🪵 深色ウォールナット (Dark Walnut)", "重厚感のある深いダークブラウン"),
+            ('BLEACHED_GREY', "🪵 潮風で色褪せた灰木 (Bleached Grey)", "灰色がかった古びた漂白木材")
+        ],
+        default='WEATHERED_OAK'
+    )
+    door_iron_style: bpy.props.EnumProperty(
+        name="鉄金具質感 (Iron Material)",
+        items=[
+            ('BLACK_FORGED', "⚙️ 黒鍛鉄 (Black Forged Iron)", "艶消しの黒い鍛鉄"),
+            ('RUSTED', "🟤 赤錆びた鉄 (Heavily Rusted Iron)", "全体的に赤茶色く錆びた鉄")
+        ],
+        default='BLACK_FORGED'
+    )
+    door_damage: bpy.props.FloatProperty(
+        name="経年欠け・チッピング (Damage)",
+        default=0.35, min=0.0, max=1.0,
+        description="石枠の角欠け・ノミ削り・エッジ摩耗"
+    )
+    door_weathering: bpy.props.FloatProperty(
+        name="汚し・風化 (Weathering)",
+        default=0.55, min=0.0, max=1.0,
+        description="木材の雨染み・水垢と、鉄金具の赤錆の強さ"
+    )
+    door_moss_amount: bpy.props.FloatProperty(
+        name="足元の苔・湿気 (Ground Moss)",
+        default=0.20, min=0.0, max=1.0,
+        description="石枠・扉下端に這い上がる苔と湿気の量"
+    )
+    door_open_angle: bpy.props.FloatProperty(
+        name="開閉角度 (Open Angle)",
+        default=0.0, min=0.0, max=120.0,
+        unit='ROTATION',
+        description="扉の開閉角度（0度で閉、ヒンジ回転軸で開閉。将来的な開閉/破壊アニメの土台にもなります）"
+    )
+    door_open_direction: bpy.props.EnumProperty(
+        name="開閉方向 (Open Direction)",
+        items=[
+            ('OUTWARD', "外開き (Outward)", "外側に向かって開く"),
+            ('INWARD', "内開き (Inward)", "内側に向かって開く")
+        ],
+        default='OUTWARD'
+    )
+    door_combine: bpy.props.BoolProperty(
+        name="単一メッシュ結合 (Combine into 1 Mesh)",
+        default=False,
+        description="オフの場合、開閉/破壊アニメ用にFrameとLeafが正確なヒンジピボット付き親子階層で出力されます"
     )
 
     # Spiral Stairs Properties

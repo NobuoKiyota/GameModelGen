@@ -851,6 +851,65 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 row_w_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='FILE_REFRESH')
                 row_w_sub.operator("mesh.create_new_prop", text="➕ 新規西洋窓を生成", icon='ADD')
 
+            # 🚪 Western Arch Door Preset Specific（ダンジョン向け経年劣化両開き扉）
+            elif props.prop_category == 'DOOR':
+                box_door = layout.box()
+                box_door.label(text="🚪 西洋風アーチ両開き扉 (Western Arch Door):", icon='MOD_BUILD')
+
+                # 1. アーチ形状・石枠支柱
+                box_d_arch = box_door.box()
+                box_d_arch.label(text="🏛️ アーチ形状・石枠支柱 (Arch & Pier):", icon='SNAP_VOLUME')
+                box_d_arch.prop(props, "door_arch_style", text="アーチ形状")
+                box_d_arch.prop(props, "door_pillar_shape", text="支柱形状")
+                row_d_pier = box_d_arch.row(align=True)
+                row_d_pier.prop(props, "door_pillar_width", text="柱の太さ")
+                row_d_pier.prop(props, "door_column_height", text="柱の高さ")
+                box_d_arch.prop(props, "door_has_keystone", text="🏛️ 中央要石 (Keystone)")
+
+                # 2. 扉パネル・鉄金具ディテール
+                box_d_leaf = box_door.box()
+                box_d_leaf.label(text="⚙️ 扉パネル・鉄金具ディテール (Leaf & Ironwork):", icon='MESH_CUBE')
+                box_d_leaf.prop(props, "door_strap_style", text="帯金具様式")
+                box_d_leaf.prop(props, "door_stud_pattern", text="鋲パターン")
+                box_d_leaf.prop(props, "door_handle_style", text="取っ手様式")
+                box_d_leaf.prop(props, "door_has_hinges", text="🔩 蝶番帯金具")
+                row_d_trim = box_d_leaf.row(align=True)
+                row_d_trim.prop(props, "door_has_edge_trim", text="🔲 縁取り金属フレーム", toggle=True)
+                if props.door_has_edge_trim:
+                    row_d_trim.prop(props, "door_edge_trim_width", text="縁取り幅")
+
+                # 3. 質感（木材・鉄）
+                box_d_mat = box_door.box()
+                box_d_mat.label(text="🎨 質感 (Wood & Iron):", icon='MATERIAL')
+                box_d_mat.prop(props, "door_wood_material", text="木材質感")
+                box_d_mat.prop(props, "door_iron_style", text="鉄金具質感")
+
+                # 4. 経年風化・汚し & 欠け設定
+                box_d_weath = box_door.box()
+                box_d_weath.label(text="経年風化・汚し & 欠け (Dungeon Aging & Wear):", icon='BRUSH_DATA')
+                box_d_weath.prop(props, "door_damage", text="🧱 経年欠け・チッピング", slider=True)
+                box_d_weath.prop(props, "door_weathering", text="🌧️ 汚し・風化 (木の雨染み/鉄の錆)", slider=True)
+                box_d_weath.prop(props, "door_moss_amount", text="🌿 足元の苔・湿気", slider=True)
+
+                # 5. 開閉インタラクション設定
+                box_d_open = box_door.box()
+                box_d_open.label(text="🚪 開閉インタラクション設定:", icon='OBJECT_DATAMODE')
+                box_d_open.prop(props, "door_open_angle", text="開閉角度 (プレビュー)", slider=True)
+                box_d_open.prop(props, "door_open_direction", text="開閉方向")
+                box_d_open.prop(props, "door_combine", text="単一メッシュ結合 (開閉/破壊アニメ用にはOFF)")
+
+                # 特徴ヒント
+                box_d_hint = box_door.box()
+                box_d_hint.label(text="💡 蝶番の回転軸(Pivot)が正確に配置された親子階層で出力されます", icon='INFO')
+                box_d_hint.label(text="   将来的な開閉アニメ・破壊(打ち破り)アニメの土台としてもそのまま利用できます")
+
+                col_d_btn = box_door.column(align=True)
+                col_d_btn.scale_y = 1.3
+                col_d_btn.operator("mesh.update_selected_prop", text="🔄 パラメータを反映・更新 (選択中を更新)", icon='FILE_REFRESH')
+                row_d_sub = col_d_btn.row(align=True)
+                row_d_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='FILE_REFRESH')
+                row_d_sub.operator("mesh.create_new_prop", text="➕ 新規アーチ扉を生成", icon='ADD')
+
             # 📖 Dictionary (Single Book) Specific
             elif props.prop_category == 'DICTIONARY':
                 box_dict = layout.box()

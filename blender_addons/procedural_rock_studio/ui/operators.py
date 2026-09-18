@@ -261,6 +261,8 @@ def sanitize_prop_base_name(name, category, default_name):
     import re
     if category == "WINDOW":
         name = re.sub(r'(_Frame|_Sash_L|_Sash_R|_Mesh)+$', '', name).strip()
+    elif category == "DOOR":
+        name = re.sub(r'(_Frame|_Leaf_L|_Leaf_R|_Mesh)+$', '', name).strip()
     elif category == "CAVE":
         name = re.sub(r'(_Floor|_Water|_Ceiling|_Pillars|_Debris)+$', '', name).strip()
     elif category == "CANDLE_STAND":
@@ -368,6 +370,24 @@ def reroll_category_properties(props, category):
         props.window_moss_amount = round(random.uniform(0.0, 0.40), 2)
         props.window_sash_mode = random.choice(['DOUBLE_CASEMENT', 'FIXED'])
         props.window_sash_material = random.choice(['DARK_WOOD', 'WHITE_WOOD', 'WROUGHT_IRON', 'BRONZE'])
+
+    elif category == "DOOR":
+        props.door_arch_style = random.choice(['ROMAN_ROUND', 'GOTHIC_POINTED', 'SEGMENTAL'])
+        props.door_pillar_shape = random.choice(['SQUARE_PIER', 'OCTAGONAL', 'ROUND_COLUMN'])
+        props.door_pillar_width = round(random.uniform(0.32, 0.55), 2)
+        props.door_column_height = round(random.uniform(1.4, 2.1), 2)
+        props.door_has_keystone = random.choice([True, False])
+        props.door_strap_style = random.choice(['CROSS_Z', 'DOUBLE_DIAGONAL', 'HORIZONTAL_BANDS'])
+        props.door_stud_pattern = random.choice(['GRID', 'DIAMOND'])
+        props.door_handle_style = random.choice(['RING_PULL', 'DROP_KNOCKER'])
+        props.door_has_hinges = True
+        props.door_has_edge_trim = random.choice([True, True, False])
+        props.door_edge_trim_width = round(random.uniform(0.035, 0.08), 3)
+        props.door_wood_material = random.choice(['WEATHERED_OAK', 'DARK_WALNUT', 'BLEACHED_GREY'])
+        props.door_iron_style = random.choice(['BLACK_FORGED', 'RUSTED'])
+        props.door_damage = round(random.uniform(0.15, 0.55), 2)
+        props.door_weathering = round(random.uniform(0.30, 0.75), 2)
+        props.door_moss_amount = round(random.uniform(0.0, 0.45), 2)
 
     elif category == "PILLAR":
         props.pillar_type = random.choice([
