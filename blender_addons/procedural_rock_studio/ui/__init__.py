@@ -35,7 +35,8 @@ from .operators import (
     MESH_OT_convert_castle_wall_to_game_mesh,
     MESH_OT_create_cave,
     MESH_OT_regenerate_cave,
-    MESH_OT_reroll_cave
+    MESH_OT_reroll_cave,
+    MESH_OT_generate_door_destruction
 )
 
 from .panel import VIEW3D_PT_prop_studio_panel
@@ -78,6 +79,7 @@ classes = (
     MESH_OT_create_cave,
     MESH_OT_regenerate_cave,
     MESH_OT_reroll_cave,
+    MESH_OT_generate_door_destruction,
     VIEW3D_PT_prop_studio_panel,
 )
 

@@ -910,6 +910,17 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 row_d_sub.operator("mesh.reroll_selected_prop", text="🎲 形状を再抽選 (Re-Roll)", icon='FILE_REFRESH')
                 row_d_sub.operator("mesh.create_new_prop", text="➕ 新規アーチ扉を生成", icon='ADD')
 
+                # 💥 破壊アニメーション（木っ端微塵・UE持ち込み用）
+                box_d_destroy = box_door.box()
+                box_d_destroy.label(text="💥 破壊アニメーション (Destruction / for Unreal Engine):", icon='MOD_EXPLODE')
+                row_d_destroy_param = box_d_destroy.row(align=True)
+                row_d_destroy_param.prop(props, "door_destruction_shard_count", text="破片数/枚")
+                row_d_destroy_param.prop(props, "door_destruction_frame_count", text="フレーム数")
+                box_d_destroy.label(text="※ Door_Frame または Door_Leaf を選択した状態で実行してください", icon='INFO')
+                col_d_destroy_btn = box_d_destroy.column(align=True)
+                col_d_destroy_btn.scale_y = 1.3
+                col_d_destroy_btn.operator("mesh.generate_door_destruction", text="💥 木っ端微塵に破壊してFBX出力", icon='MOD_EXPLODE')
+
             # 📖 Dictionary (Single Book) Specific
             elif props.prop_category == 'DICTIONARY':
                 box_dict = layout.box()

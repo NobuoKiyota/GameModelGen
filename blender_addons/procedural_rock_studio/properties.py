@@ -328,6 +328,8 @@ def update_category_preset(self, context):
         props.door_open_angle = 0.0
         props.door_open_direction = 'OUTWARD'
         props.door_combine = False
+        props.door_destruction_shard_count = 16
+        props.door_destruction_frame_count = 70
         props.uv_mapping_mode = 'FIT'
     elif cat == "RELIEF_WALL":
         props.size_x = 3.0
@@ -2614,6 +2616,16 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="単一メッシュ結合 (Combine into 1 Mesh)",
         default=False,
         description="オフの場合、開閉/破壊アニメ用にFrameとLeafが正確なヒンジピボット付き親子階層で出力されます"
+    )
+    door_destruction_shard_count: bpy.props.IntProperty(
+        name="破片数 (Shard Count / 1枚あたり)",
+        default=16, min=6, max=60,
+        description="扉パネル1枚あたりの木っ端微塵に砕ける破片の数。多いほど細かく砕けるがシミュレーションが重くなる"
+    )
+    door_destruction_frame_count: bpy.props.IntProperty(
+        name="シミュレーションフレーム数 (Frame Count)",
+        default=70, min=20, max=200,
+        description="破壊アニメーションの長さ（フレーム数）。物理シミュレーションを回す長さでもある"
     )
 
     # Spiral Stairs Properties

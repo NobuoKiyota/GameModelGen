@@ -1624,5 +1624,66 @@ class MESH_OT_create_cave(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class MESH_OT_generate_door_destruction(bpy.types.Operator):
+    """扉(Door_Leaf_L/R)を木っ端微塵に砕け散らせる物理シミュレーション破壊アニメを生成し、FBXへ書き出す（Unreal Engine持ち込み用）"""
+    bl_idname = "mesh.generate_door_destruction"
+    bl_label = "Generate Door Destruction Animation"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.prop_studio_props
+        active_obj = context.active_object
+        if not active_obj:
+            self.report({'WARNING'}, "破壊したいDoorオブジェクト（Frame または Leaf）を選択してください")
+            return {'CANCELLED'}
+
+        if "_Leaf_L" in active_obj.name or "_Leaf_R" in active_obj.name:
+            frame_obj = active_obj.parent or active_obj
+        else:
+            frame_obj = active_obj
+
+        leaf_l, leaf_r = None, None
+        for child in frame_obj.children:
+            if child.name.endswith("_Leaf_L"):
+                leaf_l = child
+            elif child.name.endswith("_Leaf_R"):
+                leaf_r = child
+
+        if not leaf_l and not leaf_r:
+            self.report({'ERROR'}, "選択オブジェクトの子に Door_Leaf_L / Door_Leaf_R が見つかりません（DOORカテゴリで生成した扉を選択してください）")
+            return {'CANCELLED'}
+
+        from ..generators.door_destruction_gen import generate_door_destruction
+        from ..utils.anim_baker import export_door_destruction_fbx
+
+        self.report({'INFO'}, "扉破壊アニメーションを生成中…（物理シミュレーションのため数十秒〜数分かかります）")
+        try:
+            combined_obj, action = generate_door_destruction(
+                context=context,
+                leaf_obj_l=leaf_l,
+                leaf_obj_r=leaf_r,
+                frame_obj=frame_obj,
+                shard_count=props.door_destruction_shard_count,
+                frame_count=props.door_destruction_frame_count,
+                seed=random.randint(1, 999999),
+                name=f"{frame_obj.name}_Destruction"
+            )
+        except Exception as e:
+            self.report({'ERROR'}, f"破壊アニメ生成エラー: {str(e)}")
+            return {'CANCELLED'}
+
+        export_dir = props.export_folder.strip() or r"Z:\MeshCreator\exports"
+        final_fbx_path = get_next_available_fbx_path(export_dir, combined_obj.name)
+        try:
+            export_door_destruction_fbx(combined_obj, final_fbx_path)
+            self.report({'INFO'}, f"破壊アニメFBX出力完了: {os.path.basename(final_fbx_path)}")
+        except Exception as e:
+            self.report({'WARNING'}, f"メッシュ・アニメ生成は成功しましたがFBX出力に失敗しました: {str(e)}")
+
+        context.view_layer.objects.active = combined_obj
+        combined_obj.select_set(True)
+        return {'FINISHED'}
+
+
 
 
