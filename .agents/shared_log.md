@@ -394,6 +394,33 @@ MeshCreatorへの応用ポイント付き）で文字起こし・要点整理し
 
 **参照**:
 - Blendファイル: `Z:\MeshCreator\Blender_HumanStudy\v03D_Gem_mouth_corrected.blend`
-- 側面検証画像: `Z:\MeshCreator\Blender_HumanStudy\v03D_Gem_check_side.png`
-- 正面検証画像: `Z:\MeshCreator\Blender_HumanStudy\v03D_Gem_check_front.png`
-- 3Dソリッドパース: `Z:\MeshCreator\Blender_HumanStudy\v03D_Gem_solid_persp.png`
+- 側面検証画像: `Z:\MeshCreator\Blender_HumanStudy\renders\v03D_Gem_check_side.png`
+- 正面検証画像: `Z:\MeshCreator\Blender_HumanStudy\renders\v03D_Gem_check_front.png`
+- 3Dソリッドパース: `Z:\MeshCreator\Blender_HumanStudy\renders\v03D_Gem_solid_persp.png`
+
+---
+
+## [2026-09-19 11:50] Antigravity — v03E_Gem（解剖学的正位置への口配置＆失敗分析レポート追加）完了
+
+**状況**: ユーザー様より「赤いのが鼻？」「口であったのですか、であるならば耳より高い口があると思いますか？」との決定的なご指摘を受領。下絵画像のピクセルZマッピングを実施し、解剖学的正位置への口配置とソケット完全内蔵を完了（ユーザー承認「大丈夫そうです」受領）。
+
+**分かったこと/やったこと**:
+- **高さ誤認の真相**:
+  - 下絵の厳密なZ座標: 耳上端 $Z=-0.105$, 鼻先端 $Z=-0.131$, 耳たぶ $Z=-0.188$, 本来の口 $Z=-0.190$, 顎 $Z=-0.240$。
+  - v03Dでは鼻より上、耳のてっぺん・目の高さ（$Z=-0.105$）に口を作っており、さらにソケットが外側に1.5cm突き出ていたため「突き出た赤い鼻？」と誤認させていた。
+- **根本是正 (`v03E_Gem_mouth_anatomical.blend`)**:
+  - 耳たぶの下・顎の上の正しい位置（$Z=-0.190$）に口を開口。
+  - 口内ソケットを頭部内部（$+Y$ 奥）へ完全収容し、外側へのハミ出しを完全ゼロ化。
+  - 下絵真重ね検証（右側面・正面・立体パース）で全方位100点合致を確認。
+- **失敗資産レポート＆管理記録**:
+  - `HumanStudy_WorkLog_Gem.xlsx` に専用新シート **「口モデリング失敗分析レポート」** を新設（時系列タイムライン、RCA、幾何真値データ、恒久再発防止ルール4箇条を網羅）。
+  - シート2「失敗資産・教訓集」に教訓7（解剖学的上下関係の確認不足とピクセルZマッピング義務化）を追加。
+  - Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）にレポートMD・最新Excel・検証画像をすべて保管完了。
+
+**参照**:
+- Blendファイル: `Z:\MeshCreator\Blender_HumanStudy\v03E_Gem_mouth_anatomical.blend`
+- 側面検証画像: `Z:\MeshCreator\Blender_HumanStudy\renders\v03E_Gem_check_side.png`
+- 正面検証画像: `Z:\MeshCreator\Blender_HumanStudy\renders\v03E_Gem_check_front.png`
+- 3Dソリッドパース: `Z:\MeshCreator\Blender_HumanStudy\renders\v03E_Gem_solid_persp.png`
+- 議事録レポート: `Z:\MeshCreator\ai_archives\2026-09-19_v03E_Gem_mouth_failure_report.md`
+
