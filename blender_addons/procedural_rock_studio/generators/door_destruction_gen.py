@@ -99,8 +99,9 @@ def generate_door_destruction(
       左右リーフそれぞれ1つの塊のまま吹き飛ばす（現実の鍛鉄帯が紙吹雪のように砕け散ることはないため）
     - Door_Frame（石造アーチ）は破壊対象に含めず、破片の衝突コライダー(PASSIVE)としてのみ使用
     - impact_strength: 衝撃点からの飛散距離の強さ（目安0.5〜2.0）。密着した破片は摩擦で
-      固まって動かないため、最初の impact_frames の間だけキネマティックで強制的に弾き飛ばし、
-      以降はRigid Bodyの重力・衝突に引き渡して自然に落下・転がらせる
+      固まって動かないため、シミュレーション開始前に初期配置をあらかじめ引き離しておき、
+      さらに最初の impact_frames の間だけFORCEエフェクターで外向きに押して、
+      以降はRigid Bodyの重力・衝突のみで自然に落下・転がらせる
     """
     rng = random.Random(seed)
     scene = context.scene
@@ -115,6 +116,20 @@ def generate_door_destruction(
 
     if frame_obj is None:
         frame_obj = leaf_obj_l.parent
+
+    # 0b. 剛体ワールド自体を作り直し、ポイントキャッシュを完全にリセットする。
+    # 同じBlenderセッション内でこの関数を2回目以降呼ぶと、前回シミュレーションした
+    # フレーム範囲のキャッシュが「まだ有効」とみなされて残ってしまい、今回新しく
+    # 追加した破片オブジェクトなのに衝撃フレーム以降だけ元の姿勢に固まって見える、
+    # という不具合が実際に再現した（`bpy.ops.ptcache.free_bake_all()`はヘッドレス/
+    # スクリプト実行時のcontext.poll制約で無反応になり効果がなかったため、
+    # 剛体ワールド自体を明示的に作り直す方式に変更）。
+    if context.scene.rigidbody_world:
+        try:
+            bpy.ops.rigidbody.world_remove()
+        except Exception:
+            pass
+    bpy.ops.rigidbody.world_add()
 
     tracked_objects = []   # 破片オブジェクトのリスト。結合順を固定するため追加順を保持
     passive_objs = []
@@ -216,13 +231,24 @@ def generate_door_destruction(
     rw.substeps_per_frame = 20
     rw.solver_iterations = 20
 
-    cur_frame = scene.frame_current
-    release_frame = cur_frame + max(1, impact_frames)
+    # 【重要】剛体シミュレーションは必ず point_cache.frame_start から連続してステップしないと
+    # 正しく評価されない（Bulletの内部状態がそこから積み上がる）。呼び出し時点の
+    # scene.frame_current（前回このアドオンを使った後の閲覧位置や、他の操作で
+    # 動いたフレーム）をそのまま基準に使うと、frame_start以外から急に frame_set() した
+    # 場合に物理演算の評価結果が初期値で固まったまま変化しなくなる不具合が実際に
+    # 再現した。シミュレーション用の基準フレームは常に point_cache.frame_start を使う。
+    cur_frame = rw.point_cache.frame_start
 
     # 6. 密着したまま組み上がった破片は摩擦・噛み合いで固まって動かないため、
-    # Rigid Body自体の物理演算ではなく、まず「キネマティック(直接アニメーション)」で
-    # 衝撃点から放射状に強制的に弾き飛ばし、release_frameでダイナミクスへ引き渡して
-    # 重力・床/石枠との衝突による自然な落下・転がりを続けさせる
+    # シミュレーション開始前（まだ一度もframe_setしていない時点）に、衝撃点から
+    # 放射状にランダム方向を強く混ぜてあらかじめ引き離しておく。
+    # 【重要】以前はここを「キネマティックでキーフレームアニメさせ、release_frameで
+    # rigid_body.kinematicをFalseに切り替えてダイナミクスへ引き渡す」方式にしていたが、
+    # 同じBlenderセッション内で本関数を2回目以降呼ぶと、そのキネマティック→ダイナミクス
+    # 引き渡しの瞬間から物理演算の評価結果が壊れた/初期値に固まったまま変化しなくなる
+    # 不具合が実際に再現し、剛体ワールドの作り直し等では解決しなかった。
+    # 全破片を最初からACTIVE(非キネマティック)のまま「初期配置だけ事前にずらす」方式に
+    # 変更することでこの問題を回避している（キーフレームやkinematic切り替えを一切使わない）。
     impact_point = sum(impact_centers, Vector()) / max(1, len(impact_centers))
     impact_point.y -= 0.35  # 扉の少し手前（外側）から打ち破られたイメージ
 
@@ -238,40 +264,42 @@ def generate_door_destruction(
         rand_dir = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-0.2, 1.0))).normalized()
         outward = (outward * 0.35 + rand_dir * 0.65).normalized()
 
-        rb = o.rigid_body
-        rb.kinematic = True
-        o.keyframe_insert(data_path="rigid_body.kinematic", frame=cur_frame)
-        o.keyframe_insert(data_path="location", frame=cur_frame)
-        o.keyframe_insert(data_path="rotation_euler", frame=cur_frame)
-
-        # キネマティック→ダイナミクス引き渡し時の瞬間速度が暴走しないよう移動量は抑えつつ、
-        # 近い/遠いによる差を小さくして「全体が均等に吹き飛ぶ」ようにする
-        # （あとはRigid Bodyの重力・衝突・摩擦が自然に運動を続けてくれる）
         explosion_dist = impact_strength * (0.55 + rng.uniform(0.0, 0.45))
         explosion_dist = min(explosion_dist, 1.3)  # 極端な飛び過ぎを防ぐ上限
         o.location = o.location + outward * explosion_dist
         o.rotation_euler.x += math.radians(rng.uniform(-160, 160))
         o.rotation_euler.y += math.radians(rng.uniform(-160, 160))
         o.rotation_euler.z += math.radians(rng.uniform(-160, 160))
-        o.keyframe_insert(data_path="location", frame=release_frame)
-        o.keyframe_insert(data_path="rotation_euler", frame=release_frame)
 
-        rb.kinematic = False
-        o.keyframe_insert(data_path="rigid_body.kinematic", frame=release_frame)
+    # 7. 衝撃点にFORCEエフェクターを配置し、最初の数フレームだけさらに外向きへ押して
+    # バラけを後押しする（force fieldはkinematic切り替えと違い再現性のある不具合が
+    # 見られなかったため、追加の演出としてこちらを使う）
+    bpy.ops.object.effector_add(type='FORCE', location=impact_point)
+    force_obj = context.active_object
+    force_obj.name = f"{name}_ImpactForce"
+    force_obj.field.strength = 3000.0 * impact_strength
+    force_obj.field.falloff_power = 1.5
 
-    # 7. シミュレーション実行 & サンプリング
+    # 8. シミュレーション実行 & サンプリング
+    scene.frame_set(cur_frame)
     sampled = {}  # frame_index(0開始) -> {obj: matrix_world}
     sampled[0] = dict(initial_matrices)
 
     dg = context.evaluated_depsgraph_get()
+    force_removed = False
     for f in range(cur_frame + 1, cur_frame + frame_count + 1):
         scene.frame_set(f)
+        if not force_removed and f - cur_frame >= max(1, impact_frames):
+            bpy.data.objects.remove(force_obj, do_unlink=True)
+            force_removed = True
         rel = f - cur_frame
         if rel % sample_step == 0 or rel == frame_count:
             dg = context.evaluated_depsgraph_get()
             sampled[rel] = {o: o.evaluated_get(dg).matrix_world.copy() for o in tracked_objects}
 
-    # 8. 後始末：剛体コンポーネント除去、姿勢をframe=1に戻す
+    # 9. 後始末：剛体コンポーネント除去、姿勢をframe=1に戻す
+    if not force_removed:
+        bpy.data.objects.remove(force_obj, do_unlink=True)
     for o in tracked_objects + passive_objs:
         bpy.ops.object.select_all(action='DESELECT')
         o.select_set(True)
@@ -291,7 +319,7 @@ def generate_door_destruction(
     rw.solver_iterations = orig_iters
     scene.frame_set(saved_frame)
 
-    # 9. 結合(intact姿勢のまま) → シェイプキー焼き付け
+    # 10. 結合(intact姿勢のまま) → シェイプキー焼き付け
     # bpy.ops.object.join() は内部の結合順序が選択順と一致する保証がないため使わず、
     # 自前のbmeshで「orderリストの順序どおり」に頂点・面をワールド座標のまま積み上げる
     # （どの頂点範囲がどの元オブジェクトかを100%確定させるため）
