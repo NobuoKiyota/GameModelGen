@@ -424,3 +424,32 @@ MeshCreatorへの応用ポイント付き）で文字起こし・要点整理し
 - 3Dソリッドパース: `Z:\MeshCreator\Blender_HumanStudy\renders\v03E_Gem_solid_persp.png`
 - 議事録レポート: `Z:\MeshCreator\ai_archives\2026-09-19_v03E_Gem_mouth_failure_report.md`
 
+---
+
+## [2026-09-19 12:15] Antigravity — v04A_Gem（第2回：体のつくり方 開始・首の押し出し完了）
+
+**状況**: チュートリアル第2回「体のつくり方！」に着手。ステップ1（00:00〜01:50）の頭部底面からの首開口・押し出し工程を実施・検証完了。
+
+**分かったこと/やったこと**:
+- **動画手順の完全再現 (`v04A_Gem_neck_extrude.blend`)**:
+  - 頭部底面の中心ポール扇形面（頂点14接続）のみを面差し込み（I）し、中心を開口。顎ライン（頂点61）には一切触れず無傷に保持。
+  - 開口境界エッジを半径 $R=0.048\text{m}$（下絵首幅140pxに合致）に真円整流。
+  - $E+Z$ で下絵の首下端（$Z=-0.325\text{m}$）までまっすぐ押し出し、下部を自然なフレア形状（$R=0.052\text{m}$）に調整。
+- **下絵真重ね目視検証**:
+  - **側面（テンキー3）**: 顎のラインの乱れが一切なく、顎奥から下絵通りの垂直な首が綺麗に生えていることを確認。
+  - **正面（テンキー1）**: 左右対称でまっすぐ下絵の首の幅・長さに100%吸着。
+  - **立体パース**: 頭部と首の接続部が極めて自然で滑らかなデフォルメ素体として成立。
+- **管理記録・バックアップ**:
+  - `HumanStudy_WorkLog_Gem.xlsx`（および `_latest.xlsx`）の行16に `v04A_Gem`（合格、100点）を追加。
+  - Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）に最新Excelと検証画像3枚を同期。
+
+**次の工程**:
+- チュートリアル第2回ステップ2：立方体ベースの胴体作成（Cube追加 $\to$ Subsurfレベル1確定適用 $\to$ 首下配置 $\to$ S字カーブ調整）。
+
+**参照**:
+- Blendファイル: `Z:\MeshCreator\Blender_HumanStudy\v04A_Gem_neck_extrude.blend`
+- 正面検証画像: `Z:\MeshCreator\Blender_HumanStudy\renders\v04A_Gem_check_front.png`
+- 側面検証画像: `Z:\MeshCreator\Blender_HumanStudy\renders\v04A_Gem_check_side.png`
+- 3Dソリッドパース: `Z:\MeshCreator\Blender_HumanStudy\renders\v04A_Gem_solid_persp.png`
+
+
