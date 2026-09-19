@@ -4,7 +4,7 @@ import math
 import random
 from mathutils import Vector, Matrix
 
-from ..utils.anim_baker import bake_object_group_to_shapekeys
+from ..utils.anim_baker import bake_object_group_to_shapekeys, bake_object_group_to_armature
 
 
 def _duplicate_object(context, src_obj, new_name=None):
@@ -88,7 +88,9 @@ def generate_door_destruction(
     impact_frames=4,
     subdivide_cuts=2,
     seed=0,
-    name="Door_Destruction"
+    name="Door_Destruction",
+    bake_mode='BONES',
+    debug_out=None
 ):
     """
     Door_Leaf_L / Door_Leaf_R を木っ端微塵に砕け散らせ、その様子をシェイプキー(頂点キャッシュ的)
@@ -102,6 +104,9 @@ def generate_door_destruction(
       固まって動かないため、シミュレーション開始前に初期配置をあらかじめ引き離しておき、
       さらに最初の impact_frames の間だけFORCEエフェクターで外向きに押して、
       以降はRigid Bodyの重力・衝突のみで自然に落下・転がらせる
+    - bake_mode: 'BONES'(既定)=破片ごとに1ボーンのスケルタルメッシュ＋ボーンアニメ(UE向け、毎フレーム焼き付け、
+      メッシュ/ボーンはDoor_Frameのローカル空間、Armatureオブジェクトが Door_Frame のワールド行列を持つ)。
+      'SHAPEKEYS'=従来のシェイプキー方式(ワールド空間)
     """
     rng = random.Random(seed)
     scene = context.scene
@@ -287,13 +292,14 @@ def generate_door_destruction(
 
     dg = context.evaluated_depsgraph_get()
     force_removed = False
+    eff_step = 1 if bake_mode == 'BONES' else sample_step  # ボーン方式は毎フレーム焼き付け(補間誤差を出さない)
     for f in range(cur_frame + 1, cur_frame + frame_count + 1):
         scene.frame_set(f)
         if not force_removed and f - cur_frame >= max(1, impact_frames):
             bpy.data.objects.remove(force_obj, do_unlink=True)
             force_removed = True
         rel = f - cur_frame
-        if rel % sample_step == 0 or rel == frame_count:
+        if rel % eff_step == 0 or rel == frame_count:
             dg = context.evaluated_depsgraph_get()
             sampled[rel] = {o: o.evaluated_get(dg).matrix_world.copy() for o in tracked_objects}
 
@@ -325,6 +331,14 @@ def generate_door_destruction(
     # （どの頂点範囲がどの元オブジェクトかを100%確定させるため）
     order = list(tracked_objects)
 
+    # ボーン方式: メッシュ・ボーン・デルタをDoor_Frameのローカル空間で持ち、UE側で「扉の原点=アクター原点」にする。
+    # シェイプキー方式: 従来どおりワールド空間。
+    if bake_mode == 'BONES' and frame_obj is not None:
+        frame_world = frame_obj.matrix_world.copy()
+    else:
+        frame_world = Matrix.Identity(4)
+    frame_inv = frame_world.inverted()
+
     combined_bm = bmesh.new()
     combined_materials = []
     mat_to_slot = {}
@@ -336,7 +350,7 @@ def generate_door_destruction(
         mw = initial_matrices[o]
         vmap = {}
         for v in src_mesh.vertices:
-            nv = combined_bm.verts.new(mw @ v.co)
+            nv = combined_bm.verts.new(frame_inv @ (mw @ v.co))
             vmap[v.index] = nv
         combined_bm.verts.ensure_lookup_table()
 
@@ -377,16 +391,33 @@ def generate_door_destruction(
         bpy.data.objects.remove(o, do_unlink=True)
 
     frames_sorted = sorted(sampled.keys())
-    action = bake_object_group_to_shapekeys(
-        combined_obj,
-        vertex_ranges=vertex_ranges,
-        sampled_frames=frames_sorted,
-        sampled_transforms=sampled,
-        frame_offset=1
-    )
+    if bake_mode == 'BONES':
+        # 行列をメッシュと同じ空間(Door_Frameローカル)へ変換してからボーンへ焼き付ける
+        sampled_local = {rel: {o: frame_inv @ m for o, m in d.items()} for rel, d in sampled.items()}
+        arm_obj, action = bake_object_group_to_armature(
+            combined_obj,
+            vertex_ranges=vertex_ranges,
+            sampled_frames=frames_sorted,
+            sampled_transforms=sampled_local,
+            frame_offset=1
+        )
+        # Blender上ではDoor_Frameと同じ位置に見えるよう、ArmatureにDoor_Frameのワールド行列を持たせる
+        # （FBX出力時は export_door_destruction_fbx が一時的に原点へ戻す）
+        arm_obj.matrix_world = frame_world
+    else:
+        action = bake_object_group_to_shapekeys(
+            combined_obj,
+            vertex_ranges=vertex_ranges,
+            sampled_frames=frames_sorted,
+            sampled_transforms=sampled,
+            frame_offset=1
+        )
 
     scene.frame_start = 1
     scene.frame_end = max(frames_sorted) + 1
     scene.frame_set(1)
+
+    if debug_out is not None:
+        debug_out.update(sampled=sampled, vertex_ranges=vertex_ranges, frame_world=frame_world)
 
     return combined_obj, action

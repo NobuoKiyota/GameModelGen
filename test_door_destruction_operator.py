@@ -55,10 +55,13 @@ for o in bpy.data.objects:
     print("  obj:", o.name, o.type)
 
 import glob
-fbx_files = glob.glob(r"Z:\MeshCreator\exports\OpDoor*.fbx")
+import os
+fbx_files = glob.glob(r"Z:\MeshCreator\exports\OpDoor*_UE*\*.fbx")
 print("FBX files:", fbx_files)
 for f in fbx_files:
-    import os
     print(f"  {f} size={os.path.getsize(f)} bytes")
+assert any(f.endswith("_Frame.fbx") for f in fbx_files)
+assert any(f.endswith("_LeavesIntact.fbx") for f in fbx_files)
+assert any(f.endswith("_Destruction.fbx") for f in fbx_files)
 
 print("OPERATOR TEST DONE")

@@ -1654,7 +1654,7 @@ class MESH_OT_generate_door_destruction(bpy.types.Operator):
             return {'CANCELLED'}
 
         from ..generators.door_destruction_gen import generate_door_destruction
-        from ..utils.anim_baker import export_door_destruction_fbx
+        from ..utils.anim_baker import export_door_destruction_fbx, export_door_static_fbx
 
         self.report({'INFO'}, "扉破壊アニメーションを生成中…（物理シミュレーションのため数十秒〜数分かかります）")
         try:
@@ -1666,22 +1666,36 @@ class MESH_OT_generate_door_destruction(bpy.types.Operator):
                 shard_count=props.door_destruction_shard_count,
                 frame_count=props.door_destruction_frame_count,
                 seed=random.randint(1, 999999),
-                name=f"{frame_obj.name}_Destruction"
+                name=f"{frame_obj.name}_Destruction",
+                bake_mode='BONES'
             )
         except Exception as e:
             self.report({'ERROR'}, f"破壊アニメ生成エラー: {str(e)}")
             return {'CANCELLED'}
 
+        # UE向けに3ファイルを <export_folder>/<扉名>_UE/ へ出力:
+        #   _Frame(石枠 static) / _LeavesIntact(無傷の扉 static) / _Destruction(スケルタル＋ボーンアニメ)
         export_dir = props.export_folder.strip() or r"Z:\MeshCreator\exports"
-        final_fbx_path = get_next_available_fbx_path(export_dir, combined_obj.name)
+        base_name = frame_obj.name[:-len("_Frame")] if frame_obj.name.endswith("_Frame") else frame_obj.name
+        ue_dir = os.path.join(export_dir, f"{base_name}_UE")
+        idx = 1
+        while os.path.exists(ue_dir):
+            ue_dir = os.path.join(export_dir, f"{base_name}_UE_{idx:02d}")
+            idx += 1
         try:
-            export_door_destruction_fbx(combined_obj, final_fbx_path)
-            self.report({'INFO'}, f"破壊アニメFBX出力完了: {os.path.basename(final_fbx_path)}")
+            leaves = [o for o in (leaf_l, leaf_r) if o]
+            export_door_static_fbx([frame_obj], os.path.join(ue_dir, f"{base_name}_Frame.fbx"),
+                                   origin_matrix=frame_obj.matrix_world)
+            export_door_static_fbx(leaves, os.path.join(ue_dir, f"{base_name}_LeavesIntact.fbx"),
+                                   origin_matrix=frame_obj.matrix_world)
+            export_door_destruction_fbx(combined_obj, os.path.join(ue_dir, f"{base_name}_Destruction.fbx"))
+            self.report({'INFO'}, f"UE用FBX出力完了(3ファイル): {ue_dir}")
         except Exception as e:
             self.report({'WARNING'}, f"メッシュ・アニメ生成は成功しましたがFBX出力に失敗しました: {str(e)}")
 
-        context.view_layer.objects.active = combined_obj
-        combined_obj.select_set(True)
+        arm_or_mesh = combined_obj.parent if combined_obj.parent else combined_obj
+        context.view_layer.objects.active = arm_or_mesh
+        arm_or_mesh.select_set(True)
         return {'FINISHED'}
 
 

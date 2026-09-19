@@ -65,25 +65,13 @@ combined_obj, action = generate_door_destruction(
     name="TestDoor_Destruction",
 )
 print("Destruction bake complete:", combined_obj.name)
-# --- shape key の生値を直接検査 ---
-bpy.context.scene.frame_set(20)
-bpy.context.view_layer.update()
-dg = bpy.context.evaluated_depsgraph_get()
-eval_obj = combined_obj.evaluated_get(dg)
-eval_mesh = eval_obj.to_mesh()
-print("frame=20 eval vertex[0].co =", eval_mesh.vertices[0].co)
-print("frame=20 raw (unevaluated) mesh.vertices[0].co =", combined_obj.data.vertices[0].co)
-print("basis (shape_keys.key_blocks[0]) vert0 co =", combined_obj.data.shape_keys.key_blocks[0].data[0].co)
-for kb in combined_obj.data.shape_keys.key_blocks[1:4]:
-    print(f"  shapekey {kb.name} value={kb.value} vert0.co={kb.data[0].co}")
-eval_obj.to_mesh_clear()
-bpy.context.scene.frame_set(1)
 print("--- ALL SCENE OBJECTS ---")
 for o in bpy.data.objects:
     print(f"  {o.name}  (type={o.type}, users={o.users if hasattr(o,'users') else '?'})")
 print("-------------------------")
 print("Vertex count:", len(combined_obj.data.vertices))
-print("Shape keys:", len(combined_obj.data.shape_keys.key_blocks) if combined_obj.data.shape_keys else 0)
+print("Armature:", combined_obj.parent.name if combined_obj.parent else None,
+      "bones:", len(combined_obj.parent.data.bones) if combined_obj.parent else 0)
 print("Action fcurves:", len(action.fcurves))
 print("Scene frame range:", bpy.context.scene.frame_start, bpy.context.scene.frame_end)
 
@@ -130,7 +118,7 @@ scene.render.resolution_percentage = 100
 
 for f in (1, 8, 16, 30):
     scene.frame_set(f)
-    scene.render.filepath = rf"z:\MeshCreator\test_render_destruction_f{f:03d}.png"
+    scene.render.filepath = rf"z:\MeshCreator\test_renders\test_render_destruction_f{f:03d}.png"
     bpy.ops.render.render(write_still=True)
     print(f"Rendered frame {f}")
 
