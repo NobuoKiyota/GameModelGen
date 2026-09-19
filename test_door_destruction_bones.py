@@ -118,6 +118,33 @@ expected_height = max(v.co.z for v in combined.data.vertices)
 print("expected destruction mesh height (m):", round(expected_height, 3))
 print("EXPORT OK:", [os.path.getsize(p) for p in (fbx_destruct, fbx_frame, fbx_leaves)])
 
+# --- 3. FBXの中身検査（UEはArmatureノードのスケールを骨位置に反映しないため、頂点と骨が同単位・ノードスケール1であること）---
+from io_scene_fbx import parse_fbx
+_root, _ver = parse_fbx.parse(fbx_destruct)
+_objs = [e for e in _root.elems if e.id == b'Objects'][0]
+_geo_zmax = None
+_shard_t = []
+for _o in _objs.elems:
+    if _o.id == b'Geometry':
+        for _c in _o.elems:
+            if _c.id == b'Vertices' and _geo_zmax is None:
+                _geo_zmax = max(_c.props[0][2::3])
+    if _o.id == b'Model':
+        _p70 = [c for c in _o.elems if c.id == b'Properties70']
+        _props = {}
+        for _pp in (_p70[0].elems if _p70 else []):
+            if _pp.id == b'P' and _pp.props:
+                _k = _pp.props[0]
+                _props[_k.decode() if isinstance(_k, bytes) else _k] = _pp.props[4:]
+        _s = _props.get("Lcl Scaling") or [1.0, 1.0, 1.0]
+        assert all(abs(v - 1.0) < 1e-6 for v in _s), f"ノードにスケールが残っている: {_o.props[1]} {_s}"
+        if _o.props[1].startswith(b"Shard_"):
+            _t = _props.get("Lcl Translation") or [0.0, 0.0, 0.0]
+            _shard_t.append(max(abs(v) for v in _t))
+assert abs(_geo_zmax - expected_height * 100.0) < expected_height * 100.0 * 0.02, f"頂点がcm単位になっていない: {_geo_zmax}"
+assert 0.4 * _geo_zmax < max(_shard_t) < 1.1 * _geo_zmax, f"骨位置が頂点と同単位(cm)でない: bone max {max(_shard_t)} / geo {_geo_zmax}"
+print(f"fbx units OK: node scales==1, geometry zmax {_geo_zmax:.1f} cm, bone offset max {max(_shard_t):.1f} cm")
+
 # --- 4. 新規シーンへ再インポートして構造確認 ---
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=fbx_destruct)
@@ -154,5 +181,22 @@ for label, path in (("frame", fbx_frame), ("leaves", fbx_leaves)):
     print(f"static {label}: bbox center x={cx:.3f} y={cy:.3f} zmin={min(w.z for w in ws):.3f} zmax={max(w.z for w in ws):.3f} "
           f"mats={[mm.name for mm in mo.data.materials]}")
     assert abs(cx) < 0.6, "ローカル原点基準で出力されていない(Door_Frameの配置位置が焼き込まれている)"
+
+# --- 5. UV: 3つのFBXすべてにUVがあり、同じ規則(1UV=1m のボックス投影)で連続すること ---
+uv_info = {}
+for label, path in (("destruction", fbx_destruct), ("frame", fbx_frame), ("leaves", fbx_leaves)):
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.fbx(filepath=path)
+    mo = [o for o in bpy.data.objects if o.type == 'MESH'][0]
+    uvl = mo.data.uv_layers.active
+    assert uvl is not None, f"{label}: FBXにUVがない"
+    us = [d.uv[0] for d in uvl.data]
+    vs = [d.uv[1] for d in uvl.data]
+    uv_info[label] = (min(us), max(us), min(vs), max(vs))
+    print(f"UV {label}: u {min(us):.2f}..{max(us):.2f}  v {min(vs):.2f}..{max(vs):.2f}  loops {len(us)}")
+    # 1UV=1m: vの最大値は扉の高さ(m)程度、面ごとに0..1へ潰れていない(=実寸)こと
+    assert max(vs) > 1.5, f"{label}: UVが実寸(1UV=1m)になっていない"
+# 破壊メッシュと無傷の扉は同じ高さ範囲(=同じ座標系・同じ投影規則)
+assert abs(uv_info["destruction"][3] - uv_info["leaves"][3]) < 0.05, "破壊メッシュと無傷の扉でUVの高さ範囲が食い違う"
 
 print("BONES TEST DONE: PASS")

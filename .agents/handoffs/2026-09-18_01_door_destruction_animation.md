@@ -1,5 +1,15 @@
 # [2026-09-18/19] Claude Code — procedural_rock_studio「西洋風アーチ扉」DOORプリセット＋破壊アニメーション
 
+## 2026-09-19 追記3: UE実機でレベルシーケンス→破壊再生を確認（＋スケルタルFBXのスケール不具合を修正）
+- **UE 5.3.2 で Level Sequence の Event トラック → Director BP（Set Visibility×2 → Play）→ 破壊アニメ再生まで動作確認済み**（Simulate＋PIEワールドの状態読み出し＋スクリーンショットで、破片が四方に飛び散ることを確認）。
+- **PIEで何も起きなかった原因は2つ**: ①Level Sequence Actor の Auto Play がOFF、②World Partition レベルで扉が PlayerStart から遠く（Is Spatially Loaded=ON）PIEでロードされていなかった（扉のIs Spatially LoadedをOFFで解決）。
+- **重大不具合を修正（`utils/anim_baker.py: export_door_destruction_fbx`）**: 旧FBXは `FBX_SCALE_NONE` のためArmature/Meshノードに100倍スケールが付き、UEはメッシュ頂点にだけ反映してボーン位置(メートル値)には反映せず、破片が原点を軸に潰れて見えなかった。現行は頂点・ボーン・移動カーブを実寸(cm)に焼き込んだ複製を `apply_unit_scale=False`＋`FBX_SCALE_UNITS`(ノードスケール1)で出力。`test_door_destruction_bones.py` にFBX内容検査（ノードスケール1・頂点cm単位・骨位置cm単位）を追加。**旧記述の「UEアニメ移動量がBlender再インポートと一致(91.9/92.2)」は、両方が同じ誤スケールだったため一致しただけで検証にならない**（下の追記2の記述は参考扱い）。
+- **飛散を大人しく調整済み（ユーザー要望「派手に早く飛びすぎる」）**: 旧版は破片速度の中央値約10m/s・飛距離中央値25m・82個中67個が床(20m四方)の外へ落下。原因: ①フォースフィールド3000×strengthが近距離で発散(最小距離なし)、②初期ずらし+±160°回転で石枠・床に食い込み開始直後に20〜40m/sで押し出される(鉄金具の巨大な凸包板も)、③`use_margin=False`で衝突マージンが標準4cmになり薄板が押し合う、④床が小さい、⑤減衰が小さい。対策(`door_destruction_gen.py` 先頭の定数 FORCE_BASE=300 / FORCE_MIN,MAX_DISTANCE=0.8,4.0 / PRE_DISPLACE_MAX=0.6 / FLOOR_SIZE=200 / WOOD・SMALL_SHARD・IRON_*_DAMPING、`_pose_clear` の食い込み回避、木片と鉄金具の衝突コレクション分離、`use_margin=True`)。結果(3シード): 飛距離中央値1.1〜1.5m、最高速度≈20m/s、約1〜2.5秒でほぼ静止、床下落下0〜2個。UIに「飛散の強さ」(`door_destruction_impact_strength`、既定1.0)を追加。測定用: `tools_measure_door_destruction.py`（`-- <strength> <frames> <seed> NAME=VALUE...`）。UEの最終位置は中央値1.46m/75%が2.2m以内。
+- **UV出力を追加**: 従来FBXにUVが無かった（プロシージャルシェーダーはUV不要のため）。`utils/uv_tools.py: assign_box_uv`（1UV=1m、組み上がり姿勢のDoor_Frameローカル空間でボックス投影）を、破壊メッシュ結合時(`door_destruction_gen.py`)と静的FBX出力(`export_door_static_fbx`)で適用。`test_door_destruction_bones.py` に3FBXのUV存在・実寸・破壊メッシュと無傷扉の範囲一致の検査を追加。UEプロジェクトへ反映済み（`DoorDestruction/DestructionUV/` に新Destruction、Frame/LeavesIntactは同パスへ上書き、旧Calm/Fixedフォルダは削除。旧 `Destruction/OpDoor_Destruction` だけUE内部参照が残り削除不可）。ベイク用の一意UVは未対応。
+- 注意: Cell Fractureは乱数固定されないため、同じseedでも実行ごとに破片が変わる（測定値はシード間で多少ばらつく）。フレーム数が短い(操作テストは40フレーム)と飛行中の破片がそのまま止まって見える。実物は60以上。
+- ユーザーのUEプロジェクトは新FBXへ差し替え済み（`/Game/kiyota/FBX/DoorDestruction/DestructionFixed/`、BP_OpDoor のDestructionを参照切替）。旧 `Destruction/OpDoor_Destruction` はUE内部参照が残り削除できなかったので**ユーザーがContent Browserで削除**する（マテリアル `OpDoor_*_Mat` も旧/新で重複）。
+- 未検証: BP内 `Break` カスタムイベント経由の呼び出し、`setup_door_destruction_sequence.py`、ユーザーの実際の扉での再現。
+
 ## 2026-09-19 追記2: UE向けボーン方式＋レベルシーケンス用セットアップを追加（UE実機は未検証）
 
 ユーザーがBlenderで破壊アニメの見た目に満足し、「UEで再現しレベルシーケンスの任意タイミングで破壊したい」と依頼。方針は**破片ごとに1ボーンのスケルタルメッシュ**（シェイプキーだと回転しながら飛ぶ破片が補間で歪む/縮むため。UEのスタティックメッシュはモーフ非対応でもある）＋**手順書＋UE Pythonセットアップスクリプト**。

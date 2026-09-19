@@ -916,6 +916,7 @@ class VIEW3D_PT_prop_studio_panel(bpy.types.Panel):
                 row_d_destroy_param = box_d_destroy.row(align=True)
                 row_d_destroy_param.prop(props, "door_destruction_shard_count", text="破片数/枚")
                 row_d_destroy_param.prop(props, "door_destruction_frame_count", text="フレーム数")
+                box_d_destroy.prop(props, "door_destruction_impact_strength", text="飛散の強さ")
                 box_d_destroy.label(text="※ Door_Frame または Door_Leaf を選択した状態で実行してください", icon='INFO')
                 box_d_destroy.label(text="   破片ごとに1ボーンのスケルタル+ボーンアニメで生成し、", icon='BLANK1')
                 box_d_destroy.label(text="   UE用に Frame / LeavesIntact / Destruction の3FBXを出力します", icon='BLANK1')

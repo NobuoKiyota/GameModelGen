@@ -330,6 +330,7 @@ def update_category_preset(self, context):
         props.door_combine = False
         props.door_destruction_shard_count = 16
         props.door_destruction_frame_count = 70
+        props.door_destruction_impact_strength = 1.0
         props.uv_mapping_mode = 'FIT'
     elif cat == "RELIEF_WALL":
         props.size_x = 3.0
@@ -2626,6 +2627,12 @@ class PropStudioProperties(bpy.types.PropertyGroup):
         name="シミュレーションフレーム数 (Frame Count)",
         default=70, min=20, max=200,
         description="破壊アニメーションの長さ（フレーム数）。物理シミュレーションを回す長さでもある"
+    )
+    door_destruction_impact_strength: bpy.props.FloatProperty(
+        name="飛散の強さ (Impact Strength)",
+        default=1.0, min=0.2, max=4.0, step=10, precision=2,
+        description="破片の飛び散る勢い。1.0=破片の多くが扉の足元〜1〜2m以内に落ちる標準。"
+                    "0.5=ほぼその場に崩れ落ちる、2.0以上=派手に四方へ飛び散る"
     )
 
     # Spiral Stairs Properties

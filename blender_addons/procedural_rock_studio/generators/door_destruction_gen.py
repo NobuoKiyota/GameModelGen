@@ -2,9 +2,11 @@ import bpy
 import bmesh
 import math
 import random
-from mathutils import Vector, Matrix
+from mathutils import Vector, Matrix, Euler
+from mathutils.bvhtree import BVHTree
 
 from ..utils.anim_baker import bake_object_group_to_shapekeys, bake_object_group_to_armature
+from ..utils.uv_tools import assign_box_uv
 
 
 def _duplicate_object(context, src_obj, new_name=None):
@@ -49,6 +51,46 @@ def _split_wood_and_iron(context, leaf_dup):
     return wood_obj, iron_obj
 
 
+# 飛散の調整用定数（impact_strength=1.0 が「木の扉を体当たりで破った程度」になるよう測定して決めた値）
+FORCE_BASE = 300.0           # 衝撃フォースフィールドの基準強さ(N相当)。質量で割られて加速度になる（軽い破片ほど速く飛ぶ）
+FORCE_MIN_DISTANCE = 0.8     # これより近い破片は距離を打ち切る(近距離で力が発散して超高速になるのを防ぐ)。0=無効
+FORCE_MAX_DISTANCE = 4.0     # これより遠い破片には力を及ぼさない。0=無効
+PRE_DISPLACE_MAX = 0.6       # シミュレーション前の初期ずらし距離の上限[m]
+FLOOR_SIZE = 200.0           # 一時床コライダーの一辺[m]（小さいと飛んだ破片が床の外へ落ち続ける）
+WOOD_LINEAR_DAMPING = 0.2    # 木片の並進減衰（空気抵抗のように速度を落とす。上げると遠くへ飛びにくい）
+SMALL_SHARD_DAMPING = 0.9    # 極小片(0.1m以下)の並進減衰
+IRON_LINEAR_DAMPING = 0.4   # 鉄金具(大きな板)の並進減衰。大きな板は空気抵抗が大きく、滑って遠くへ行かないようにする
+IRON_ANGULAR_DAMPING = 0.3
+
+
+def _mesh_bvh(mesh, matrix):
+    verts = [matrix @ v.co for v in mesh.vertices]
+    return BVHTree.FromPolygons(verts, [tuple(p.vertices) for p in mesh.polygons])
+
+
+def _pose_clear(obj, loc, rot, frame_bvh):
+    """obj を (loc, rot) に置いたとき、床(z<0)や石枠メッシュに食い込まないか"""
+    m = Matrix.LocRotScale(loc, rot.to_quaternion(), obj.scale)
+    verts = [m @ v.co for v in obj.data.vertices]
+    if min(v.z for v in verts) < -0.005:
+        return False
+    if frame_bvh is not None:
+        shard_bvh = BVHTree.FromPolygons(verts, [tuple(p.vertices) for p in obj.data.polygons])
+        if frame_bvh.overlap(shard_bvh):
+            return False
+    return True
+
+
+def _set_collision_layers(rb, layers):
+    """Rigid Body の衝突コレクション(20枠)を layers の枠だけTrueにする。同じ枠を共有する物体同士のみ衝突する"""
+    for i in range(20):
+        rb.collision_collections[i] = (i in layers)
+
+
+LAYER_WOOD = 0    # 木片: 木片同士・床・石枠と衝突
+LAYER_IRON = 1    # 鉄金具: 鉄金具同士・床・石枠と衝突（凸包が扉全体を覆うため、木片とは衝突させない）
+
+
 def _setup_passive_collider(obj, friction=0.6, restitution=0.05):
     bpy.ops.object.select_all(action='DESELECT')
     obj.select_set(True)
@@ -56,19 +98,25 @@ def _setup_passive_collider(obj, friction=0.6, restitution=0.05):
     bpy.ops.rigidbody.object_add()
     obj.rigid_body.type = 'PASSIVE'
     obj.rigid_body.collision_shape = 'MESH'
+    obj.rigid_body.use_margin = True
+    obj.rigid_body.collision_margin = 0.002
     obj.rigid_body.friction = friction
     obj.rigid_body.restitution = restitution
+    _set_collision_layers(obj.rigid_body, {LAYER_WOOD, LAYER_IRON})
 
 
-def _setup_active_shard(obj, mass=0.4, friction=0.15, restitution=0.20, linear_damping=0.02, angular_damping=0.03):
+def _setup_active_shard(obj, mass=0.4, friction=0.15, restitution=0.20, linear_damping=0.02, angular_damping=0.03,
+                        layer=LAYER_WOOD):
     bpy.ops.object.select_all(action='DESELECT')
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
     bpy.ops.rigidbody.object_add()
     rb = obj.rigid_body
+    _set_collision_layers(rb, {layer})
     rb.type = 'ACTIVE'
     rb.collision_shape = 'CONVEX_HULL'
-    rb.collision_margin = 0.001
+    rb.use_margin = True    # Falseだと collision_margin が無視され標準4cmになり、薄い板同士が押し出し合って弾き飛ぶ
+    rb.collision_margin = 0.002
     rb.mass = mass
     rb.friction = friction
     rb.restitution = restitution
@@ -140,7 +188,7 @@ def generate_door_destruction(
     passive_objs = []
 
     # 1. 一時床コライダー
-    bpy.ops.mesh.primitive_plane_add(size=20.0, location=(0, 0, 0))
+    bpy.ops.mesh.primitive_plane_add(size=FLOOR_SIZE, location=(0, 0, 0))
     floor_obj = context.active_object
     floor_obj.name = "Temp_Destruction_Floor"
     _setup_passive_collider(floor_obj, friction=0.7, restitution=0.05)
@@ -206,7 +254,11 @@ def generate_door_destruction(
         wood_shards = [o for o in context.selected_objects if o.type == 'MESH']
         for shard in wood_shards:
             shard.name = f"{name}_{side_name}_Shard_{len(tracked_objects):03d}"
-            _setup_active_shard(shard, mass=rng.uniform(0.25, 0.55))
+            # 小さい破片ほど空気抵抗が大きい（極小片だけが数十m飛んでいくのを防ぐ）
+            size = max(shard.dimensions)
+            small = max(0.0, min(1.0, (0.35 - size) / 0.25))   # 大きさ0.35m以上=0、0.10m以下=1
+            damping = WOOD_LINEAR_DAMPING + (SMALL_SHARD_DAMPING - WOOD_LINEAR_DAMPING) * small
+            _setup_active_shard(shard, mass=rng.uniform(0.25, 0.55), linear_damping=damping)
             tracked_objects.append(shard)
 
         # Cell Fractureは(level=0の)元オブジェクトを自動削除しないため、明示的に削除する
@@ -217,7 +269,8 @@ def generate_door_destruction(
         if iron_obj is not None:
             iron_obj.name = f"{name}_{side_name}_IronAssembly"
             _setup_active_shard(iron_obj, mass=3.2, friction=0.4, restitution=0.20,
-                                linear_damping=0.05, angular_damping=0.08)
+                                linear_damping=IRON_LINEAR_DAMPING, angular_damping=IRON_ANGULAR_DAMPING,
+                                layer=LAYER_IRON)
             tracked_objects.append(iron_obj)
 
     if not tracked_objects:
@@ -257,6 +310,8 @@ def generate_door_destruction(
     impact_point = sum(impact_centers, Vector()) / max(1, len(impact_centers))
     impact_point.y -= 0.35  # 扉の少し手前（外側）から打ち破られたイメージ
 
+    frame_bvh = _mesh_bvh(frame_obj.data, frame_obj.matrix_world) if frame_obj is not None else None
+
     for o in tracked_objects:
         bbox_world = [o.matrix_world @ Vector(c) for c in o.bound_box]
         obj_center = sum(bbox_world, Vector()) / 8.0
@@ -270,11 +325,20 @@ def generate_door_destruction(
         outward = (outward * 0.35 + rand_dir * 0.65).normalized()
 
         explosion_dist = impact_strength * (0.55 + rng.uniform(0.0, 0.45))
-        explosion_dist = min(explosion_dist, 1.3)  # 極端な飛び過ぎを防ぐ上限
-        o.location = o.location + outward * explosion_dist
-        o.rotation_euler.x += math.radians(rng.uniform(-160, 160))
-        o.rotation_euler.y += math.radians(rng.uniform(-160, 160))
-        o.rotation_euler.z += math.radians(rng.uniform(-160, 160))
+        explosion_dist = min(explosion_dist, PRE_DISPLACE_MAX)  # 極端な飛び過ぎを防ぐ上限
+        base_loc = o.location.copy()
+        base_rot = o.rotation_euler.copy()
+        d_rot = Euler([math.radians(rng.uniform(-160, 160)) for _ in range(3)])
+        # 石枠・床に食い込んだ状態から開始すると、物理エンジンが押し出して開始直後に数十m/sで
+        # 弾き飛ばされる（鉄金具の大きな板や、アーチ際の破片で発生）。食い込まなくなるまで
+        # ずらし量・回転量を段階的に減らす。
+        for k in (1.0, 0.7, 0.45, 0.25, 0.1, 0.0):
+            loc = base_loc + outward * (explosion_dist * k)
+            rot = Euler((base_rot.x + d_rot.x * k, base_rot.y + d_rot.y * k, base_rot.z + d_rot.z * k))
+            if k == 0.0 or _pose_clear(o, loc, rot, frame_bvh):
+                break
+        o.location = loc
+        o.rotation_euler = rot
 
     # 7. 衝撃点にFORCEエフェクターを配置し、最初の数フレームだけさらに外向きへ押して
     # バラけを後押しする（force fieldはkinematic切り替えと違い再現性のある不具合が
@@ -282,8 +346,14 @@ def generate_door_destruction(
     bpy.ops.object.effector_add(type='FORCE', location=impact_point)
     force_obj = context.active_object
     force_obj.name = f"{name}_ImpactForce"
-    force_obj.field.strength = 3000.0 * impact_strength
+    force_obj.field.strength = FORCE_BASE * impact_strength
     force_obj.field.falloff_power = 1.5
+    if FORCE_MIN_DISTANCE > 0.0:
+        force_obj.field.use_min_distance = True
+        force_obj.field.distance_min = FORCE_MIN_DISTANCE
+    if FORCE_MAX_DISTANCE > 0.0:
+        force_obj.field.use_max_distance = True
+        force_obj.field.distance_max = FORCE_MAX_DISTANCE
 
     # 8. シミュレーション実行 & サンプリング
     scene.frame_set(cur_frame)
@@ -376,6 +446,8 @@ def generate_door_destruction(
     combined_mesh = bpy.data.meshes.new(f"{name}_Mesh")
     combined_bm.to_mesh(combined_mesh)
     combined_bm.free()
+    # 組み上がった姿勢のままUVを付ける（無傷の扉・石枠のFBXと同じ規則で連続する）
+    assign_box_uv(combined_mesh)
 
     combined_obj = bpy.data.objects.new(name, combined_mesh)
     context.collection.objects.link(combined_obj)

@@ -2,6 +2,8 @@
 import os
 from mathutils import Vector, Matrix, Quaternion
 
+from .uv_tools import assign_box_uv
+
 def bake_water_modifiers_to_shapekeys(obj, frames_count=60, step=3):
     """水面のモディファイアアニメーションをシェイプキー（Blendshapes）とActionにベイク"""
     if not obj or obj.type != 'MESH':
@@ -312,52 +314,105 @@ def export_door_destruction_fbx(obj, fbx_filepath):
     os.makedirs(os.path.dirname(os.path.abspath(fbx_filepath)), exist_ok=True)
     arm_obj = obj.parent if (obj.parent and obj.parent.type == 'ARMATURE') else None
 
-    bpy.ops.object.select_all(action='DESELECT')
-    obj.select_set(True)
-    if arm_obj:
-        arm_obj.select_set(True)
-    bpy.context.view_layer.objects.active = arm_obj or obj
+    common = dict(
+        filepath=fbx_filepath,
+        use_selection=True,
+        global_scale=1.0,
+        axis_forward='-Y',
+        axis_up='Z',
+        mesh_smooth_type='FACE',
+        add_leaf_bones=False,
+        use_armature_deform_only=False,
+        bake_anim=True,
+        bake_anim_use_all_bones=True,
+        bake_anim_use_all_actions=False,
+        bake_anim_use_nla_strips=False,
+        bake_anim_force_startend_keying=True,
+        bake_anim_step=1.0,
+        bake_anim_simplify_factor=0.0,
+    )
 
-    restore_name = None
-    restore_conflict = None
-    restore_matrix = None
-    if arm_obj:
-        # UE側で余計な階層(ルート名)が付かないよう、Armatureオブジェクトを"Armature"名・原点にして出力
-        restore_matrix = arm_obj.matrix_world.copy()
-        restore_name = arm_obj.name
-        if arm_obj.name != "Armature":
-            restore_conflict = _find_and_rename_conflicting("Armature")
-            arm_obj.name = "Armature"
-        arm_obj.matrix_world = Matrix.Identity(4)
+    if arm_obj is None:
+        bpy.ops.object.select_all(action='DESELECT')
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.export_scene.fbx(apply_unit_scale=True, apply_scale_options='FBX_SCALE_NONE',
+                                 object_types={'MESH'}, **common)
+        return fbx_filepath
+
+    # スケルタルメッシュ: FBX_SCALE_NONE だとArmature/Meshノードが100倍スケールになり、UEはメッシュ頂点には
+    # 反映するがボーン位置には反映しない(骨が1/100になり破片が原点を軸に潰れる)。そのため
+    # 頂点・ボーン・移動カーブを実寸(cm)へ焼き込んだ複製を、ノードスケール1(apply_unit_scale=False+UNITS)で出力する
+    # （元データは変更しない）。
+    scale = 100.0
+    orig_name = obj.name
+    obj.name = orig_name + "__orig_export"
+    conflict = _find_and_rename_conflicting("Armature")
+    coll = bpy.context.collection
+
+    mesh_dup = obj.copy()
+    mesh_dup.data = obj.data.copy()
+    mesh_dup.data.transform(Matrix.Scale(scale, 4))
+    mesh_dup.name = orig_name
+    coll.objects.link(mesh_dup)
+
+    arm_dup = arm_obj.copy()
+    arm_dup.data = arm_obj.data.copy()
+    arm_dup.name = "Armature"
+    coll.objects.link(arm_dup)
+    arm_dup.parent = None
+    arm_dup.matrix_world = Matrix.Identity(4)
+
+    mesh_dup.parent = arm_dup
+    mesh_dup.matrix_parent_inverse = Matrix.Identity(4)
+    mesh_dup.matrix_basis = Matrix.Identity(4)
+    for m in mesh_dup.modifiers:
+        if m.type == 'ARMATURE':
+            m.object = arm_dup
+
+    bpy.ops.object.select_all(action='DESELECT')
+    arm_dup.select_set(True)
+    bpy.context.view_layer.objects.active = arm_dup
+    bpy.ops.object.mode_set(mode='EDIT')
+    for eb in arm_dup.data.edit_bones:
+        eb.head = eb.head * scale
+        eb.tail = eb.tail * scale
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    src_action = arm_obj.animation_data.action if arm_obj.animation_data else None
+    action_dup = None
+    if src_action is not None:
+        action_dup = src_action.copy()
+        for fc in action_dup.fcurves:
+            if fc.data_path.endswith(".location"):
+                for kp in fc.keyframe_points:
+                    kp.co = (kp.co[0], kp.co[1] * scale)
+                    kp.handle_left = (kp.handle_left[0], kp.handle_left[1] * scale)
+                    kp.handle_right = (kp.handle_right[0], kp.handle_right[1] * scale)
+                fc.update()
+        arm_dup.animation_data_create()
+        arm_dup.animation_data.action = action_dup
 
     try:
-        kwargs = dict(
-            filepath=fbx_filepath,
-            use_selection=True,
-            global_scale=1.0,
-            apply_unit_scale=True,
-            apply_scale_options='FBX_SCALE_NONE',
-            axis_forward='-Y',
-            axis_up='Z',
-            mesh_smooth_type='FACE',
-            add_leaf_bones=False,
-            use_armature_deform_only=False,
-            bake_anim=True,
-            bake_anim_use_all_bones=True,
-            bake_anim_use_all_actions=False,
-            bake_anim_use_nla_strips=False,
-            bake_anim_force_startend_keying=True,
-            bake_anim_step=1.0,
-            bake_anim_simplify_factor=0.0,
-            object_types={'ARMATURE', 'MESH'} if arm_obj else {'MESH'},
-        )
-        bpy.ops.export_scene.fbx(**kwargs)
+        bpy.ops.object.select_all(action='DESELECT')
+        mesh_dup.select_set(True)
+        arm_dup.select_set(True)
+        bpy.context.view_layer.objects.active = arm_dup
+        bpy.ops.export_scene.fbx(apply_unit_scale=False, apply_scale_options='FBX_SCALE_UNITS',
+                                 object_types={'ARMATURE', 'MESH'}, **common)
     finally:
-        if arm_obj:
-            arm_obj.name = restore_name
-            arm_obj.matrix_world = restore_matrix
-            if restore_conflict:
-                restore_conflict[0].name = restore_conflict[1]
+        mesh_data, arm_data = mesh_dup.data, arm_dup.data
+        bpy.data.objects.remove(mesh_dup, do_unlink=True)
+        bpy.data.objects.remove(arm_dup, do_unlink=True)
+        if mesh_data.users == 0:
+            bpy.data.meshes.remove(mesh_data)
+        if arm_data.users == 0:
+            bpy.data.armatures.remove(arm_data)
+        if action_dup is not None and action_dup.users == 0:
+            bpy.data.actions.remove(action_dup)
+        obj.name = orig_name
+        if conflict:
+            conflict[0].name = conflict[1]
     return fbx_filepath
 
 
@@ -388,6 +443,8 @@ def export_door_static_fbx(objects, fbx_filepath, origin_matrix=None):
         bpy.ops.object.join()
     target = bpy.context.view_layer.objects.active
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    # Door_Frameローカル空間の座標のままボックス投影UVを付ける（破壊メッシュと同じ規則）
+    assign_box_uv(target.data)
 
     try:
         bpy.ops.export_scene.fbx(

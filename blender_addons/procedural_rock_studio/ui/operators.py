@@ -1665,6 +1665,7 @@ class MESH_OT_generate_door_destruction(bpy.types.Operator):
                 frame_obj=frame_obj,
                 shard_count=props.door_destruction_shard_count,
                 frame_count=props.door_destruction_frame_count,
+                impact_strength=props.door_destruction_impact_strength,
                 seed=random.randint(1, 999999),
                 name=f"{frame_obj.name}_Destruction",
                 bake_mode='BONES'
