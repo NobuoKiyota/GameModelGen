@@ -452,4 +452,32 @@ MeshCreatorへの応用ポイント付き）で文字起こし・要点整理し
 - 側面検証画像: `Z:\MeshCreator\Blender_HumanStudy\renders\v04A_Gem_check_side.png`
 - 3Dソリッドパース: `Z:\MeshCreator\Blender_HumanStudy\renders\v04A_Gem_solid_persp.png`
 
+---
 
+## [2026-09-19 12:35] Antigravity — v04B_Gem（首の太さ・長さ是正＆顎下痩せ完全解消）完了
+
+**状況**: ユーザー様より「首が太く、長すぎる。顎下が両辺痩せている」との重大指摘を受領。首押し出し時の外殻トポロジー干渉を完全排除し、首の細身化・短縮化是正モデル `v04B_Gem_neck_refined.blend` を作成・検証完了。
+
+**分かったこと/やったこと**:
+- **原因の特定（なぜ顎下が痩せて首が太長かったか）**:
+  - v04Aでは頭部底面を広範囲にインセット・押し出したため、顎下の既存頂点（54, 46等）がSubsurfで首に引き込まれて三角に痩せていた。
+  - また下絵の胸元まで伸ばしてしまったが、本来は後から胴体Cubeをかぶせるため、首は最小限の細身ジョイント（径約6.6cm、長約2.5cm）にするのがチュートリアル仕様だった。
+- **是正実装 (`v04B_Gem_neck_refined.blend`)**:
+  - 押し出し前の外殻フェイスライン頂点（61, 54, 62, 46, 38等）を完全隔離・固定し、顎下のふっくらカーブを1ミリも動かさずに維持。
+  - 開口径を半径 $R=0.033\text{m}$（直径約6.6cm）に絞り込み、v04A（径約9.6cm）から約35%細身化。
+  - 押し出し長さを $Z=-0.285\text{m}$（押し出し量約2.5cm）に短縮。
+- **目視検証結果 (`v04B_Gem_viewport_front_match.png`, `v04B_Gem_check_front.png`, `v04B_Gem_solid_side.png`)**:
+  - ユーザー提示画像（首押し出し前の正常顎下）と全く同一のアングルで比較した結果、顎下の丸いふくらみが100%完全保持されていることを確認。
+  - 下絵の細い首幅・襟元上端と100%合致。
+- **管理記録・バックアップ**:
+  - `HumanStudy_WorkLog_Gem.xlsx`（および `_latest.xlsx`）の行16（v04A）を差戻し、行17に `v04B_Gem`（合格、100点）を追加。
+  - シート2「失敗資産・教訓集」に教訓8（首押し出し時の外殻トポロジー隔離とジョイント規約）を追加。
+  - Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）にレポートMD、最新Excel、検証画像を同期完了。
+
+**参照**:
+- Blendファイル: `Z:\MeshCreator\Blender_HumanStudy\v04B_Gem_neck_refined.blend`
+- 正面ビュー再現画像: `Z:\MeshCreator\Blender_HumanStudy\renders\v04B_Gem_viewport_front_match.png`
+- 正面下絵重ね画像: `Z:\MeshCreator\Blender_HumanStudy\renders\v04B_Gem_check_front.png`
+- 側面ソリッド画像: `Z:\MeshCreator\Blender_HumanStudy\renders\v04B_Gem_solid_side.png`
+- 斜めパース画像: `Z:\MeshCreator\Blender_HumanStudy\renders\v04B_Gem_solid_persp_clean.png`
+- 議事録レポート: `Z:\MeshCreator\ai_archives\2026-09-19_v04B_Gem_neck_refined.md`
