@@ -78,12 +78,17 @@ find "$SRC" "$DST" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null
 
 ## 既知の制限・チューニングメモ
 - **shard_countは目安値**: Cell Fractureの`source_limit`パラメータは要求した破片数を厳密には守らない（テストではshard_count=8指定で実際は33〜35個生成された）。多めに出る前提でUI側のデフォルト（16/枚）を設定している。
-- **密集した破片が「塊」のまま残りやすい**: 木部の中心付近の破片は隣接破片との摩擦・噛み合いで動きにくく、何度かチューニングして「キネマティック強制発射＋方向にランダム性を強く混ぜる」方式に落ち着いたが、完全な粉々描写には`shard_count`や`impact_strength`（関数引数、現状UIには未露出）をさらに強めるか、`frame_count`を伸ばす余地がある。
+- **密集した破片が「塊」のまま残りやすい**: 木部の中心付近の破片は隣接破片との摩擦・噛み合いで動きにくい。現状は「初期配置の事前ずらし＋方向にランダム性を強く混ぜる＋FORCEエフェクター」方式。完全な粉々描写には`shard_count`や`impact_strength`（関数引数、現状UIには未露出）をさらに強めるか、`frame_count`を伸ばす余地がある。
+- **同一セッション内での2回目以降の呼び出しに関する重大バグは修正済み**（本ファイル冒頭の追記参照）。もし今後また似た「途中で動かなくなる」系の不具合が出たら、まず `rw.point_cache.frame_start` を基準にしているか、剛体シミュレーションが `point_cache.frame_start` から連続してステップされているかを疑うこと。
 - **ボーン(Armature)方式は未実装**: 現状はシェイプキー（頂点キャッシュ的）方式でFBXベイクしている。UE側のファイルサイズ・取り回しは破片ごとに1ボーンのスケルタルメッシュ方式の方が優れるはずだが、既存の水面ベイク資産(`anim_baker.py`)を流用してスコープを抑えるため今回は見送った。将来の改善候補。
 - **UE実機での取り込み確認は未実施**（ローカル環境にUnreal Engineがないため）。FBXファイル自体は正常出力されること（約2.5MB）のみ確認済み。
 - `bpy.ops.<category>.<op>` は属性アクセス時点では存在チェックにならない（`hasattr`が常にTrueを返す）ため、Cell Fracture等オプションアドオンの有効化チェックは`hasattr`を使わず常に`addon_enable`を試みる実装にしてある。
 - `bpy.ops.mesh.separate(type='MATERIAL')` 後は各オブジェクトのマテリアルスロットが1つに圧縮され、`polygon.material_index`は常に0にリナンバーされる（元のスロット番号は保持されない）。木部/鉄部の判定は`material_index`ではなく`obj.data.materials[0].name`（"_Wood_Mat"/"_Iron_Mat"）で行っている。
 - Cell Fractureの`use_remove_original=True`は**再帰分割(recursion>0)時のみ**元オブジェクトを削除する仕様で、通常利用(recursion=0)では削除されない。破片化後は明示的に`bpy.data.objects.remove()`で削除する必要がある。
+
+## Q&A（ユーザーからの質問への回答）
+- **Q: この粉々になるのはUEのアニメーション側でやるもの？**
+  A: いいえ。砕け散る物理シミュレーション（Cell Fracture + Rigid Body）は**すべてBlender側（この生成処理）で事前に計算・焼き付け済み**。UEは計算を一切行わず、FBXに入っている**シェイプキー（モーフターゲット）アニメーションをただ再生するだけ**。UEのChaos Destructionのようなランタイム破壊システムは使っていない。UE側では「Morph Target Animation」として通常の頂点アニメと同じ扱いになる想定（UE実機での確認は未実施、上記参照）。
 
 ## 次にやるとよいこと
 1. `door_destruction_shard_count`/`frame_count`をUIから大きめに振って、粉々具合の見え方を実機（Blender GUI）で確認・好みに調整
