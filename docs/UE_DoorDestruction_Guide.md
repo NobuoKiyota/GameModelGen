@@ -9,6 +9,44 @@
 - 破壊メッシュの初期姿勢(rest)は「破片が組み上がった状態」で、破片の隙間がヒビ状に見えます。
   そのため **破壊前は別の無傷メッシュ(LeavesIntact)を表示し、破壊時刻に入れ替える**構成にしています。
 
+## 0. 推奨方式: Blueprintアクター（どのレベルでも使える）
+扉一式を **1つのBlueprintアクター `BP_<扉名>`** にまとめ、`Break` を呼ぶと破壊されます。レベルに置くだけで使え、
+ゲームプレイ(トリガー/レベルBP)からもレベルシーケンスからも同じ `Break` で破壊できます。
+（§2 のシーケンス自動スクリプトは「そのレベルのアクターに結びつく」ため他レベルでは動きません。**通常は本方式を使ってください**）
+
+### 0-1. Blueprintの作成
+1. §1 でBlenderからFBX3点を出力
+2. `ue_scripts/create_door_blueprint.py` の先頭（`FBX_DIR`, `NAME`, `CONTENT_DIR`）を編集し、`File > Execute Python Script...` で実行
+   - FBXインポート＋ `BP_<NAME>`（Frame / LeavesIntact / Destruction の3コンポーネント）を自動作成
+   - Destruction は最初 **非表示**、アニメは **Single Node・非ループ・停止** に設定済み
+3. 自動作成に失敗した場合の手動手順: Actor継承のBlueprintを作り、コンポーネントを追加
+   - `Frame`(StaticMesh) / `LeavesIntact`(StaticMesh) / `Destruction`(SkeletalMesh)
+   - Destruction: `Visible` をOFF、Animation Mode = *Use Animation Asset*、Anim to Play = インポートしたAnimSequence、Looping = OFF
+
+### 0-2. `Break` 関数（Blueprintのグラフは手動、ノード4つ）
+BlueprintのグラフノードはPythonから作れないため、ここだけ手作業です。`BP_<NAME>` を開き、イベントグラフで:
+1. **Custom Event `Break`** を作成（または関数 `Break` を作成）
+2. `LeavesIntact` → **Set Visibility**（New Visibility = OFF）
+3. `Destruction` → **Set Visibility**（New Visibility = ON, Propagate = ON）
+4. `Destruction` → **Play**（Looping = OFF）
+   - Break を実行順に 2 → 3 → 4 とつなぐ
+5. （任意）**Custom Event `ResetDoor`**: LeavesIntact Visible=ON、Destruction Visible=OFF、Destruction `Stop` → `Set Position`(0.0)
+6. コンパイル・保存
+
+### 0-3. 使い方
+- **ゲームプレイ**: `BP_<NAME>` の参照から `Break` を呼ぶ（トリガーボリューム/レベルBP/他Blueprintなど）
+- **レベルシーケンスで任意のタイミング破壊**:
+  1. `BP_<NAME>` をレベルに置き、Sequencerへ追加
+  2. そのバインディングに `+ Track > Event`（Event Track）を追加
+  3. 破壊したい時刻にキーを打ち、キーを右クリック → **Quick Binding**（または Properties で Function）で **`Break`** を選ぶ
+  4. 時刻を動かせばタイミング変更。シーケンス再生（PIE/Cinematic再生）で発火します
+     （エディタのスクラブでは発火しないことがあります。PIEまたは Sequencer の再生で確認）
+  - シーケンスを別レベルで使う場合: 該当レベルに `BP_<NAME>` を置いて再バインド、
+    またはバインディングを右クリック → **Convert to Spawnable** にすると、シーケンスが扉を自動生成するので
+    レベルに何も置かなくても動きます（どのレベルでも再生可）
+
+---
+
 ## 1. Blenderでの出力
 1. DOORカテゴリで扉を生成 → `Door_Frame`（または `Door_Leaf_L/R`）を選択
 2. 「💥 破壊アニメーション」ボックスの `破片数/枚` と `フレーム数` を調整
@@ -19,7 +57,8 @@
    - `<扉名>_Destruction.fbx` … 破壊アニメ（Skeletal Mesh＋ボーンアニメ）
    - 3つとも **Door_Frame のローカル原点基準**（Blender上で扉を動かしていても原点・直立で出力されます）
 
-## 2. UEで自動セットアップ（Pythonスクリプト・推奨）
+## 2. UEで自動セットアップ（そのレベル専用のシーケンスを作るPythonスクリプト）
+※ 作成されるシーケンスは**実行時に開いていたレベルのアクター**に結びつくため、他レベルでは動きません。汎用には §0 の Blueprint 方式を使ってください。
 1. UE5: `Edit > Plugins` で **Python Editor Script Plugin** を有効化 → 再起動
 2. `ue_scripts/setup_door_destruction_sequence.py` の先頭の設定を編集
    - `FBX_DIR`（出力フォルダ）、`NAME`（`<扉名>`）、`DESTROY_TIME_SEC`（破壊時刻）、`FPS`（Blenderのfps、既定24）

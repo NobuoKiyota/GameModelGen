@@ -8,6 +8,7 @@
 - UIボタン「💥 木っ端微塵に破壊してUE用FBX一括出力」は `<export_folder>/<扉名>_UE/` に3ファイル出力: `_Frame.fbx`(石枠static) / `_LeavesIntact.fbx`(無傷の扉static。破壊メッシュのrestは破片の隙間でヒビ状に見えるため破壊時に入れ替える用) / `_Destruction.fbx`(スケルタル＋ボーンアニメ)。FBXは -Y forward / Z up、`FBX_SCALE_UNITS`、`add_leaf_bones=False`、`use_armature_deform_only=False`（rootを必ず出力）、Armatureは出力時のみ一時的に"Armature"名・原点へ。
 - `ue_scripts/setup_door_destruction_sequence.py`: FBXインポート→アクター配置→レベルシーケンス作成→破壊時刻にアニメ配置＋Visibility切替。**各ステップをtry/exceptで囲み失敗時は手動手順をログ出力**（UE Python APIのバージョン差が大きく実機未検証のため）。手順書: `docs/UE_DoorDestruction_Guide.md`。
 - 検証(Blenderで実施済み): `test_door_destruction_bones.py` — ボーン変形後の頂点と記録した剛体運動の最大誤差 6e-6 m、rootが1本、FBX再インポートでアーマチュア1/ボーン63/頂点グループ62/Fカーブ有/高さ一致、Door_Frameを移動+回転させても静的FBXが原点直立で出力。UI経由(`test_door_destruction_operator.py`)で3FBX出力、`test_door_destruction_repeat.py`もPASS。
+- **どのレベルでも使える方式（Blueprintアクター）を追加**: `ue_scripts/create_door_blueprint.py` が `BP_<扉名>`（Frame/LeavesIntact/Destruction、Destructionは非表示・Single Node非ループ停止）を作成。`Break` 関数のグラフはPythonから作れないため手動（Set Visibility×2 + Play、手順は `docs/UE_DoorDestruction_Guide.md` §0）。レベルシーケンスは Event トラックのキーで `Break` を呼ぶ（任意タイミング）、または Convert to Spawnable でレベル不要に。旧 `setup_door_destruction_sequence.py` はレベルのアクターにバインドされるため**そのレベル専用**（ガイドに明記）。UE側は未検証。
 - **未検証**: UEでのインポート結果（ルートボーン名・スケール・軸・アニメ取り込み）、UE Pythonスクリプト全般、Visibilityトラックのキー設定。エラーはOutput Logの文面をもらって修正する前提。
 - マテリアルはプロシージャルノードが転送されないため、UEで`<扉名>_Stone_Mat/_Wood_Mat/_Iron_Mat`スロットへ手動割当て（またはAuto PBR Baker）。
 
