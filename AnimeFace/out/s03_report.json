@@ -1,0 +1,99 @@
+[
+  {
+    "name": "目の頂点26個は動いていない",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "口の頂点14個（内7＋外7）を追加",
+    "ok": true,
+    "detail": "40"
+  },
+  {
+    "name": "口の面6枚（すべて四角形）を追加",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "X=0 の頂点が4つ（内外の上下の中心）で、X が厳密に 0",
+    "ok": true,
+    "detail": "4"
+  },
+  {
+    "name": "口の頂点はすべて X<=0（-X 側の半分）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "モディファイアは Mirror のみ・X軸・Clipping ON・Merge ON・Apply なし",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Mirror 後: 頂点76・辺114・面38（目2つ＋口の閉ループ）",
+    "ok": true,
+    "detail": "(76, 114, 38)"
+  },
+  {
+    "name": "Mirror 後: オイラー数 0（輪が3つ）",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "Mirror 後: 全面が四角形",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Mirror 後: 面法線がすべて -Y（前）向き",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Mirror 後: 口は左右対称",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Mirror 後: 中心で頂点が重複していない（結合済み）",
+    "ok": true,
+    "detail": "76 unique / 76"
+  },
+  {
+    "name": "内輪の端が正面の口の線の端と一致 ±1.5px（左）",
+    "ok": true,
+    "detail": "442.50 vs 442"
+  },
+  {
+    "name": "内輪の端の高さ（線の端の上がり）が測定値と一致 ±1.5px",
+    "ok": true,
+    "detail": "703.25 vs 703.25"
+  },
+  {
+    "name": "内輪の上下の中心が口の線の中心を挟む（上<線<下）",
+    "ok": true,
+    "detail": "714.5 < 722.5 < 730.5"
+  },
+  {
+    "name": "口の頂点がすべて側面の輪郭の内側（顔からはみ出さない）",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "口の高さ（線の中心の行）: 正面723 / 45° 709 / 側面 約677。今回は正面を採用",
+    "ok": true,
+    "detail": "front v_center=722.5",
+    "info": true
+  },
+  {
+    "name": "口の前後位置: 側面の輪郭から Y=-0.2062 m。45°の下絵の口は約 -0.163 m と食い違う（45°は形の参考のみ）",
+    "ok": true,
+    "detail": "",
+    "info": true
+  },
+  {
+    "name": "レビュー画像3枚を出力",
+    "ok": true,
+    "detail": ""
+  }
+]

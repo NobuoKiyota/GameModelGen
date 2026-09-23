@@ -1,0 +1,145 @@
+[
+  {
+    "name": "入力: Eyebrow は Mirror → Subsurf、全て四角形",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Eyebrow: オブジェクトの変換をメッシュへ焼き込んだ（移動・拡大がついていたため）",
+    "ok": true,
+    "detail": "(0.0, 0.0215, 0.0) scale (1.0, 1.0, 1.0)",
+    "info": true
+  },
+  {
+    "name": "Eyebrow: 元の駅数・全長",
+    "ok": true,
+    "detail": "49駅 172.6mm",
+    "info": true
+  },
+  {
+    "name": "Eyebrow: 間引いた駅の数が目標どおり（重複はまとめる）",
+    "ok": true,
+    "detail": "8駅（目標8）"
+  },
+  {
+    "name": "Eyebrow: 全体の重心から見た向き判定（曲がった帯では誤検出しやすいので参考値）",
+    "ok": true,
+    "detail": "13",
+    "info": true
+  },
+  {
+    "name": "Eyebrow: 頂点 196→32・面 194→30",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Eyebrow: 前の稜にクリース1.0（(駅数-1)本）",
+    "ok": true,
+    "detail": "7"
+  },
+  {
+    "name": "入力: DoubleLid は Mirror → Subsurf、全て四角形",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "DoubleLid: オブジェクトの変換をメッシュへ焼き込んだ（移動・拡大がついていたため）",
+    "ok": true,
+    "detail": "(-0.1199, -0.1611, 0.0541) scale (1.206, 1.0, 1.0)",
+    "info": true
+  },
+  {
+    "name": "DoubleLid: 元の駅数・全長",
+    "ok": true,
+    "detail": "17駅 136.8mm",
+    "info": true
+  },
+  {
+    "name": "DoubleLid: 間引いた駅の数が目標どおり（重複はまとめる）",
+    "ok": true,
+    "detail": "7駅（目標7）"
+  },
+  {
+    "name": "DoubleLid: 全体の重心から見た向き判定（曲がった帯では誤検出しやすいので参考値）",
+    "ok": true,
+    "detail": "11",
+    "info": true
+  },
+  {
+    "name": "DoubleLid: 頂点 68→28・面 66→26",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "DoubleLid: 前の稜にクリース1.0（(駅数-1)本）",
+    "ok": true,
+    "detail": "6"
+  },
+  {
+    "name": "Eyebrow: 価数2の頂点がない・全ての辺が2枚の面",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Eyebrow: 巻き順が一貫（隣り合う面が、共有する辺を逆向きにたどる）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Eyebrow: 自分自身と交差していない",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "Eyebrow: 黒目と交差していない",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "Eyebrow: 顔の面との三角形の重なり（元の帯は 0 枚だった）",
+    "ok": true,
+    "detail": "0",
+    "info": true
+  },
+  {
+    "name": "Eyebrow: 顔の面との重なりが、元の帯より悪化していない",
+    "ok": true,
+    "detail": "0 <= 5"
+  },
+  {
+    "name": "DoubleLid: 価数2の頂点がない・全ての辺が2枚の面",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "DoubleLid: 巻き順が一貫（隣り合う面が、共有する辺を逆向きにたどる）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "DoubleLid: 自分自身と交差していない",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "DoubleLid: 黒目と交差していない",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "DoubleLid: 顔の面との三角形の重なり（元の帯は 12 枚だった）",
+    "ok": true,
+    "detail": "10",
+    "info": true
+  },
+  {
+    "name": "DoubleLid: 顔の面との重なりが、元の帯より悪化していない",
+    "ok": true,
+    "detail": "10 <= 17"
+  },
+  {
+    "name": "眉と二重線が、離れたまま（1mm以上）",
+    "ok": true,
+    "detail": "27.8mm"
+  }
+]

@@ -1,0 +1,80 @@
+[
+  {
+    "name": "入力: 対象の8オブジェクトが揃っている",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "入力: 全オブジェクトにUVがある",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "入力: BaseColor 画像は2048x2048",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Face: 眼窩内側（白目）の面が20枚見つかった",
+    "ok": true,
+    "detail": "20"
+  },
+  {
+    "name": "Face: 口の中の面が20枚（index 460-479）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Face: 頬の候補面の数（3D座標のバウンディングで選択、下絵に色見本が無いための目分量）",
+    "ok": true,
+    "detail": "29",
+    "info": true
+  },
+  {
+    "name": "鼻先とみなした頂点",
+    "ok": true,
+    "detail": "index=42 co=(0.0, -0.2502, -0.0477)",
+    "info": true
+  },
+  {
+    "name": "肌の代表点用に、白目/口/頬/鼻先と重ならない額の面が見つかった",
+    "ok": true,
+    "detail": "81"
+  },
+  {
+    "name": "肌の代表点（面0、特別領域と重複しない）が SKIN 色に近い",
+    "ok": true,
+    "detail": "(True, [np.float32(0.98), np.float32(0.83), np.float32(0.74)])"
+  },
+  {
+    "name": "白目の代表点が EYE_WHITE 色に近い",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "口の中の代表点が MOUTH 色に近い",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "眉の代表点が BROW 色に近い",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "まつ毛の代表点が LASH 色に近い",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "黒目・下側の代表点が IRIS 色に近い（上側は影で暗くなる想定なので下側で確認）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "塗った面の数",
+    "ok": true,
+    "detail": "{'白目': 20, '口の中': 20, '眉': 30, '二重線': 26, 'まつ毛(4つ計)': 114, '黒目': 160, '頬(柔らかい重ね)': 6759, '鼻先(柔らかい重ね)': 67}",
+    "info": true
+  }
+]

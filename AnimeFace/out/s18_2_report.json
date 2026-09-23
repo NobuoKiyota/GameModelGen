@@ -1,0 +1,42 @@
+[
+  {
+    "name": "入力: Faceに頂点グループがまだ無い",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "grp_eye: 頂点が見つかった（黒目中心から75mm以内）",
+    "ok": true,
+    "detail": "119"
+  },
+  {
+    "name": "grp_nose: 頂点が見つかった（鼻先から25mm以内）",
+    "ok": true,
+    "detail": "7"
+  },
+  {
+    "name": "grp_mouth: 27頂点（口の縁9＋口の中18）",
+    "ok": true,
+    "detail": "27"
+  },
+  {
+    "name": "Faceに3つの頂点グループができた",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "grp_eye/grp_nose/grp_mouthの重みは1.0",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "入力: GUIDEコレクションはまだ空",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "GUIDEコレクションに基準点3つができた",
+    "ok": true,
+    "detail": "['GUIDE_eye_center', 'GUIDE_nose_tip', 'GUIDE_mouth_center']"
+  }
+]

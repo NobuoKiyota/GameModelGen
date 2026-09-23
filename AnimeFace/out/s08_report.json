@@ -1,0 +1,124 @@
+[
+  {
+    "name": "入力: 182頂点・面150・全面四角形・Mirror のみ",
+    "ok": true,
+    "detail": "(182, 150)"
+  },
+  {
+    "name": "追加前の Subsurf 後（レベル1）: 鼻の輪郭とのずれ RMS 13.39px・鼻先の前後 +12.1mm（+は後ろ）・顎先の角の丸まり 7.2mm（斜め方向・+は内側）・顎の前面の輪郭 RMS 26.56px",
+    "ok": true,
+    "detail": "",
+    "info": true
+  },
+  {
+    "name": "追加前の Subsurf 後（レベル2）: 鼻 RMS 13.50px・鼻先 +12.0mm・顎先の丸まり 7.2mm・顎 RMS 21.55px",
+    "ok": true,
+    "detail": "",
+    "info": true
+  },
+  {
+    "name": "鼻先から横（X<0）へ伸びる辺が1本",
+    "ok": true,
+    "detail": "1"
+  },
+  {
+    "name": "顎先から頬の帯の縦の辺（顎先の隣・X≈-0.03・Z>-0.19）が1本",
+    "ok": true,
+    "detail": "1"
+  },
+  {
+    "name": "ループの辺の数（エッジリングの長さ）: 鼻先の上 11・下 11・横 15・顎 11、追加した頂点 48",
+    "ok": true,
+    "detail": "",
+    "info": true
+  },
+  {
+    "name": "全面が四角形（サポートループ追加後）",
+    "ok": true,
+    "detail": "194"
+  },
+  {
+    "name": "既存の頂点は動いていない（新しい頂点を除く）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "モディファイアは Mirror → Subsurf の順・Apply なし・Subsurf はビューポート1・レンダー2",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "口の外輪・内輪とも、口角の上側と下側の分割数が同じ（3 = 3, 3 = 3）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "鼻: Subsurf 後（レベル1）の輪郭とのずれ RMS が追加前より小さい",
+    "ok": true,
+    "detail": "13.39 → 2.99px"
+  },
+  {
+    "name": "顎: Subsurf 後（レベル1）の輪郭とのずれ RMS が追加前より小さい",
+    "ok": true,
+    "detail": "26.56 → 8.40px"
+  },
+  {
+    "name": "鼻先: Subsurf 後（レベル1）の前後位置が下絵の鼻先に ±0.5mm（前へ 0.5mm 補正）",
+    "ok": true,
+    "detail": "+0.35mm"
+  },
+  {
+    "name": "要確認: 鼻先を前へ 0.5mm 補正した（動画の「先っちょをちょっとぴょいん」に相当。動画に量の記載なし）",
+    "ok": true,
+    "detail": "",
+    "info": true
+  },
+  {
+    "name": "顎先: Subsurf 後（レベル1）の角が下絵の顎先に ±0.5mm（斜めへ 8.9mm 補正）",
+    "ok": true,
+    "detail": "+0.29mm"
+  },
+  {
+    "name": "要確認: 顎先の頂点を斜め（前・下）へ 8.9mm 補正した（Y -6.3mm・Z -6.3mm）。動画は顎先の頂点を動かさずループを寄せるだけ。補正量はループの位置(0.03〜0.12)にほぼ依存せず 8.6〜9.9mm だった",
+    "ok": true,
+    "detail": "",
+    "info": true
+  },
+  {
+    "name": "補正後の Subsurf 後（レベル1）: 鼻 RMS 2.99px・鼻先 +0.35mm・顎先の丸まり 0.3mm・顎 RMS 6.25px",
+    "ok": true,
+    "detail": "",
+    "info": true
+  },
+  {
+    "name": "補正後の Subsurf 後（レベル2）: 鼻 RMS 2.79px・鼻先 +0.14mm・顎先の丸まり 0.3mm・顎 RMS 5.39px",
+    "ok": true,
+    "detail": "",
+    "info": true
+  },
+  {
+    "name": "Mirror 後のケージ: オイラー数 -2・辺の重複なし",
+    "ok": true,
+    "detail": "V=440 E=830 F=388"
+  },
+  {
+    "name": "Mirror 後のケージ: 非多様体なし・巻き順が一貫・法線が頭の外側",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Mirror 後のケージ: 左右対称・頂点の重複なし",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "レビュー画像2枚を出力",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Subsurf 後の正中線の画像を出力",
+    "ok": true,
+    "detail": ""
+  }
+]

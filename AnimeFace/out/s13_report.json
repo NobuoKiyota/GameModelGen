@@ -1,0 +1,119 @@
+[
+  {
+    "name": "入力: モディファイアは Mirror → Subsurf",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "3つの下絵で、黒目の輪郭点が 30 点以上あり、楕円が測れた",
+    "ok": true,
+    "detail": "{'front': (350.0, 518.6, 52.6, 66.6, 41), 'a45': (537.2, 529.4, 49.0, 73.1, 41), 'side': (741.8, 512.9, 23.9, 67.0, 40)}"
+  },
+  {
+    "name": "黒目の楕円（front）",
+    "ok": true,
+    "detail": "中心 u=350.0 v=518.6、半径 横52.6px（36.8mm）・縦66.6px（46.6mm）",
+    "info": true
+  },
+  {
+    "name": "黒目の楕円（a45）",
+    "ok": true,
+    "detail": "中心 u=537.2 v=529.4、半径 横49.0px（34.3mm）・縦73.1px（51.2mm）",
+    "info": true
+  },
+  {
+    "name": "黒目の楕円（side）",
+    "ok": true,
+    "detail": "中心 u=741.8 v=512.9、半径 横23.9px（16.7mm）・縦67.0px（46.9mm）",
+    "info": true
+  },
+  {
+    "name": "当てはめ（3次元の黒目）",
+    "ok": true,
+    "detail": "中心 (-0.1134, -0.1609, 0.0019)、外向き 16.7°・下向き 15.4°、半径 横38.3mm・縦49.4mm、残差の二乗和 32.3px²",
+    "info": true
+  },
+  {
+    "name": "当てはめの誤差（投影 − 測定, px: 中心u・中心v・横半径・縦半径）",
+    "ok": true,
+    "detail": "{'front': (np.float64(0.0), np.float64(-2.8), np.float64(0.0), np.float64(1.4)), 'side': (np.float64(0.0), np.float64(2.8), np.float64(0.0), np.float64(1.1)), 'a45': (np.float64(22.8), np.float64(-13.7), np.float64(0.0), np.float64(-5.1))}",
+    "info": true
+  },
+  {
+    "name": "正面・側面の黒目は、中心・半径とも 4px 以内に当てはまった",
+    "ok": true,
+    "detail": "{'front': (np.float64(0.0), np.float64(-2.8), np.float64(0.0), np.float64(1.4)), 'side': (np.float64(0.0), np.float64(2.8), np.float64(0.0), np.float64(1.1))}"
+  },
+  {
+    "name": "要確認: 45° の黒目は、半径だけ重み 0.5 で当てはめた。誤差",
+    "ok": true,
+    "detail": "(np.float64(22.8), np.float64(-13.7), np.float64(0.0), np.float64(-5.1))",
+    "info": true
+  },
+  {
+    "name": "目の開口（縁 R0）の多角形が取れた（13頂点）",
+    "ok": true,
+    "detail": "13"
+  },
+  {
+    "name": "引き量 mm・交差した面の対の数・最小距離 mm・開口の外で皮膚の手前に飛び出した頂点の数（最初・途中・最後）",
+    "ok": true,
+    "detail": "[(0.0, 0, 4.02, 26), (0.0, 0, 4.02, 26), (0.0, 0, 4.02, 26)]",
+    "info": true
+  },
+  {
+    "name": "皮膚（顔）と交差せず、0.5mm 以上離れる位置が見つかった（引き量 0 が最小）",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "採用した引き量（世界の +Y、正面から見た位置は変わらない）",
+    "ok": true,
+    "detail": "0.0mm（側面での位置のずれ: 0.0px）",
+    "info": true
+  },
+  {
+    "name": "開口（縁の輪）の外にある頂点（皮膚の手前に出る部分。上まぶた・下まぶたの側。S14 のまつ毛・下まぶたで覆う）",
+    "ok": true,
+    "detail": "26 / 161 頂点",
+    "info": true
+  },
+  {
+    "name": "黒目と皮膚の最小距離",
+    "ok": true,
+    "detail": "4.0mm",
+    "info": true
+  },
+  {
+    "name": "側面での黒目の中心の位置の誤差（メッシュ − 下絵）",
+    "ok": true,
+    "detail": "-0.0px（-0.0mm）",
+    "info": true
+  },
+  {
+    "name": "黒目の面の法線が、全て前（外向き・下向きの向き）を向く",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "Eye: Mirror（X、Mirror Object = Face）のみ。Subdivision は付けない",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Eye: 頂点161・面160（三角形32＋四角形128）",
+    "ok": true,
+    "detail": "V=161 F=160"
+  },
+  {
+    "name": "Eye: X<0（左目）の側だけを作り、Mirror で右目",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "黒目の頂点のうち、正面（-Y 方向）から見える割合",
+    "ok": true,
+    "detail": "161/161（100%）。隠れる頂点の Z の範囲 None（上まぶた・下まぶたの皮膚に隠れる）",
+    "info": true
+  }
+]
