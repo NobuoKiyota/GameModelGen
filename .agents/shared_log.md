@@ -1403,5 +1403,37 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 画像カタログ: `docs/fusako_04_body_screenshots/README.md`
 - 仕様書: `.agents/handoffs/2026-09-24_fusako_body_modeling_04_steps.md`
 
+---
+
+## [2026-09-24 14:15] Antigravity — 動画06（手のモデリング/リギング/スキニング後編）仕様書＆スクショ集（35枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画6本目（ふさこ氏『Blenderでキャラクターモデル制作！06 | 手のモデリング/リギング/スキニング（後編）〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=kbQzguK_p18 ）について前工程と同じ形式・粒度での資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。
+
+**分かったこと/やったこと**:
+- **動画06仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全110ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_hand_modeling_06_steps.md` を作成・配備。
+  - **核心トポロジー・リギング技術**:
+    1. **ボーンリネームと頂点グループの自動連動**: アーマチュア編集モードでボーン名をUnity規格（`Index_Proximal` 等）に変更すると、メッシュ側の頂点グループ名も自動同期。
+    2. **Make Single User（リンク解除）**: 前編で `Alt + D` 共有していた指を統合前に一括実体化。
+    3. **Ctrl + A 全トランスフォーム適用**: ボーン統合（Ctrl + J）前に回転・スケールを初期化し変形破綻を防止。
+    4. **手のひら・水かきの曲げ破綻防止**: 指付け根に `Hand: 0.5` / `Proximal: 0.5` 按分、`Weights > Smooth`（反復回数調整）とブラーブラシで滑らかにグラデーション化。
+    5. **手首シリンダー**: 開口部ループを `E` 押し出し $\to$ `S Z 0` で水平に揃え、腕メッシュと同一規格の楕円断面を作成。
+- **高解像度スクリーンショット集（全35枚）配備**:
+  - 格納フォルダ: `docs/fusako_06_hand_screenshots/`（画像35枚 + 詳細解説カタログ `README.md`）
+  - 主な収録内容: 掌ベース、親指独立化・面張り、全指リンク解除、ボーンリネーム連動確認、全トランスフォーム適用、シアー傾斜、手首SZ0押し出し、Hand/LowerArmボーン追加、0.5ウェイト按分、頂点マスクブラー、Smoothフィルター、Auto Normalize、完成ポーズ。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、画像全35枚を同期。
+
+**相手への申し送り**:
+- 素体の手・指・掌のモデリング、手首の接合、およびUnityヒューマノイド向け指リグの構築時、`docs/fusako_06_hand_screenshots/README.md` および仕様書をご活用いただけます。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_hand_modeling_06_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_06_hand_screenshots/`
+- 画像カタログ: `docs/fusako_06_hand_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_06_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_06_subtitles_raw.ja.vtt`
+
+
 
 
