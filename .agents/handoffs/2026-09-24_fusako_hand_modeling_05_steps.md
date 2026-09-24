@@ -50,6 +50,7 @@
 ## 4. パーツ別詳細手順
 
 ### Part 1: リファレンス画像のセットアップ (00:00〜02:30)
+> [📸 参考: 01_c1_reference_images_3views.jpg](../../docs/fusako_05_hand_screenshots/01_c1_reference_images_3views.jpg)
 1. アウトライナーでメインコレクションを選択し、新規コレクション（例: `Hand`）を作成。テンキー `3` 等でそのコレクションをアクティブ化。
 2. `Shift + A` $\to$ **画像 > 参照（Image > Reference）** を選択。
    - 読み込み設定: **「ビューに整列（Align to View）」のチェックを外す**。
@@ -63,6 +64,7 @@
 ---
 
 ### Part 2: 中指のモデリング（02:30〜07:48）
+> [📸 参考: 02_c2_middle_finger_cube_open.jpg](../../docs/fusako_05_hand_screenshots/02_c2_middle_finger_cube_open.jpg) / [03_c2_subsurf1_taper_tip.jpg](../../docs/fusako_05_hand_screenshots/03_c2_subsurf1_taper_tip.jpg) / [04_c2_apply_subsurf_ctrl_a.jpg](../../docs/fusako_05_hand_screenshots/04_c2_apply_subsurf_ctrl_a.jpg) / [05_c2_joint_ratio_4_3_2.jpg](../../docs/fusako_05_hand_screenshots/05_c2_joint_ratio_4_3_2.jpg) / [06_c2_joint_shear_angle.jpg](../../docs/fusako_05_hand_screenshots/06_c2_joint_shear_angle.jpg) / [07_c2_flatten_finger_cross_section.jpg](../../docs/fusako_05_hand_screenshots/07_c2_flatten_finger_cross_section.jpg)
 1. `Shift + A` $\to$ **メッシュ > 立方体（Cube）** を追加。
 2. 編集モードで **一番下の面を選択して `X` $\to$ 面を削除**。
 3. 全選択 `A` $\to$ `S Shift + Z` で水平断面を縮小し、縦長の角柱にする。
@@ -81,6 +83,7 @@
 ---
 
 ### Part 3: ボーンのセットアップと親子付け（07:48〜11:02）
+> [📸 参考: 08_c3_add_single_bone_armature.jpg](../../docs/fusako_05_hand_screenshots/08_c3_add_single_bone_armature.jpg) / [09_c3_bone_3joints_dorsal_offset.jpg](../../docs/fusako_05_hand_screenshots/09_c3_bone_3joints_dorsal_offset.jpg) / [10_c3_unity_bone_naming_proximal.jpg](../../docs/fusako_05_hand_screenshots/10_c3_unity_bone_naming_proximal.jpg) / [11_c3_parent_with_empty_groups.jpg](../../docs/fusako_05_hand_screenshots/11_c3_parent_with_empty_groups.jpg)
 1. オブジェクトモードで `Shift + A` $\to$ **アーマチュア > 単一ボーン（Armature > Single Bone）** を追加。
 2. アーマチュアのプロパティ（緑の走る人アイコン / オレンジの四角アイコン）:
    - 「ビューポート表示」 $\to$ **「最前面（In Front）」にチェック**。
@@ -103,6 +106,7 @@
 ---
 
 ### Part 4: 手動数値入力スキニングと曲げ変形調整（11:02〜20:45）
+> [📸 参考: 12_c4_3loops_at_joints.jpg](../../docs/fusako_05_hand_screenshots/12_c4_3loops_at_joints.jpg) / [13_c4_vertex_weight_manual_assign.jpg](../../docs/fusako_05_hand_screenshots/13_c4_vertex_weight_manual_assign.jpg) / [14_c4_zero_weights_visualization.jpg](../../docs/fusako_05_hand_screenshots/14_c4_zero_weights_visualization.jpg) / [15_c4_pose_mode_curl_test.jpg](../../docs/fusako_05_hand_screenshots/15_c4_pose_mode_curl_test.jpg) / [16_c4_palm_side_volume_topology_fix.jpg](../../docs/fusako_05_hand_screenshots/16_c4_palm_side_volume_topology_fix.jpg)
 1. **耐破綻関節ループ（3本ループの法則）**:
    - 指が曲がる各関節の上下に `Ctrl + R` で1本ずつループを追加（関節1つにつき計3本のエッジループを確保）。
 2. **数値直接入力によるスキニング**:
@@ -122,6 +126,7 @@
 ---
 
 ### Part 5: 原点設定とリンク複製による5本指展開（20:45〜25:08）
+> [📸 参考: 17_c5_set_origin_to_finger_base.jpg](../../docs/fusako_05_hand_screenshots/17_c5_set_origin_to_finger_base.jpg) / [18_c5_alt_d_linked_duplicate_fingers.jpg](../../docs/fusako_05_hand_screenshots/18_c5_alt_d_linked_duplicate_fingers.jpg) / [19_c5_knuckle_arch_placement.jpg](../../docs/fusako_05_hand_screenshots/19_c5_knuckle_arch_placement.jpg) / [20_c5_thumb_90deg_rotation_opposed.jpg](../../docs/fusako_05_hand_screenshots/20_c5_thumb_90deg_rotation_opposed.jpg)
 1. **オブジェクト原点（Origin）の最適化**:
    - 指メッシュを選択し、編集モードで **指の付け根（底面中央）の頂点** を選択。
    - `Shift + S` $\to$ **「カーソル $\to$ 選択物（Cursor to Selected）」** で3Dカーソルを付け根に配置。

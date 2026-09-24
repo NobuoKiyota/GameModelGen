@@ -49,6 +49,7 @@
 ## 4. パーツ別詳細手順
 
 ### Part 1: 手のひら（掌）のベースモデリング (00:00〜05:00)
+> [📸 参考: 01_c1_palm_cube_open_tube.jpg](../../docs/fusako_06_hand_screenshots/01_c1_palm_cube_open_tube.jpg) / [02_c1_palm_little_finger_loop.jpg](../../docs/fusako_06_hand_screenshots/02_c1_palm_little_finger_loop.jpg) / [03_c1_palm_index_finger_loop.jpg](../../docs/fusako_06_hand_screenshots/03_c1_palm_index_finger_loop.jpg) / [04_c1_palm_middle_ring_loops.jpg](../../docs/fusako_06_hand_screenshots/04_c1_palm_middle_ring_loops.jpg) / [05_c1_hypothenar_alts_fatten.jpg](../../docs/fusako_06_hand_screenshots/05_c1_hypothenar_alts_fatten.jpg) / [06_c1_thenar_alts_fatten.jpg](../../docs/fusako_06_hand_screenshots/06_c1_thenar_alts_fatten.jpg)
 1. `Shift + S` $\to$ **「カーソル $\to$ ワールド原点」** で3Dカーソルを中心に戻す。
 2. `Shift + A` $\to$ **メッシュ > 立方体（Cube）** を追加。
 3. 編集モードで **一番上と一番下の面を選択して `X` $\to$ 面を削除**（4面筒）。
@@ -62,6 +63,7 @@
 ---
 
 ### Part 2: 親指の独立化と手のひらへの接続 (05:00〜10:00)
+> [📸 参考: 07_c2_thumb_make_single_user.jpg](../../docs/fusako_06_hand_screenshots/07_c2_thumb_make_single_user.jpg) / [08_c2_thumb_base_delete_fatten.jpg](../../docs/fusako_06_hand_screenshots/08_c2_thumb_base_delete_fatten.jpg) / [09_c2_thumb_vertex_snap_approach.jpg](../../docs/fusako_06_hand_screenshots/09_c2_thumb_vertex_snap_approach.jpg) / [10_c2_thumb_face_fill_f.jpg](../../docs/fusako_06_hand_screenshots/10_c2_thumb_face_fill_f.jpg) / [11_c2_thumb_webbing_topology.jpg](../../docs/fusako_06_hand_screenshots/11_c2_thumb_webbing_topology.jpg)
 1. **親指のリンク解除**:
    - 親指は他の4指と大幅に角度・肉付きが異なるため、プロパティのメッシュタブ（緑の三角）にあるユーザー数「5」をクリックして **シングルユーザー化**（リンク解除）。
 2. **親指付け根の開口と肉厚調整**:
@@ -75,6 +77,7 @@
 ---
 
 ### Part 3: リンク解除・ボーンリネーム・オブジェクト統合 (10:00〜15:00)
+> [📸 参考: 12_c3_make_single_user_obj_data.jpg](../../docs/fusako_06_hand_screenshots/12_c3_make_single_user_obj_data.jpg) / [13_c3_armature_single_user.jpg](../../docs/fusako_06_hand_screenshots/13_c3_armature_single_user.jpg) / [14_c3_bone_rename_index_proximal.jpg](../../docs/fusako_06_hand_screenshots/14_c3_bone_rename_index_proximal.jpg) / [15_c3_vgroup_auto_sync_check.jpg](../../docs/fusako_06_hand_screenshots/15_c3_vgroup_auto_sync_check.jpg) / [16_c3_armatures_apply_all_transforms.jpg](../../docs/fusako_06_hand_screenshots/16_c3_armatures_apply_all_transforms.jpg) / [17_c3_armatures_join_ctrl_j.jpg](../../docs/fusako_06_hand_screenshots/17_c3_armatures_join_ctrl_j.jpg)
 1. **全指・全ボーンのシングルユーザー化**:
    - オブジェクトモードで人差し指〜小指を選択。
    - ヘッダーの **オブジェクト > 関係 > シングルユーザー化 > オブジェクトとデータ（Object > Relations > Make Single User > Object & Data）** を実行。
@@ -96,6 +99,7 @@
 ---
 
 ### Part 4: 指と手のひらの接合・手首の形成 (15:00〜24:00)
+> [📸 参考: 18_c4_finger_base_shear_arch.jpg](../../docs/fusako_06_hand_screenshots/18_c4_finger_base_shear_arch.jpg) / [19_c4_snap_automerge_fingers_to_palm.jpg](../../docs/fusako_06_hand_screenshots/19_c4_snap_automerge_fingers_to_palm.jpg) / [20_c4_merge_by_distance.jpg](../../docs/fusako_06_hand_screenshots/20_c4_merge_by_distance.jpg) / [21_c4_knife_cuts_on_palm.jpg](../../docs/fusako_06_hand_screenshots/21_c4_knife_cuts_on_palm.jpg) / [22_c4_fill_webbing_faces.jpg](../../docs/fusako_06_hand_screenshots/22_c4_fill_webbing_faces.jpg) / [23_c4_wrist_extrude_sz0_level.jpg](../../docs/fusako_06_hand_screenshots/23_c4_wrist_extrude_sz0_level.jpg) / [24_c4_wrist_cross_section_oval.jpg](../../docs/fusako_06_hand_screenshots/24_c4_wrist_cross_section_oval.jpg)
 1. **付け根のシアー傾斜調整**:
    - 人差し指・薬指・小指の付け根ループを選択し、**シアー（`Shift + Ctrl + Alt + S`）** で中指を頂点とする緩やかな山なりアーチに角度を整流。
 2. **ナイフツールによるトポロジー整流**:
@@ -111,6 +115,7 @@
 ---
 
 ### Part 5: 手のひら・前腕ボーン追加とスキニング (24:00〜36:43)
+> [📸 参考: 25_c5_add_hand_lowerarm_bones.jpg](../../docs/fusako_06_hand_screenshots/25_c5_add_hand_lowerarm_bones.jpg) / [26_c5_bone_parenting_keep_offset.jpg](../../docs/fusako_06_hand_screenshots/26_c5_bone_parenting_keep_offset.jpg) / [27_c5_create_vgroups_hand_lowerarm.jpg](../../docs/fusako_06_hand_screenshots/27_c5_create_vgroups_hand_lowerarm.jpg) / [28_c5_assign_hand_half_weight.jpg](../../docs/fusako_06_hand_screenshots/28_c5_assign_hand_half_weight.jpg) / [29_c5_pose_mode_finger_curl_test.jpg](../../docs/fusako_06_hand_screenshots/29_c5_pose_mode_finger_curl_test.jpg) / [30_c5_vertex_mask_blur_brush.jpg](../../docs/fusako_06_hand_screenshots/30_c5_vertex_mask_blur_brush.jpg) / [31_c5_weights_smooth_filter.jpg](../../docs/fusako_06_hand_screenshots/31_c5_weights_smooth_filter.jpg) / [32_c5_auto_normalize_checkbox.jpg](../../docs/fusako_06_hand_screenshots/32_c5_auto_normalize_checkbox.jpg) / [33_c5_lowerarm_wrist_weight.jpg](../../docs/fusako_06_hand_screenshots/33_c5_lowerarm_wrist_weight.jpg) / [34_c5_webbing_tri_quad_retarget.jpg](../../docs/fusako_06_hand_screenshots/34_c5_webbing_tri_quad_retarget.jpg) / [35_c5_hand_complete_pose_persp.jpg](../../docs/fusako_06_hand_screenshots/35_c5_hand_complete_pose_persp.jpg)
 1. **Hand & LowerArm ボーンの追加**:
    - アーマチュアの編集モードで `Shift + A` $\to$ 手首の位置に新規ボーンを追加。
    - 手首〜手のひら中央へ伸ばし、名前を **`Hand`** に設定。

@@ -47,6 +47,7 @@
   - その他のサイド前髪・横髪は **左右対称（Mirror適用）**。
 
 #### (A) メイン前髪（非対称房）
+> [📸 参考: 01_c1_bangs_plane_rx90_forehead.jpg](../../docs/fusako_03_hair_screenshots/01_c1_bangs_plane_rx90_forehead.jpg) / [02_c1_main_bang_asymmetric_extrude.jpg](../../docs/fusako_03_hair_screenshots/02_c1_main_bang_asymmetric_extrude.jpg) / [03_c1_bang_tip_crease_1.jpg](../../docs/fusako_03_hair_screenshots/03_c1_bang_tip_crease_1.jpg) / [04_c1_bang_center_loop_alts_bulge.jpg](../../docs/fusako_03_hair_screenshots/04_c1_bang_center_loop_alts_bulge.jpg)
 1. `Shift + A` $\to$ メッシュ `Plane`（平面）を追加。
 2. 編集モードで `R X 90` で正面（-Y）に向ける。
 3. `G Z` で額の位置へ移動。おでこの曲面に沿って `E`（押し出し）で縦方向に伸ばす。
@@ -56,6 +57,7 @@
 7. `Ctrl + R` で中央に縦ループを1本追加し、`Alt + S` で前方に膨らませて緩やかな丸みを持たせる。
 
 #### (B) サイド前髪（対称房）
+> [📸 参考: 05_c1_active_element_pivot_rotation.jpg](../../docs/fusako_03_hair_screenshots/05_c1_active_element_pivot_rotation.jpg) / [06_c1_side_bangs_duplicate_mirror.jpg](../../docs/fusako_03_hair_screenshots/06_c1_side_bangs_duplicate_mirror.jpg) / [07_c1_adjacent_strands_loop_level_sync.jpg](../../docs/fusako_03_hair_screenshots/07_c1_adjacent_strands_loop_level_sync.jpg)
 1. メイン房から `Shift + D` で横に複製。
 2. **ピボットポイントの活用**:
    - ピボットポイントを「アクティブ要素（Active Element）」に変更。
@@ -74,6 +76,7 @@
 ---
 
 ### Part 2: 後ろ髪の大ラフ（09:05〜16:24）
+> [📸 参考: 08_c2_back_hair_12vert_cylinder.jpg](../../docs/fusako_03_hair_screenshots/08_c2_back_hair_12vert_cylinder.jpg) / [09_c2_cylinder_front_4faces_deleted.jpg](../../docs/fusako_03_hair_screenshots/09_c2_cylinder_front_4faces_deleted.jpg) / [10_c2_crown_scale_subsurf_1.jpg](../../docs/fusako_03_hair_screenshots/10_c2_crown_scale_subsurf_1.jpg) / [11_c2_hairline_crease_ear_gap.jpg](../../docs/fusako_03_hair_screenshots/11_c2_hairline_crease_ear_gap.jpg) / [12_c2_back_hair_volume_silhouette.jpg](../../docs/fusako_03_hair_screenshots/12_c2_back_hair_volume_silhouette.jpg)
 - **原型**: `Cylinder`（円柱、頂点数 **12**）から作成。
 
 1. `Shift + A` $\to$ メッシュ `Cylinder`（頂点数 **12**）を追加。
@@ -95,6 +98,7 @@
 ---
 
 ### Part 3: ツインテールの大ラフ（16:24〜20:55）
+> [📸 参考: 13_c3_twintail_cube_4face_tube.jpg](../../docs/fusako_03_hair_screenshots/13_c3_twintail_cube_4face_tube.jpg) / [14_c3_twintail_knot_extrude_tip.jpg](../../docs/fusako_03_hair_screenshots/14_c3_twintail_knot_extrude_tip.jpg) / [15_c3_twintail_curve_alts_fatten.jpg](../../docs/fusako_03_hair_screenshots/15_c3_twintail_curve_alts_fatten.jpg) / [16_c3_hair_rough_blockout_complete.jpg](../../docs/fusako_03_hair_screenshots/16_c3_hair_rough_blockout_complete.jpg)
 - **原型**: `Cube`（立方体）から作成。
 
 1. `Shift + A` $\to$ メッシュ `Cube` を追加。

@@ -51,24 +51,24 @@
 2. `Ctrl + 1` で `Subdivision Surface`（レベル1）を追加し、`Ctrl + A` でモディファイアを即時適用（丸みを帯びたベースキューブ化）。
 3. `S` で縮小し、`G Z` で胸〜みぞおちの高さへ配置。
 4. 編集モードで `X` 軸対称編集（ヘッダー右上の「X」アイコン、またはオートミラー）をON。
-5. 下絵（正面・側面）を見ながらプロポーショナル編集（`O`）や `S X`, `S Y` で胸〜ウエストのくびれを大まかに調整。
+5. 下絵（正面・側面）を見ながらプロポーショナル編集（`O`）や `S X`, `S Y` で胸〜ウエストのくびれを大まかに調整。 [📸 参考: 02_c1_auto_mirror_waist.jpg](../../docs/fusako_04_body_screenshots/02_c1_auto_mirror_waist.jpg)
 6. アドオン **Auto Mirror** を実行（または手動で半分削除して Mirror モディファイア＋クリッピングON）。
 7. **骨盤〜股下の押し出し**:
-   - 胴体の一番下の底面を選択し、`E` で下方に押し出し（骨盤の広がり）。
-   - さらに底面を選択してもう一度 `E` で押し出し、股下・お尻の最下部まで伸ばす。
-   - 側面から見て、お尻の丸みと下腹部の傾斜を整流。
+   - 胴体の一番下の底面を選択し、`E` で下方に押し出し（骨盤の広がり）。 [📸 参考: 03_c1_pelvis_extrude_step1.jpg](../../docs/fusako_04_body_screenshots/03_c1_pelvis_extrude_step1.jpg)
+   - さらに底面を選択してもう一度 `E` で押し出し、股下・お尻の最下部まで伸ばす。 [📸 参考: 04_c1_crotch_extrude_step2.jpg](../../docs/fusako_04_body_screenshots/04_c1_crotch_extrude_step2.jpg)
+   - 側面から見て、お尻の丸みと下腹部の傾斜を整流。 [📸 参考: 05_c1_body_base_complete.jpg](../../docs/fusako_04_body_screenshots/05_c1_body_base_complete.jpg)
 
 ---
 
 ### Part 2: 足（脚部）のモデリング (02:30〜04:39, 07:10〜09:59)
 1. `Shift + A` $\to$ **メッシュ > 立方体（Cube）** を追加。
 2. 編集モードで **一番上と一番下の面を選択して `X` $\to$ 面を削除**（4面の筒にする）。
-3. **`R Z 45` で45度回転**（ひし形断面化）。
+3. **`R Z 45` で45度回転**（ひし形断面化）。 [📸 参考: 07_c2_leg_rz45_rhombus.jpg](../../docs/fusako_04_body_screenshots/07_c2_leg_rz45_rhombus.jpg)
 4. `S Shift + Z` で水平方向の太さを絞り、`S` で全体スケールを下絵の太ももに合わせる。
-5. 最下部のエッジループを選択し、`E` で足首付近まで一気に押し出し。
+5. 最下部のエッジループを選択し、`E` で足首付近まで一気に押し出し。 [📸 参考: 08_c2_leg_extrude_ankle.jpg](../../docs/fusako_04_body_screenshots/08_c2_leg_extrude_ankle.jpg)
    - 内股気味に少し角度を傾ける。
 6. `Ctrl + R` で膝周辺、ふくらはぎ周辺にループカットを追加。
-   - 横から見て、膝がカクッと前に出るライン、ふくらはぎが後ろに膨らむラインを頂点移動で形成。
+   - 横から見て、膝がカクッと前に出るライン、ふくらはぎが後ろに膨らむラインを頂点移動で形成。 [📸 参考: 09_c2_leg_knee_calf_loops.jpg](../../docs/fusako_04_body_screenshots/09_c2_leg_knee_calf_loops.jpg)
 7. オブジェクトモードで足 $\to$ 胴体の順に複数選択し、`Ctrl + J` で統合（足にも胴体のMirrorが適用される）。
    ※後で個別にSubsurfをかけるため、必要に応じて編集モードで `L`（リンク選択） $\to$ `P` $\to$ `Selection` で再度分離。
 8. 足に `Ctrl + 1`（Subdivision Surface レベル1）を追加。
@@ -79,11 +79,11 @@
 ### Part 3: 腕（腕部）のモデリング (04:40〜07:09, 09:59〜10:30)
 1. `Shift + A` $\to$ **メッシュ > 立方体（Cube）** を追加。
 2. 編集モードで **横面（前後面）を選択して `X` $\to$ 面を削除**。
-3. **`R X 45` で45度回転**（ひし形断面化）。
+3. **`R X 45` で45度回転**（ひし形断面化）。 [📸 参考: 13_c3_arm_rx45_rhombus.jpg](../../docs/fusako_04_body_screenshots/13_c3_arm_rx45_rhombus.jpg)
 4. `S` で縮小し、肩口の位置へ配置。
-5. 端のエッジループを選択し、`E` で手首の位置まで一気に押し出し。
+5. 端のエッジループを選択し、`E` で手首の位置まで一気に押し出し。 [📸 参考: 14_c3_arm_extrude_wrist.jpg](../../docs/fusako_04_body_screenshots/14_c3_arm_extrude_wrist.jpg)
 6. `Ctrl + R` で肘や前腕にループカットを追加し、膨らみを持たせる。
-   - **ふさこ氏のTips**: 「一番太くなっているピーク位置が、上下（表裏）で全く同じ位置にあると単調で不自然に見える。あえて位置を前後にずらすことで人間らしい自然なカーブになる」。
+   - **ふさこ氏のTips**: 「一番太くなっているピーク位置が、上下（表裏）で全く同じ位置にあると単調で不自然に見える。あえて位置を前後にずらすことで人間らしい自然なカーブになる」。 [📸 参考: 15_c3_arm_elbow_curve_offset.jpg](../../docs/fusako_04_body_screenshots/15_c3_arm_elbow_curve_offset.jpg)
 7. 腕にも `Ctrl + 1`（Subdivision Surface レベル1）を追加し、全選択 `A` $\to$ `Alt + S` で太さを下絵に合わせる。
 
 ---
@@ -92,27 +92,27 @@
 1. **頂点数確認の準備**:
    - ビューポート右上の「ビューポートオーバーレイ」ドロップダウンを開き、**「統計（Statistics）」にチェック** を入れる。選択中の頂点数・面数が画面左上に常時表示される。
 2. **腕の接続口（肩口）の作成**:
-   - 胴体の側面にループカットを追加し、肩の付け根部分が「4面」のグリッドになるよう割りを整える。
+   - 胴体の側面にループカットを追加し、肩の付け根部分が「4面」のグリッドになるよう割りを整える。 [📸 参考: 17_c4_shoulder_grid_loops.jpg](../../docs/fusako_04_body_screenshots/17_c4_shoulder_grid_loops.jpg)
    - この側面4面を選択 $\to$ **`E`（押し出し） $\to$ `S`（縮小）** で肩口の台座を作る。
    - 腕の断面に近づくよう位置を整え、先端の面を削除（開口部が **8頂点** になる）。
 3. **足の接続口（股関節/パンツライン）の作成**:
-   - 胴体下部にループカットを追加し、お尻と下腹部の間を水着やパンツのようなV字ラインに整流。
+   - 胴体下部にループカットを追加し、お尻と下腹部の間を水着やパンツのようなV字ラインに整流。 [📸 参考: 20_c4_crotch_panties_line_loops.jpg](../../docs/fusako_04_body_screenshots/20_c4_crotch_panties_line_loops.jpg)
    - 胴体底面の股関節部分の **4面を選択して `X` $\to$ 面を削除**。
-   - 統計オーバーレイで確認すると、開口部のループが正確に **8頂点** になっていることを確認。
-   - 頂点の偏りがないよう、`G G`（頂点スライド）で周囲の面の間隔を均等に整える。
+   - 統計オーバーレイで確認すると、開口部のループが正確に **8頂点** になっていることを確認。 [📸 参考: 21_c4_statistics_8verts_check.jpg](../../docs/fusako_04_body_screenshots/21_c4_statistics_8verts_check.jpg)
+   - 頂点の偏りがないよう、`G G`（頂点スライド）で周囲の面の間隔を均等に整える。 [📸 参考: 23_c4_panties_v_shape_topology.jpg](../../docs/fusako_04_body_screenshots/23_c4_panties_v_shape_topology.jpg)
 
 ---
 
 ### Part 5: 腕・足の接合と首元の作成 (15:48〜20:45)
 1. **モディファイアの確定**:
-   - 接合前に、腕と足の `Subdivision Surface` モディファイアにマウスカーソルを合わせ、**`Ctrl + A` で適用** する（8角形のポリゴンメッシュに確定）。
+   - 接合前に、腕と足の `Subdivision Surface` モディファイアにマウスカーソルを合わせ、**`Ctrl + A` で適用** する（8角形のポリゴンメッシュに確定）。 [📸 参考: 24_c5_apply_subsurf_modifiers.jpg](../../docs/fusako_04_body_screenshots/24_c5_apply_subsurf_modifiers.jpg)
 2. **腕の接合（頂点スナップ＋自動マージ）**:
-   - 胴体と腕を選択し、`Ctrl + J` で1つのオブジェクトに統合。
+   - 胴体と腕を選択し、`Ctrl + J` で1つのオブジェクトに統合。 [📸 参考: 25_c5_arm_join_ctrl_j.jpg](../../docs/fusako_04_body_screenshots/25_c5_arm_join_ctrl_j.jpg)
    - ヘッダーの **「スナップ」をON（スナップ先: 頂点）** にし、**「自動マージ（Auto Merge）」をON**。
-   - 胴体側の肩口頂点を `G` で腕側の対応する頂点へドラッグすると、ピタッと吸着して自動的に一体化（全8頂点を順次結合）。
+   - 胴体側の肩口頂点を `G` で腕側の対応する頂点へドラッグすると、ピタッと吸着して自動的に一体化（全8頂点を順次結合）。 [📸 参考: 26_c5_arm_vertex_snap_automerge.jpg](../../docs/fusako_04_body_screenshots/26_c5_arm_vertex_snap_automerge.jpg)
 3. **足の接合（LoopTools Bridge）**:
-   - 胴体と足を選択し、`Ctrl + J` で統合。
-   - `Alt + 左クリック` で胴体側の股関節8頂点ループを選択、さらに `Shift + Alt + 左クリック` で足上端の8頂点ループを追加選択。
+   - 胴体と足を選択し、`Ctrl + J` で統合。 [📸 参考: 27_c5_leg_join_ctrl_j.jpg](../../docs/fusako_04_body_screenshots/27_c5_leg_join_ctrl_j.jpg)
+   - `Alt + 左クリック` で胴体側の股関節8頂点ループを選択、さらに `Shift + Alt + 左クリック` で足上端の8頂点ループを追加選択。 [📸 参考: 28_c5_leg_select_both_8vert_loops.jpg](../../docs/fusako_04_body_screenshots/28_c5_leg_select_both_8vert_loops.jpg)
    - 右クリック $\to$ **LoopTools > Bridge（ブリッジ）** を実行（8頂点同士が綺麗な四角面で架橋される）。
    - ブリッジ部のねじれや歪みを `G` や `G G` でスムーズに整える。
 4. **首元の作成（頭部接続準備）**:
@@ -121,7 +121,7 @@
    - 開口部ループを選択し、右クリック $\to$ **LoopTools > Relax（リラックス）** で綺麗な円形に整流。
    - 鎖骨・肋骨の膨らみ、脇の下のゆとりを微調整。
 5. **仕上げ**:
-   - オブジェクト名を `Body` 等にリネームして保存。
+   - オブジェクト名を `Body` 等にリネームして保存。 [📸 参考: 32_c5_body_complete_persp.jpg](../../docs/fusako_04_body_screenshots/32_c5_body_complete_persp.jpg)
 
 ---
 
