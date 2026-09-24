@@ -1743,3 +1743,40 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 画像カタログ: `docs/fusako_14_shoes_sandals_screenshots/README.md`
 - 字幕テキスト: `.agents/handoffs/fusako_14_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_14_subtitles_raw.ja.vtt`
+
+---
+
+## [2026-09-24 16:45] Antigravity — 動画15（ヘアアクセのモデリング）仕様書＆スクショ集（24枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画15本目（ふさこ氏『Blenderでキャラクターモデル制作！15 | ヘアアクセのモデリング〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=4xKfONOkV5k ）について、これまでの情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。
+
+**分かったこと/やったこと**:
+- **動画15仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全91ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_hair_accessories_15_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_15_hair_accessories_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心トポロジー・アクセサリーモデリング技術**:
+    1. **顔基準の左右対称配置（`Mirror Object: Head`）**:
+       - 原点から離れたツインテールリボンは、原点を結び目に置きつつ `Mirror Object` に顔を指定。ローカル編集の自由度と左右完全対称配置を両立。
+    2. **頂点ベベル（`Shift + Ctrl + B`）による板金・プレートパーツの角丸め**:
+       - パッチン留めやおにぎり型パーツの角頂点を `Shift + Ctrl + B` で面取り。最小限の頂点数でアクセサリー特有の滑らかなR面を高速生成。
+    3. **ラティス（`Lattice`）による非破壊カーブ曲げ**:
+       - `U=3` のラティスを配置し、`Lattice` モディファイアで中央頂点を持ち上げることで、平らなクリップを髪の曲面に沿った滑らかな弓形カーブへ非破壊変形。
+    4. **`Empty` ＋ `Array (Object Offset)` による幾何学的放射状配列**:
+       - 花びらに `Array`（Object Offset有効、原点エンプティ指定）をかけ、エンプティを `360 / 5 = 72°` 回転させて花びら5枚の完璧な円形配列を構築。
+    5. **親子付け（`Ctrl + P > Keep Transform`）と `Alt + D` リンク複製**:
+       - お花を親にしてクリップ・ラティスを親子付け。`Alt + D` でメッシュデータを共有したまま前髪やサイドへリンク配置し、容量削減と一括修正を両立。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_15_hair_accessories_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: Cube+Subsurf1結び目、RX45度羽立ち上げ、EX押し出し不要面削除、Subsurf適用AutoMirror、顔基準Mirrorツインテール配置、Plane縮小三角形シルエット、頂点ベベル角丸め、インセット枠作成、EXピン押し出しGZ段差、Solidify厚み付け、Lattice追加U3、Lattice曲面カーブ曲げ、スリット穴あけMark Sharp、Circle 8頂点花びら、Empty追加Array Object Offset、RZ 72度5枚配列、3DカーソルS0マージぷっくり成形、Circle 3頂点おにぎりベース、おにぎり頂点ベベル、Array適用おにぎり結合Solidify、クリップ・お花サイズ合わせ、Ctrl+P親子付け、Alt+Dリンク配置、Accessoriesコレクション整理完成。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、画像全24枚を同期。
+
+**相手への申し送り**:
+- キャラクターの装飾品（ツインテールリボン・パッチン留めクリップ・お花ヘアピン・ラティス曲面変形）のモデリング、およびヘアアクセサリーの髪へのフィッティング設計時、`docs/fusako_15_hair_accessories_screenshots/README.md` および仕様書をご活用いただけます。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_hair_accessories_15_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_15_hair_accessories_screenshots/`
+- 画像カタログ: `docs/fusako_15_hair_accessories_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_15_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_15_subtitles_raw.ja.vtt`
