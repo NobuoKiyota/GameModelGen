@@ -15,8 +15,8 @@
       "status": "IN_PROGRESS",
       "videos": [
         {"id": "hwDyavPRVNE", "no": 23, "title": "01 | 顔・体のUV展開", "url": "https://www.youtube.com/watch?v=hwDyavPRVNE", "status": "DONE"},
-        {"id": "caWYi7sJmrM", "no": 24, "title": "02 | 髪のUV展開", "url": "https://www.youtube.com/watch?v=caWYi7sJmrM", "status": "NEXT"},
-        {"id": "4EvrIHpTA2c", "no": 25, "title": "03 | 体・服・靴のUV展開", "url": "https://www.youtube.com/watch?v=4EvrIHpTA2c", "status": "PENDING"},
+        {"id": "caWYi7sJmrM", "no": 24, "title": "02 | 髪のUV展開", "url": "https://www.youtube.com/watch?v=caWYi7sJmrM", "status": "DONE"},
+        {"id": "4EvrIHpTA2c", "no": 25, "title": "03 | 体・服・靴のUV展開", "url": "https://www.youtube.com/watch?v=4EvrIHpTA2c", "status": "NEXT"},
         {"id": "pueKgjxwIyI", "no": 26, "title": "04 | アウターのUV展開", "url": "https://www.youtube.com/watch?v=pueKgjxwIyI", "status": "PENDING"},
         {"id": "p4N6kfBLOVc", "no": 27, "title": "05 | ヘアアクセなど小物のUV展開", "url": "https://www.youtube.com/watch?v=p4N6kfBLOVc", "status": "PENDING"}
       ]
