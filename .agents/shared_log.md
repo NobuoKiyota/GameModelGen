@@ -1667,3 +1667,42 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 画像カタログ: `docs/fusako_12_dress_drawers_screenshots/README.md`
 - 字幕テキスト: `.agents/handoffs/fusako_12_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_12_subtitles_raw.ja.vtt`
+
+---
+
+## [2026-09-24 16:30] Antigravity — 動画13（フード付きアウターのモデリング）仕様書＆スクショ集（26枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画13本目（ふさこ氏『Blenderでキャラクターモデル制作！13 | フード付きアウターのモデリング〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=7Z9BdqXY6KA ）について、これまでの情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。
+
+**分かったこと/やったこと**:
+- **動画13仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全171ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_hoodie_outer_13_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_13_hoodie_outer_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心トポロジー・衣装モデリング技術**:
+    1. **素体・インナーの頂点数（12頂点）完全整合**:
+       - フード開口部サークルは素体・首元・ワンピースと同じ **12頂点** から開始。頂点数が1対1で整合し歪みや不要な三角面化を回避。
+    2. **重ね着衣装の面複製（`Shift + D` $\to$ `Alt + S` $\to$ `P`）**:
+       - ワンピースのお腹面を複製し、法線外側へ `Alt + S` で膨らませて分離。素体・ワンピースのトポロジーと完全一致するためアニメーション時の衣服突き抜け（クリッピング）を根本防止。
+    3. **布の二重構造と `LoopTools > Bridge` 架橋**:
+       - フードや首元は裏表の二重構造。外側ループと内側ループを `LoopTools > Bridge` で一発架橋し袋状の厚みあるフード形状を構築。
+    4. **`Solidify` 適用後の `Individual Origins` による段差ベベル表現**:
+       - 前開きトリムに `Solidify` 適用後、ピボットポイントを `Individual Origins` にしてエッジを `S` 縮小。ふっくらと丸みを帯びた段差ベベルを高速生成。
+    5. **`V` キー切り裂き（Rip）による重なり・隙間・布ギャップ表現**:
+       - フード側面の曲がり、前開きの左右非対称な合わせ目、首後ろの切り替え部を `V` 切り裂きで段差を作り陰影と立体感を強調。
+    6. **ペンギン羽状・萌え袖の `S + Y` 拡張と `Solidify (Even Thickness)`**:
+       - 腕メッシュから複製したループを袖口に向けて押し出し、手首の先で `S + Y` で大きく広げてペンギン羽状の萌え袖を形成。`Solidify` の `Even Thickness` を有効化し薄さ破綻を防止。
+- **高解像度スクリーンショット集（全26枚）配備**:
+  - 格納フォルダ: `docs/fusako_13_hoodie_outer_screenshots/`（画像26枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 参考画像切り替え、Circle 12頂点フード立ち上げ、プロポーショナル開口部アライン、E押し出し+Alt+S外殻拡張、内側ループ下押し出し、LoopTools Bridge二重布化、ワンピース腹部面複製・分離、フード・胴体Ctrl+J結合、背中F面張りクアッド整流、ランダムカラー表示、側面V切り裂き隙間作成、Bridge滑らか架橋、布しわAlt+S凹凸、裾延長GG、前開きトリム平行ループCtrl+R、トリム面分離Solidify、Individual Origins段差ベベル、左右非対称前開きV切り裂き、Mark Sharpエッジシャープ化、袖口・首元インセット密閉、後頭部エッジ複製耳立ち上げ、耳先端Smooth Vertices外ハネ、フード側受け口Subdivide、耳とフードCtrl+J一体化、首後ろV切り裂き厚みギャップ、ペンギン羽状・萌え袖Solidify完成。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、画像全26枚を同期。
+
+**相手への申し送り**:
+- キャラクターのアウター衣装（フード・重ね着胴体・前開きトリム・ウサ耳/ケモ耳・ペンギン羽状萌え袖）のモデリング、および衣服同士の貫通防止トポロジー設計時、`docs/fusako_13_hoodie_outer_screenshots/README.md` および仕様書をご活用いただけます。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_hoodie_outer_13_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_13_hoodie_outer_screenshots/`
+- 画像カタログ: `docs/fusako_13_hoodie_outer_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_13_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_13_subtitles_raw.ja.vtt`
