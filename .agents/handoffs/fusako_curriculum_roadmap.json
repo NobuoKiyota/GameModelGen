@@ -12,20 +12,20 @@
     },
     {
       "series": "UV展開編",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETED",
       "videos": [
         {"id": "hwDyavPRVNE", "no": 23, "title": "01 | 顔・体のUV展開", "url": "https://www.youtube.com/watch?v=hwDyavPRVNE", "status": "DONE"},
         {"id": "caWYi7sJmrM", "no": 24, "title": "02 | 髪のUV展開", "url": "https://www.youtube.com/watch?v=caWYi7sJmrM", "status": "DONE"},
         {"id": "4EvrIHpTA2c", "no": 25, "title": "03 | 体・服・靴のUV展開", "url": "https://www.youtube.com/watch?v=4EvrIHpTA2c", "status": "DONE"},
         {"id": "pueKgjxwIyI", "no": 26, "title": "04 | アウターのUV展開", "url": "https://www.youtube.com/watch?v=pueKgjxwIyI", "status": "DONE"},
-        {"id": "p4N6kfBLOVc", "no": 27, "title": "05 | ヘアアクセなど小物のUV展開", "url": "https://www.youtube.com/watch?v=p4N6kfBLOVc", "status": "NEXT"}
+        {"id": "p4N6kfBLOVc", "no": 27, "title": "05 | ヘアアクセなど小物のUV展開", "url": "https://www.youtube.com/watch?v=p4N6kfBLOVc", "status": "DONE"}
       ]
     },
     {
       "series": "Substance Painter テクスチャ編",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "videos": [
-        {"id": "RB9jILspXBk", "no": 28, "title": "01 | Substance Painter入門・基本操作", "url": "https://www.youtube.com/watch?v=RB9jILspXBk", "status": "PENDING"},
+        {"id": "RB9jILspXBk", "no": 28, "title": "01 | Substance Painter入門・基本操作", "url": "https://www.youtube.com/watch?v=RB9jILspXBk", "status": "NEXT"},
         {"id": "tayBUmjCFt8", "no": 29, "title": "02 | 顔のペイント", "url": "https://www.youtube.com/watch?v=tayBUmjCFt8", "status": "PENDING"},
         {"id": "3a7os-XHBTU", "no": 30, "title": "03 | 髪のペイント", "url": "https://www.youtube.com/watch?v=3a7os-XHBTU", "status": "PENDING"},
         {"id": "QY0WSefAyKM", "no": 31, "title": "04 | ベイク方法とジェネレーター・フィルター", "url": "https://www.youtube.com/watch?v=QY0WSefAyKM", "status": "PENDING"},

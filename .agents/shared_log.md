@@ -2234,3 +2234,53 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - VTT生データ: `.agents/handoffs/fusako_26_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
 
+---
+
+## [2026-09-24 20:41] Antigravity — ふさこ氏『Blenderでキャラクターモデル制作！』第27話（ヘアアクセなど小物のUV展開・UV展開編 完結）完了・高解像度スクショ・仕様書整備
+
+**状況**: チュートリアル動画27本目（ふさこ氏『Blenderでキャラクターモデル制作！05 | ヘアアクセなど小物のUV展開 〜初中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=p4N6kfBLOVc ）について、情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を実施、完了。これにより**全5回にわたる「UV展開編」が100%完全完結**。
+
+**分かったこと/やったこと**:
+- **動画27仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全769ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_uv_accessories_27_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_27_uv_accessories_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **小物UV展開・UV完全複製・歪み診断＆UV編総まとめ技術**:
+    1. **小物専用カラー識別マテリアルの構築**:
+       - Hairマテリアルを複製し「M_Accessories」と命名。RGB CurvesでB（青）とG（緑）を引き上げ水色（Cyan）チェッカーに設定。全小物オブジェクトに `Ctrl+L > Link Materials` で一括アサイン。
+    2. **リンク複製（Alt+D）オブジェクトの Solidify 適用**:
+       - `Make Single User` の警告に対し、クリックしてリンク解除してからモディファイアを正常適用。
+    3. **【神Tips】Magic UVアドオンによるUV完全コピー＆ペースト**:
+       - `U > Copy/Paste UV > Copy UV Map` $\to$ 対象オブジェクトで `U > Copy/Paste UV > Paste UV Map`。
+       - 同一トポロジーの左右対称パーツ（パッチン留めなど）において、シーム・展開・Rectify・ピン留め作業を100%自動複製可能。ペースト後に少しずらして非重複配置。
+    4. **類似エッジの一括選択（Shift+G > Sharpness）**:
+       - マークシャープを打ったエッジを1つ選択 $\to$ `Shift+G > Sharpness` で全シャープエッジを一括選択 $\to$ `Ctrl+E > Mark Seam` で一発シーム化。
+    5. **不均等スケール警告と Ctrl+A Scale 適用**:
+       - オブジェクトモードで `Ctrl+A > Scale` を適用し、3D空間とUVの比率狂いを防止。
+    6. **【神Tips】UV Display Stretch（歪み診断）の活用**:
+       - UVエディターの `Display Stretch > Area` をオンにし、青色〜水色（歪みなし適正値）を目視確認。
+    7. **長い紐パーツの分割と裏地50%縮小（S 0.5）**:
+       - 極端に長い肩紐は目立たない肩位置でシームを入れて前後に分割。
+       - Individual Origins で裏地を `S 0.5` 縮小。
+    8. **主要書き込みパーツ（ポシェット・おにぎり・リボン等）の優先拡大**:
+       - 書き込みが多い顔付きポシェット・おにぎり等の主要アイランドを手動拡大（`S 1.1〜1.3`）してテクセル解像度を最大化。
+    9. **全UV展開完了とSubstance Painter持参準備**:
+       - 全コレクション（顔・髪・体・服・アウター・小物）のUV展開が全て完了。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_27_uv_accessories_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 小物コレクション表示・水色マテリアル設定、リボン1段目ミラー適用・表裏シーム、パッチン留めSolidifyとSingle User化、パッチン留め花飾り厚み歪み解消、パッチン留め本体シーム・手動直線化、Magic UV Copy UV Map、Magic UV Paste UV Map、ボタン・尻尾シーム展開、Shift+Gシャープ辺一発シーム化、不均等スケール適用修正、バッグジッパー展開・ピン留め、TexTools整列・オブジェクト結合、肩紐事前展開・縦ループ整列、肩紐Solidify・表裏分離、ウサギポシェットシーム・ミラー適用、ウサギポシェット厚み歪み対策、ポシェット紐Rectify・SY比率調整、ポシェット結合・裏地S0.5縮小、リボン・ポシェット仮パッキング、Display Stretch（Area）歪み色可視化、肩紐分割シーム・裏地一括縮小、キャンティーンバッグ上下向き揃え、Average Island Scale・高密度パーツ優先拡大、キャラクター全モデルUV展開完全完成。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- これにてキャラクターモデリングにおける「リギング・スキニング編（全4回）」および「UV展開編（全5回）」の全体系化が完全完了しました。
+- 次回より **Substance Painter テクスチャ編 第1回（第28話）『Substance Painter入門・基本操作』**（`https://www.youtube.com/watch?v=RB9jILspXBk`）へ自動進行可能です。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_uv_accessories_27_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_27_uv_accessories_screenshots/`
+- 画像カタログ: `docs/fusako_27_uv_accessories_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_27_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_27_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+
