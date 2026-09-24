@@ -2142,3 +2142,49 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_24_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_24_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+---
+
+## [2026-09-24 20:20] Antigravity — 動画25（体・服・靴のUV展開・UV展開編 第3回）仕様書＆スクショ集（24枚）配備完了
+
+**状況**: チュートリアル動画25本目（ふさこ氏『Blenderでキャラクターモデル制作！03 | 体・服・靴のUV展開 〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=4EvrIHpTA2c ）について、情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を実施、完了。
+
+**分かったこと/やったこと**:
+- **動画25仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全647ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_uv_body_clothes_25_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_25_uv_body_clothes_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心体・服・靴UV展開・厚み歪み解消＆カラー識別技術**:
+    1. **着衣不可視メッシュの分離・削除とお腹蓋モデリング**:
+       - 服（ワンピース）に隠れる胸・体幹、ドロワーズに隠れるお尻・骨盤、靴内部の足を `P` キーで別オブジェクトに分離退避（ポリゴン・UV容量の劇的削減）。
+       - 下から覗いた時の空洞化を防ぐため、お腹の高さで内側頂点ループに面張り（`F`）＋インセット（`I`）＋中心マージで蓋メッシュを作成。
+       - 裾の内外境界エッジを `Bridge Edge Loops` で接続し厚みメッシュを密閉。
+    2. **【神Tips】厚み服の裾広がり歪み解消（表面ピン留め再展開法）**:
+       - Solidify適用布メッシュをそのまま展開すると厚み面に引っ張られて裾が扇状に広がる問題を解決。
+       - 表面のみ選択展開 $\to$ `P` ピン留め $\to$ 厚み面含めて再展開。表面の正しいプロポーションを100%保持したまま厚み面だけを自然付加。
+       - 前面は正中線で結合（Mirror U, 2DカーソルX=0.5, `S X 0`）。内面・蓋は `S 0.5` 以下に極小化。
+    3. **靴（Shoes）の展開と TexTools Rectify 直角格子化**:
+       - 靴底の上面・底面・かかとシームで直線短冊展開。
+       - 湾曲したストラップ・バンドを TexTools Rectify で完全な長方形グリッドに直角化し、ピン留め再展開（ライン・ステッチ描画のジャギーを防止）。
+       - 平行ループカット（`Ctrl + R > E > F`）で黄色ライン用の帯状UVを独立分離。
+    4. **【神Tips】マテリアル別カラー識別シェーダー構築**:
+       - `Texture Coordinate` $\to$ `Mapping` $\to$ `Image Texture`（UV Grid）の後段に **RGB Curves** を配置。
+       - マテリアルごとに色分け（顔=赤、髪=緑、肌=ピンク、服=青）。
+       - どのパーツがどのテクスチャに属しているか、3Dビュー上で一目瞭然に可視化しアサインミスを防止。
+       - `UV > Average Islands Scale` ＋ `Pack Islands`（Margin: 0.005〜0.01）でインナー服・靴のパッキング完了。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_25_uv_body_clothes_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: ワンピースSolidify設定、お腹内側蓋作成、裾厚み境界ブリッジ、体幹メッシュP分離、骨盤・足メッシュ分離、ドロワーズ厚み付け・蓋作成、素体シーム配置、肌チェッカー確認、手の表裏シーム、手の展開修正、ワンピースシーム配置、裾広がり歪み課題、表面ピン留め再展開、Mirror U前面結合SX0、内側蓋S0.5縮小、ドロワーズピン留め展開、靴底直線短冊展開、ペンギン羽装飾シーム、ストラップRectify直角化、四角化ピン留め再展開、ライン用サポートループ追加、UV Gridカラー識別シェーダー、肌UVパッキング、インナー服・靴最終レイアウト完了。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- 厚み付き衣服の表面ピン留め再展開法（裾歪み根絶）、靴ストラップのRectify直角格子化、およびUV Grid ＋ RGB Curves によるマテリアル別カラー識別について、`docs/fusako_25_uv_body_clothes_screenshots/README.md` および仕様書をご活用いただけます。
+- 続いて UV展開編 第4回（第26話）『アウターのUV展開』（`https://www.youtube.com/watch?v=pueKgjxwIyI`）へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_uv_body_clothes_25_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_25_uv_body_clothes_screenshots/`
+- 画像カタログ: `docs/fusako_25_uv_body_clothes_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_25_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_25_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
