@@ -1780,3 +1780,40 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 画像カタログ: `docs/fusako_15_hair_accessories_screenshots/README.md`
 - 字幕テキスト: `.agents/handoffs/fusako_15_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_15_subtitles_raw.ja.vtt`
+
+---
+
+## [2026-09-24 16:50] Antigravity — 動画16（ポシェットのモデリング）仕様書＆スクショ集（24枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画16本目（ふさこ氏『Blenderでキャラクターモデル制作！16 | ポシェット（ペンギン）のモデリング〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=hE2osPXH-8s ）について、これまでの情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。
+
+**分かったこと/やったこと**:
+- **動画16仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全116ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_penguin_pochette_16_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_16_penguin_pochette_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心トポロジー・小物アクセサリー設計技術**:
+    1. **ポーチ本体とフタ（フラップ）の `Y` キー分離構造**:
+       - フタのエッジループを `Y`（メッシュ切り離し）で分離し、`G + Z` で少し上に持ち上げることで、同一オブジェクト内で開口部のリアルな重なり・隙間を破綻なく生成。
+    2. **アクティブ要素中心スケールによる均等半円フリル成形**:
+       - 谷頂点をマージしてジグザグにした後、山側の中央頂点をアクティブにして `Active Element` スケールを適用。完全な真円弧を描く愛らしい半円フリルを均等成形。
+    3. **ベジェカーブによる紐・リボンの非破壊太さ制御**:
+       - 紐やリボンは `Curve > Bezier` を使用し、`Geometry > Bevel > Depth` で太さを数値制御。輪っかと垂れ紐を高速作成後、`Convert to Mesh` でメッシュ化して金具へ潜り込ませマージ。
+    4. **裏面非表示シェーダー対応の `Solidify (Fill Rim: OFF)`**:
+       - ゲームエンジンやVRM（MToon等）の裏面カリング環境下でリボンの裏面が消えるのを防ぐため、`Solidify`（Fill Rim: OFF）を設定。表面・裏面の両方に法線を向けた軽量描画を実現。
+    5. **`Copy Attributes Menu`（Ctrl + C）によるモディファイア一括同期**:
+       - 多数のパーツで構成されるポシェットに対し、親パーツに `Mirror`（Mirror Object: `Head`）を設定後、`Ctrl + C > Copy Selected Modifiers` で全パーツへ対称化設定を一瞬で同期。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_16_penguin_pochette_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: Cube配置、フタY切り裂きGZ持ち上げ、側面インセットマチ成形、Subsurf適用Collapse Edge Loops、前面分割マークシャープ色分け、インセット谷マージジグザグ、Active Element半円フリル、スカーフ面複製P分離、Cube上下開放結び目、垂れ布押し出しAlt+S膨らみ、左右非対称スカーフ調整、Curve Bezierベベル太さ設定、輪っか・垂れ紐カーブ編集、Cube留め具金具、Convert to Meshメッシュ化、端点金具穴押し込みクリッピング、Solidify(Fill Rim: OFF)、本体Solidify厚み付け、スカーフエッジ複製ウサ耳立ち上げ、Smooth Vertices厚み押し出し、背面耳差し込み、Ctrl+P親子付け、腰配置Mirror顔指定、Copy Attributes Menu一括コピー完成。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、画像全24枚を同期。
+
+**相手への申し送り**:
+- キャラクターの装飾品（ポシェット・フリルポーチ・スカーフ・ベジェカーブ紐・ウサ耳飾り）のモデリング、および小物パーツの親子付け・モディファイア一括管理設計時、`docs/fusako_16_penguin_pochette_screenshots/README.md` および仕様書をご活用いただけます。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_penguin_pochette_16_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_16_penguin_pochette_screenshots/`
+- 画像カタログ: `docs/fusako_16_penguin_pochette_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_16_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_16_subtitles_raw.ja.vtt`
