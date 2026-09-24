@@ -1560,6 +1560,40 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_09_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_09_subtitles_raw.ja.vtt`
 
+---
+
+## [2026-09-24 16:00] Antigravity — 動画10（後ろ髪＆ツインテールの作り込み・立体化＆結び目）仕様書＆スクショ集（26枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画10本目（ふさこ氏『Blenderでキャラクターモデル制作！10 | 後ろ髪とツインテールの作り込み〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=3db96pczrPs ）について、これまでの情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。
+
+**分かったこと/やったこと**:
+- **動画10仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全85ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_backhair_twintails_10_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_10_backhair_twintails_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心トポロジー・モデリング技術**:
+    1. **後頭部メッシュの裏面押し出し（Alt + S）と「Hide Only Vertex」ロック**: 後ろ髪を `E -> Esc -> Alt + S` で法線内側に押し出して肉厚化。外側メッシュにシームを付けてL選択後、アドオン `Hide Only Vertex`（Shift + Ctrl + H）で外側頂点だけをロック。外側シルエットを完全固定したまま内側頂点のみを頭部にフィット拡大変形。
+    2. **LoopTools Relax と頂点スライド（Shift + V）**: `Alt + S` で歪んだエッジを `LoopTools > Relax` で平滑化。面が張られていないオープン境界は `Shift + V` で既存エッジに沿ってスライド。
+    3. **Subsurf確定適用後の「AutoMirror」再対称化**: Subsurf確定適用後、中央の歪みを防ぐため `AutoMirror` で半分カットしてMirrorモディファイアを再追加。
+    4. **ツインテールの二層螺旋構造と三角形断面化**: 大毛束の面を `Shift + D` 複製し、`Alt + S` 浮かせ＋回転（R）で本体に巻きつく小毛束を配置。中央ループを膨らませて `F` キーで裏面を塞ぎ、360度見映えするおにぎり型断面ソリッドに密閉。
+    5. **アノテーション＋ナイフ（Kキー）による結び目の彫り込み**: サーフェスペンで下書きし、ナイフカット $\to$ インセット（I） $\to$ `Alt + S` 隆起 $\to$ `Mark Sharp`（Ctrl + E）で髪留めゴムのギュッとした引き締め陰影を表現。
+    6. **面スナップ（Face Snapping）による生え際の肌露出防止**: 後ろ髪の境界エッジを押し出して頭皮メッシュの面にスナップ吸着させ、カメラを回しても地肌が見えない完全密閉構造を構築。
+- **高解像度スクリーンショット集（全26枚）配備**:
+  - 格納フォルダ: `docs/fusako_10_backhair_twintails_screenshots/`（画像26枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 後ろ髪Alt+S内側押し出し、外側Mark Seam、Hide Only Vertexロック、内側プロポーショナルフィット、LoopTools Relax、不要内側面削除、法線外側再計算、Vキー切り裂き毛束分割、Shift+V頂点スライド、Shift+E毛先クリース、AutoMirror再対称化、平面的側頭部の丸み補正、襟足押し出し＆引き下げ、襟足先端マージ整流、ツインテールS字カーブ、重なり小毛束複製＆巻きつき回転、中央ループAlt+S膨らみ、Subsurf適用、交差頂点整流、裏面Fキー張り、Shade Auto Smooth、アノテーション結び目下書き、ナイフカット＆インセット、結び目Mark Sharp、生え際面スナップ押し出し、完成プレビュー。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、画像全26枚を同期。
+
+**相手への申し送り**:
+- キャラクターの後ろ髪・ツインテール・ポニーテール・ヘアアクセサリー（結び目）のハイディテールモデリング、および生え際の肌見え防止トポロジー設計時、`docs/fusako_10_backhair_twintails_screenshots/README.md` および仕様書をご活用いただけます。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_backhair_twintails_10_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_10_backhair_twintails_screenshots/`
+- 画像カタログ: `docs/fusako_10_backhair_twintails_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_10_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_10_subtitles_raw.ja.vtt`
+
+
 
 
 
