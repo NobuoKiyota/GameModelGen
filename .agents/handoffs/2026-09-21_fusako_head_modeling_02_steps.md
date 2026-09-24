@@ -9,6 +9,9 @@
 - **字幕生データ**:
   - VTT生ファイル: `f:\GameModelGen\.agents\handoffs\fusako_02_subtitles_raw.vtt`
   - タイムスタンプ付きテキスト: `f:\GameModelGen\.agents\handoffs\fusako_02_subtitles_timestamped.txt`
+- **重要シーン・スクリーンショット集（全17枚）**:
+  - 保存フォルダ: [`z:\MeshCreator\docs\fusako_02_head_back_screenshots/`](file:///z:/MeshCreator/docs/fusako_02_head_back_screenshots/)
+  - 画像カタログ: [`z:\MeshCreator\docs\fusako_02_head_back_screenshots/README.md`](file:///z:/MeshCreator/docs/fusako_02_head_back_screenshots/README.md)
 
 ---
 

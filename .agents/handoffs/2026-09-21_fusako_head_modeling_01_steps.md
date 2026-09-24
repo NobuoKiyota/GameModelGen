@@ -4,6 +4,9 @@
 **動画長**: 36分22秒  
 **対象**: `AnimeFace/` ワークスペースのステップ2以降の実装用操作列  
 **作成日**: 2026-09-21  
+**重要シーン・スクリーンショット集（全23枚）**:
+- 保存フォルダ: [`z:\MeshCreator\docs\fusako_01_head_front_screenshots/`](file:///z:/MeshCreator/docs/fusako_01_head_front_screenshots/)
+- 画像カタログ: [`z:\MeshCreator\docs\fusako_01_head_front_screenshots/README.md`](file:///z:/MeshCreator/docs/fusako_01_head_front_screenshots/README.md)
 
 ---
 
