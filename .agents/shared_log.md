@@ -1934,5 +1934,43 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_19_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_19_subtitles_raw.ja.vtt`
 
+---
+
+## [2026-09-24 18:50] Antigravity — 動画20（ウェイト転送で服や揺れ物をスキニング・リギング編 第2回）仕様書＆スクショ集（24枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画20本目（ふさこ氏『Blenderでキャラクターモデル制作！02 | ウェイト転送で服や揺れ物をスキニング 〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=APQgOHa1udo ）について、これまでの情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。また、チャンネル全動画からの自動追い学習体制の確認・整備を実施。
+
+**分かったこと/やったこと**:
+- **動画20仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全566ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_rigging_skinning_clothes_20_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_20_rigging_skinning_clothes_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心ウェイト転送・プロキシ板スキニング技術**:
+    1. **静止ダミー素体（WeightTransferBody）による衣服スキニング**:
+       - スキニング済み素体を複製し Armature をOFFにした静止素体を用意。ドロワーズ、靴、ワンピース、パーカーへ `Data Transfer`（Nearest Face Interpolated）で素体の高精度ウェイトを一括転送。
+       - `Copy Attributes Menu`（Ctrl + C）で複数パーツへモディファイアを一発複製。
+    2. **親子メッシュ追従（Hair $\to$ Hairpin, Hood $\to$ Flower）**:
+       - パッチン留めやリボン等の装飾小物は、ボーンからではなく「土台となる髪やフードのメッシュ」から Data Transfer でウェイト転送。物理揺れ変形時に装飾が100%吸着追従。
+    3. **転送用プロキシ板メッシュ（Proxy Plane）による揺れ物スキニング（神Tips）**:
+       - 複雑な毛束や羽根の立体メッシュに対し直接ブラシで手塗りするのを全廃。内部にわずか3〜4頂点の単純な板ポリゴン（Plane）を仕込み、板に根元（1.0）〜先端（1.0）のウェイトを割り当てて Data Transfer で本番メッシュへ投影。
+       - わずか数頂点の移動やスケールだけで全体のしなり・減衰カーブを非破壊制御可能。
+       - 本番メッシュに後から装飾や分割を追加しても自動でウェイトが再投影され、手戻りゼロ。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_20_rigging_skinning_clothes_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 転送用ダミー素体複製Armature OFF、ドロワーズData Transfer Nearest Face、Generate Data LayersとArmature追加、Copy Attributesで靴へ一括コピー、ワンピースへの転送追従、アウター・パーカー転送点検、剛体前髪Head 1.0アサイン、パッチン留め髪からのData Transfer、フード花飾りフードからの転送、Wing.Lボーン追加Chest親子付け、羽プロキシ三角板Plane作成、プロキシ板Chest/Wingウェイトアサイン、羽本体へプロキシ板転送適用、プロキシ板Mirror空のWing.Rグループ、プロキシ頂点移動による減衰微調整、前髪センターボーンHairBang.C配置、前髪四角プロキシ板、前髪Data Transfer滑らか連動、横前髪ボーンと三角プロキシ板、Symmetrizeと前髪転送完了、サイドヘア2連ボーン追加、帯状プロキシ板3段ウェイト配分、ツインテールボーンとプロキシ転送、プロキシコレクション整理完了。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログを同期。
+
+**相手への申し送り**:
+- 衣服の素体追従（Data Transfer）および、プロキシ板ポリゴンを用いた髪・羽根・揺れ物スキニングの神テクニックについて、`docs/fusako_20_rigging_skinning_clothes_screenshots/README.md` および仕様書をご活用いただけます。
+- チャンネル全動画リスト（リギング編03〜04、UV展開編01〜05、SPテクスチャ編01〜07、シェイプキー編01〜04）のメタデータ取得が完了しており、全自動で継続追い学習・仕様書化が可能です。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_rigging_skinning_clothes_20_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_20_rigging_skinning_clothes_screenshots/`
+- 画像カタログ: `docs/fusako_20_rigging_skinning_clothes_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_20_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_20_subtitles_raw.ja.vtt`
+
+
 
 
