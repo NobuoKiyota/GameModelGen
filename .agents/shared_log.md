@@ -1892,4 +1892,47 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_18_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_18_subtitles_raw.ja.vtt`
 
+---
+
+## [2026-09-24 18:30] Antigravity — 動画19（素体のリギング＆スキニング・リギング編開幕）仕様書＆スクショ集（24枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画19本目（ふさこ氏『Blenderでキャラクターモデル制作！[リギング編] 01 | 素体のリギング＆スキニング 〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=DVbOQlF7VQg ）について、これまでの情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。本話からモデルを動かすリギング・スキニング編が開幕した。
+
+**分かったこと/やったこと**:
+- **動画19仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全529ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_rigging_skinning_body_19_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_19_rigging_skinning_body_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心リギング・スキニング技術**:
+    1. **VRM HumanoidアーマチュアのセットアップとSymmetrize**:
+       - 原点接地（G Z）後、VRM Humanoidアーマチュアを追加（In Front / Wire表示）。関節位置をメッシュ中心軸へ合わせ、不要なVRM指ボーンを削除。PascalCaseリネーム（F2）後、左半身から右半身へ `Symmetrize`（対称化）を一発実行。
+    2. **既存手ボーンの統合と親子付け（Keep Offset）**:
+       - 体と手のアーマチュアを `Ctrl + J` で統合。`Hand.L` $\to$ `LowerArm.L` を `Ctrl + P > Keep Offset` で接続し、対称モードで左右連動の完全な人型骨格を確立。
+    3. **手メッシュ分離（P）による既存ウェイト保護**:
+       - 体全体に `With Automatic Weights` を適用する前に、あらかじめ繊細に塗ってあった手メッシュを `P` キーで別オブジェクトに一時分離。自動ウェイトによる上書き破壊を物理的に防止。
+       - `Root` ボーンの `Deform` チェックをOFFにし、全体追従バグを未然防止。
+    4. **剛体パーツ（頭・目・耳）の直接アサイン**:
+       - 頭部・耳は頂点グループ `Head` に Weight: 1.0 アサイン。目は `Eye.L` に 1.0 アサインし空の `Eye.R` を作成してミラー対応。
+    5. **ウェイトペイント極意（Auto Normalize ＆ Zero Weights）**:
+       - ツールオプションで **Auto Normalize: ON**（ウェイト合計を常に1.0維持）、ビューポートオーバーレイで **Zero Weights: Active**（影響なし領域を真っ黒表示）に設定。
+       - Armatureモディファイアのケージ表示（四角・三角アイコン）をONにし、ポーズを曲げた状態で編集モードに入り、関節の潰れ・痩せ（ボリュームロス）をリアルタイムにトポロジー修正（Subdivide割り増し、不要エッジのDissolve、三角化エッジ回転）。
+    6. **接合境界の数値入力アサイン（0.5 / 0.5）と頂点コピー**:
+       - 首と頭、手首と前腕など、別パーツ境界ループはアイテムパネルで親ボーンと子ボーンに `0.5 / 0.5` を数値入力。回転時の裂け目・隙間を完全ゼロ化。
+       - 胴体（Spine）などの円筒ループは、理想的な1頂点のウェイトを横列全体へ **Copy** ボタンで一括転送。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_19_rigging_skinning_body_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 全表示地面接地GZ、VRM Humanoid最前面Wire表示、編集モード関節配置X軸Mirror、VRM指ボーン削除、PascalCaseボーン名整理、右半身削除Symmetrize、手ボーン統合Ctrl+P Keep Offset、手メッシュP一時分離、RootボーンDeform OFF、Ctrl+P With Automatic Weights適用、頭・目Weight 1.0アサイン、耳結合Headアサイン、Weight Paint Auto Normalize ON、Zero Weights Active黒表示、ケージ表示Weights Smooth、肩上げポーズSubtract脇腹消去、肘曲げSubdivide割り増し、肘内側Dissolveボリュームロス防止、手首0.5/0.5数値アサイン、手首近接ループグラデーション、首頭0.5/0.5境界一致、Chest消去Spine横段ウェイトコピー、膝曲げSmoothness三角化、全身ポーズ可動域点検完了。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログを同期。
+
+**相手への申し送り**:
+- キャラクター素体の骨格配置（VRM Humanoid）、自動ウェイト適用時の手パーツ保護、Auto Normalize運用、および関節のボリュームロス防止トポロジー修正の技法について、`docs/fusako_19_rigging_skinning_body_screenshots/README.md` および仕様書をご活用いただけます。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_rigging_skinning_body_19_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_19_rigging_skinning_body_screenshots/`
+- 画像カタログ: `docs/fusako_19_rigging_skinning_body_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_19_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_19_subtitles_raw.ja.vtt`
+
+
 
