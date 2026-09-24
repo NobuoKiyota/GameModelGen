@@ -1706,3 +1706,40 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 画像カタログ: `docs/fusako_13_hoodie_outer_screenshots/README.md`
 - 字幕テキスト: `.agents/handoffs/fusako_13_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_13_subtitles_raw.ja.vtt`
+
+---
+
+## [2026-09-24 16:35] Antigravity — 動画14（靴・サンダル・ブーツのモデリング）仕様書＆スクショ集（24枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画14本目（ふさこ氏『Blenderでキャラクターモデル制作！14 | 靴（サンダル・ブーツ）のモデリング〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=KaTcr7DTKQc ）について、これまでの情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。
+
+**分かったこと/やったこと**:
+- **動画14仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全120ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_shoes_sandals_14_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_14_shoes_sandals_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心トポロジー・フットウェアモデリング技術**:
+    1. **足裏からのインセット（`I`）によるインナーソールとコバの整合**:
+       - 靴底メッシュを下に複製退避後、上部ベースは `I` で外周を1段縮小し外枠を削除してインナーソールを作成。この外周からアッパーを立ち上げることで自然なコバ（張り出し）を持つリアルなサンダル構造を実現。
+    2. **ソールへの食い込み膨らみ（`Alt + S`）による接着テンション表現**:
+       - アッパー下端近くにループを追加し、最下部を `Alt + S` で外側に膨らませて靴底に食い込ませることで、布や革がソールに固定されたリアルな接地陰影を造形。
+    3. **`Checker Deselect`（チェッカー選択）＋ `G + G` によるジグザグ縁の一発生成**:
+       - 靴下裾ループを細分化後、`Select > Checker Deselect` で1つ飛ばし選択し、`G + G` で上へスライド。均等なジグザグ縁を一発作成。五角形面は `Ctrl + T` で三角面化。
+    4. **履き口の二重トリム架橋（`Shift + D` $\to$ `Alt + S` $\to$ `LoopTools > Bridge`）**:
+       - 面ループを複製し `Alt + S` で凹ませて隙間を作り、両側ループを `LoopTools > Bridge` で架橋。エッジリングを `Individual Origins` でスケールして厚み幅を自在に調整。
+    5. **Cube + Subsurf1適用 + ベベル + `To Sphere` による真球ポンポン生成**:
+       - CubeにSubsurf1を確定適用し、角のエッジを `Ctrl + B` で面取り後、`Shift + Alt + S`（To Sphere: 1.0）で真球化。極の歪みがない均等四角面ポンポン飾りを構築。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_14_shoes_sandals_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: Plane底面ビュー足裏配置、5ループ足型成形、インナーソール縮小・靴底複製退避、E+Zアッパー立ち上げ、甲の丸みループ追加、足首立ち上がり・面張り、アッパー下端Alt+Sソール食い込み、ペンギン足型（水かき）アノテーション下書き、E+Z+Z厚底ソール押し出し、サンダル上端複製靴下ベース、モコモコAlt+S膨らみ、天面インセット受け口、裾ループ細分化、チェッカー選択、G+Gエッジスライドジグザグ縁、Ctrl+T三角面化、履き口面複製Alt+S、LoopTools Bridge二重トリム、Individual Origins厚みスケール、側面面複製ペンギン羽、E厚み押し出し反り配置、Cube+Subsurf1角ベベル、To Sphere真球ポンポン、靴甲ポンポン配置Mirror対称化完成。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、画像全24枚を同期。
+
+**相手への申し送り**:
+- キャラクターのフットウェア（サンダル・靴底・モコモコ靴下・ジグザグ縁・ペンギン羽飾り・ポンポンファー）のモデリング、および足と靴のフィッティングトポロジー設計時、`docs/fusako_14_shoes_sandals_screenshots/README.md` および仕様書をご活用いただけます。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_shoes_sandals_14_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_14_shoes_sandals_screenshots/`
+- 画像カタログ: `docs/fusako_14_shoes_sandals_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_14_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_14_subtitles_raw.ja.vtt`
