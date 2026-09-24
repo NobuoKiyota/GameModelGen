@@ -2188,3 +2188,49 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_25_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_25_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+---
+
+## [2026-09-24 20:10] Antigravity — ふさこ氏『Blenderでキャラクターモデル制作！』第26話（アウターのUV展開）完了・高解像度スクショ・仕様書整備
+
+**状況**: チュートリアル動画26本目（ふさこ氏『Blenderでキャラクターモデル制作！04 | アウターのUV展開 〜初中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=pueKgjxwIyI ）について、情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を実施、完了。
+
+**分かったこと/やったこと**:
+- **動画26仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全353ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_uv_outer_26_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_26_uv_outer_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **アウターUV展開・Solidify歪み解消・トポロジー調整＆左右対称UV重ね技術**:
+    1. **フードのシームとRectify直線化**:
+       - 外側と内側（裏地）の色切り替え境界エッジにシーム配置（`Ctrl+E > Mark Seam`）。
+       - フード中央の縦ストライプ・ステッチ柄に対応するため、TexTools `Rectify` で格子状に整列し、`P` でピン留めしてから `U > Unwrap`。端部は `S Y 0` や `S X 0` で微調整。
+    2. **厚み付け（Solidify）適用と歪み解消（選択縮小法）**:
+       - 袖パーツの Solidify モディファイアを適用（`Ctrl+A`）する前に、手の開きポーズ（親指貫通など）の干渉を事前修正。
+       - 適用後、厚み面によって生じる扇状の伸び歪みを解消するため、3Dビューで `L` 選択 $\to$ `Ctrl + NumPad Minus` で表面のみ選択展開 $\to$ `P` ピン留め $\to$ `Ctrl+L` で厚み含めて全選択再展開。表面の正方形プロポーションを100%保護。
+    3. **前立て・ファスナー（ジッパー）のトポロジー調整**:
+       - 重なり合うフチ部分で不自然な斜め歪みが出る箇所に対し、`右クリック > Rotate Edge CW`（時計回りにエッジ回転）や `Subdivide` ＋ `J`（頂点結合）でエッジフローを整流化。
+       - 長い曲がり角にシームを追加して「縦の直線帯」「横の直線帯」に分割し、UV領域の無駄なデッドスペースを撲滅。
+    4. **裏地・インナー面のテクセル節約（50%スケール）**:
+       - 全体を `UV > Average Islands Scale` で実寸統一。
+       - ピボットポイントを「それぞれの原点（Individual Origins: キーボード `.`）」に切り替え、見えない裏地（フード裏、袖裏、身頃裏）を一括選択して `S 0.5`（50%縮小）。
+    5. **左右対称UV重ね（UV Overlapping）と解像度優先度調整**:
+       - 左右非対称パーツ（ジッパー金具や一部厚みフチ）は独立配置。
+       - 同一柄の身頃・袖は UV Sync Selection を活用し、TexTools 整列（左右・下寄せ）で同一UV座標に重ねてテクスチャ解像度を2倍確保。
+       - セーター柄など書き込みが多いパーツは手動で `S 1.1〜1.2` に拡大調整し、`UV > Pack Islands`（Rotateオフ）で最終配置完了。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_26_uv_outer_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: アウター全体確認、フードシーム、初期展開と猫耳分割、TexTools Rectify格子化、ピン留め再展開、猫耳厚み歪み対策、フード裏地展開、黄色系UV Gridマテリアルアサイン、マテリアルリンクと歪み確認、身頃展開・袖貫通確認、袖Solidify適用と厚みシーム、袖ツートンカラー境界シーム、袖の厚み歪み課題、袖の選択縮小ピン留め再展開、袖裏地S0.5縮小・向き揃え、前立てシームとトポロジー問題、エッジ回転・J結合によるトポロジー改善、曲がり角シーム追加、フチパーツRectifyと目視調整、Average Island Scale、裏地50%縮小パッキング、左右対称UV重ね方針、UV同期選択とTexTools整列、セーター柄拡大と最終UVレイアウト完了。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- フードや前立てのRectify格子化、厚み衣服の選択縮小ピン留め再展開法、トポロジー（エッジ回転）改善、および左右対称UV重ね（UV Overlapping）について、`docs/fusako_26_uv_outer_screenshots/README.md` および仕様書をご活用いただけます。
+- 続いて UV展開編 第5回・完結（第27話）『ヘアアクセなど小物のUV展開』（`https://www.youtube.com/watch?v=p4N6kfBLOVc`）へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_uv_outer_26_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_26_uv_outer_screenshots/`
+- 画像カタログ: `docs/fusako_26_uv_outer_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_26_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_26_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
