@@ -9,6 +9,10 @@
 - **字幕データ**:
   - VTT生データ: `z:\MeshCreator\.agents\handoffs\fusako_04_subtitles_raw.ja.vtt`
   - タイムスタンプ付きテキスト: `z:\MeshCreator\.agents\handoffs\fusako_04_subtitles_timestamped.txt`
+- **重要シーン・スクリーンショット集（全32枚）**:
+  - 保存フォルダ: [`z:\MeshCreator\docs\fusako_04_body_screenshots/`](file:///z:/MeshCreator/docs/fusako_04_body_screenshots/)
+  - 画像カタログ: [`z:\MeshCreator\docs\fusako_04_body_screenshots/README.md`](file:///z:/MeshCreator/docs/fusako_04_body_screenshots/README.md)
+
 
 ---
 

@@ -1374,4 +1374,34 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_05_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_05_subtitles_raw.ja.vtt`
 
+---
+
+## [2026-09-24 12:10] Antigravity — 動画04（体のモデリング）重要シーン・スクリーンショット集（全32枚）配備完了
+
+**状況**: ユーザーより、動画04（体のモデリング：胴・手足・接合）について、モデリング上特に重要と思われる箇所を高解像度スクリーンショットとして専用フォルダに保存し、Git対象として管理するよう指示され、完了。
+
+**分かったこと/やったこと**:
+- `yt-dlp` + `ffmpeg` により、動画04の全チャプター（C1胴体、C2足、C3腕、C4受け口8頂点、C5接合・首元）から決定的なキーフレーム32枚を直接高画質キャプチャ。
+- 格納フォルダ: `docs/fusako_04_body_screenshots/`（画像全32枚 + 詳細解説カタログ `README.md`）
+- 主な収録内容:
+  1. 胴体ベース（Cube+Subsurf1、オートミラー、底面E押し出し2段）
+  2. 足・腕の **「45度回転ひし形断面化（R Z 45 / R X 45）」**
+  3. 足・腕のSubsurf適用後の **`Alt + S` 膨らみ復元**
+  4. 胴体側の **「統計オーバーレイ（Statistics）での8頂点確認」** と底面・側面開口部
+  5. 水着・パンツラインのV字トポロジー整流
+  6. 腕の頂点スナップ＋オートマージ接合
+  7. 足の **「LoopTools Bridgeによる四角面一発架橋」**
+  8. 首元の天面4面削除＋E押し出し＋LoopTools Relax整流
+- 仕様書 `2026-09-24_fusako_body_modeling_04_steps.md` に画像フォルダへのリンクを追記。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ画像32枚およびカタログMDを同期。
+
+**相手への申し送り**:
+- 体のプロシージャル・手動モデリング時、トポロジーや各工程のBlender画面形状（頂点配置・モディファイア設定・ショートカット）を `docs/fusako_04_body_screenshots/README.md` より視覚的にご確認いただけます。
+
+**参照**:
+- スクリーンショット集フォルダ: `docs/fusako_04_body_screenshots/`
+- 画像カタログ: `docs/fusako_04_body_screenshots/README.md`
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_body_modeling_04_steps.md`
+
+
 
