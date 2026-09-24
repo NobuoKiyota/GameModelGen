@@ -2012,3 +2012,47 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 画像カタログ: `docs/fusako_21_rigging_skinning_skirt_screenshots/README.md`
 - 字幕テキスト: `.agents/handoffs/fusako_21_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_21_subtitles_raw.ja.vtt`
+
+---
+
+## [2026-09-24 19:50] Antigravity — 動画22（髪や揺れ物のスキニング・リギング編 第4回完結）仕様書＆スクショ集（24枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画22本目（ふさこ氏『Blenderでキャラクターモデル制作！04 | 髪や揺れ物のスキニング！ 〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=2B7ofTckPic ）について、情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。リギング編（全4回）が完全完了。
+
+**分かったこと/やったこと**:
+- **動画22仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全372ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_rigging_skinning_hair_22_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_22_rigging_skinning_hair_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心袖・尻尾スキニング＆Unity/VRM規格リギング技術**:
+    1. **袖の貫通防止事前回転とプロキシスキニング**:
+       - 腕下げポーズ時の脇・体幹貫通を防ぐため、肩ループを 3D Cursor ピボットとし、袖全体をあらかじめ背中側へ後退回転（`R X`）。
+       - 袖先端面を複製・分離して `Proxy_Sleeve` を作成。前腕 `LowerArm` の子となる `Sleeve.L` / `Sleeve.R` ボーンから Data Transfer 転送。
+       - 袖先端のみのマスク頂点グループ（`WeightTransfer_Sleeve`）を作成し、ウェイトペイントの `Weights > Smooth`（Active Group, Expand）と `Subtract`（引き算）で肘方向の減衰と脇下・親指貫通防止を両立。
+       - **モディファイア積層順の極意**: `Data Transfer` $\to$ `Solidify` の順に配置し、布の表裏で同一ウェイトを100%均等付与。
+    2. **尻尾の多関節ボーン配置とウェイトスムーズ**:
+       - 尻尾根元ループから単一ボーン追加、6節押し出しチェーン（`Tail.001`〜`Tail.006`）。
+       - `With Automatic Weights` 適用後の多重関節カクつきを、ケージ表示（四角・三角アイコン）ON＋頂点マスク（`V`）＋ `Weights > Smooth`（Subset: `Deform Pose Bones`）で滑らかなS字変形に補間。
+       - **円周ループのウェイト統一（Copy）**: 断面の痩せ・楕円潰れを、理想的な1頂点を基準に **Vertex Weights > Copy** で全周一発均一化。
+    3. **【Unity/VRM/VRChat必須要件】Limit Total（4ボーン制限）**:
+       - 1頂点あたり4ボーン超過による実機インポート時の破綻を防ぐため、**Weights > Limit Total (Limit: 4)** を実行して安全にクランプ。
+    4. **アーマチュア統合とボーン階層親子付け**:
+       - 尻尾を `Alt + P > Clear and Keep Transformation` で解除後に本体アーマチュアと統合（`Ctrl + J`）。
+       - `Tail` 根元ボーンを `Hips`、スカート最上段ボーンを `Spine` に `Keep Offset` で親子付け。
+       - スカートマスク最上段ループを除外（Remove）し、体幹と裾の連動を完璧化。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_22_rigging_skinning_hair_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 腕下げ貫通課題、肩ループCursorピボット、袖後方事前回転RX、袖プロキシ複製分離、LowerArm複製袖ボーン作成、LowerArm親子付けKeep Offset、プロキシSleeve頂点割当、袖本体Data Transfer、袖口マスクグループ作成、Data Transfer制限確認、Smooth Active Group Expand減衰、Subtract脇下・親指貫通防止、Data Transfer→Solidify積層順、肘ループカットねじれ修正、尻尾単体表示Cursor配置、尻尾6節ボーン押し出し、自動ウェイト関節カクつき、ケージ表示関節頂点選択、Smooth Deform Pose Bones、Vertex Weights Copyループ均一化、Limit Total 4ボーン制限、親子解除アーマチュア統合、Tail・Skirt階層接続、スカート最上段マスク除外・リギング編完結。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログを同期。
+
+**相手への申し送り**:
+- これにてキャラクターモデリングにおけるリギング編（全4回: ①素体、②服・揺れ物、③スカート、④袖・尻尾・総仕上げ）が完全完了しました。
+- 次のシリーズは **UV展開編（全5回: ①体・顔、②髪・服、③小物・装飾、④テクスチャベイク準備、⑤UVパッキング最適化）** へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_rigging_skinning_hair_22_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_22_rigging_skinning_hair_screenshots/`
+- 画像カタログ: `docs/fusako_22_rigging_skinning_hair_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_22_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_22_subtitles_raw.ja.vtt`
+
