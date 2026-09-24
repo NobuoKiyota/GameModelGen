@@ -1853,3 +1853,43 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_17_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_17_subtitles_raw.ja.vtt`
 
+---
+
+## [2026-09-24 17:10] Antigravity — 動画18（羽根などの小物モデリング・モデリング編最終回）仕様書＆スクショ集（26枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画18本目（ふさこ氏『Blenderでキャラクターモデル制作！18 | 羽根などの小物のモデリング〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=UnredNWRyCs ）について、これまでの情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。本話をもってキャラクターのモデリング工程がすべて完了した。
+
+**分かったこと/やったこと**:
+- **動画18仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全535ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_wings_props_18_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_18_wings_props_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心トポロジー・最終統合設計技術**:
+    1. **ラティス（Lattice）モディファイアによる非破壊パース・湾曲付与**:
+       - 平面で綺麗に割った羽メッシュに対し、Lattice（U:3）を用いて先端を後方へ流す3次元カーブを非破壊付与。グリッドトポロジーを崩さずにアニメ的なダイナミックなフォルムを実現。
+    2. **カーブしっぽとUV球（面スナップ）による先端キャップ接合**:
+       - Bezier（Bevel Depth 0.012, Resolution 2）で8角形断面管を作成後、メッシュ化。先端に8×6のUV Sphereを面スナップ（Align Rotation）で吸着し、`LoopTools > Bridge` ＋ `Set Flow` で完全な真球キャップを接合。
+    3. **10頂点サークルからの星形・花弁（Individual Origins）成形**:
+       - 10頂点円の1点飛ばしスケール $\to$ `Ctrl + Shift + B`（Vertex Bevel） $\to$ ピボットを `Individual Origins` に切り替えて花弁幅を拡張。愛らしい5弁花飾りを幾何学的に均等成形。
+    4. **フードのSet Flow曲面化とV字トポロジーリダクション**:
+       - ループ追加後の `Set Flow` による自然なふくらみ自動補間。首回り・裾部分で不要エッジのディゾルブと `Rotate Edge CW` によるV字リダクションを構築し、下の服と頂点数を整合。
+    5. **首と体のトポロジー統合（11頂点 $\to$ 7頂点マージ）**:
+       - 顔接合部（上端）の頂点数を保ったまま、首の下部エッジをディゾルブして7頂点へスムーズに収束。首と体を `Ctrl + J` で結合し、頂点スナップ＋`Auto Merge` で隙間なく完全一体化。
+    6. **ウェイト追従を見据えたストラップのメッシュ化と服の割り合わせ**:
+       - ショルダーストラップを `Convert to Mesh` した後、下の衣服・胸元のエッジループ位置に合わせてストラップの分割を整え、スキニング時のめり込みを防止。
+- **高解像度スクリーンショット集（全26枚）配備**:
+  - 格納フォルダ: `docs/fusako_18_wings_props_screenshots/`（画像26枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: Circle 12頂点羽輪郭、円弧複製先端シルエット、外周面貼りインセット、GY手前引き出し稜線段差、Origin移動Y軸Mirror前後厚み、EY外周押し出しAlt+S丸み、Auto Smooth 180°マークシャープ、LatticeモディファイアU3設定、ラティス変形パース湾曲、顔基準Mirror浮遊羽、Curve Bezierしっぽ経路、Bevel Depth 0.012 Resolution 2（8角形断面）、バックアップConvert to Mesh、UVスフィア面スナップAlign Rotation吸着、Bridge接合Set Flow先端球体、Circle 10頂点星形ベース、Vertex Bevel Individual Origins花弁、インセットGZ花芯持ち上げ厚み押し出し、Plane押し出しリボン紐、フード側面配置顔基準Mirror、フードループ追加Set Flow、V字リダクションRotate Edge CW、コレクション整理Delete Hierarchy、首11頂点から体7頂点へのリダクション、首と体Auto Merge完全一体化、ストラップメッシュ化服割り合わせ完成。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログを同期。
+
+**相手への申し送り**:
+- ふさこ氏チュートリアル動画（第1話〜第18話）のキャラクター全モデリング工程の仕様書・スクリーンショットカタログがこれにて完全網羅されました。次回からはリギング・ウェイト（スキニング）編へと進みます。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_wings_props_18_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_18_wings_props_screenshots/`
+- 画像カタログ: `docs/fusako_18_wings_props_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_18_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_18_subtitles_raw.ja.vtt`
+
+
