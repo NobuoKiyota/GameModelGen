@@ -1971,6 +1971,44 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_20_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_20_subtitles_raw.ja.vtt`
 
+---
 
+## [2026-09-24 19:40] Antigravity — 動画21（スカートなどのスキニング・ウェイト転送・リギング編 第3回）仕様書＆スクショ集（24枚）配備完了
 
+**状況**: ユーザーより、チュートリアル動画21本目（ふさこ氏『Blenderでキャラクターモデル制作！03 | スカートなどのスキニング・ウェイト転送！ 〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=et1L4Bsa8Rg ）について、情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。
 
+**分かったこと/やったこと**:
+- **動画21仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全543ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_rigging_skinning_skirt_21_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_21_rigging_skinning_skirt_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心スカート＆後ろ髪プロキシスキニング技術**:
+    1. **後ろ髪のプロキシスキニング（厚み付き円柱転送法）**:
+       - 8角形円柱プロキシ（Cylinder 8 verts）を配置し、ボーンチェーンをスナップ吸着。
+       - **厚みプロキシ化の極意**: 単純な1枚板の円柱から転送すると裏側頂点が破綻するため、編集モードで `E` ＋ `Alt + S` で円柱を内側へ押し込んで立体化。内壁・外壁の間に後ろ髪を挟み込み、内側頂点まで完璧なウェイトを補間。
+       - 円柱最上段頂点を `Head: 1.0` で固定し、頭部との接続部の千切れを完全防止。
+    2. **スカートボーンの配置とボーンロール中心整列（神Tips）**:
+       - ワンピース裾を複製・分離して `Proxy_Skirt` を作成。腰周りにボーンチェーンを配置し `Symmetrize`。
+       - **3Dカーソル中心の再計算 (`Recalculate Roll > Cursor`)**: 3Dカーソルを腰中心（Hips）に配置し、スカートボーン全選択で実行。全ボーンのローカルZ軸が中心へ放射状に整列。
+       - ピボットを `Individual Origins`（それぞれの原点）にし、`R X X` で全周が一斉にふわりと均等に広がり、`R Z Z` で綺麗に同方向へねじれる操作性を確立。
+    3. **空の頂点グループ（Weight 0）による素体ウェイト上書き置換**:
+       - ワンピース裾は素体からの転送で `Spine` や `Thigh` のウェイトが残留しており、動かすと裾が伸びる問題が発生する。
+       - `Proxy_Skirt` 側に `Spine` 等の空グループ（Weight: 0.0）を持たせて `Replace` 転送することで、素体ウェイトを完全消去し、スカートボーン100%追従を実現。
+    4. **ワンピース裾マスク頂点グループによる上下分離**:
+       - 裾部分のみをアサインした `Mask_Skirt` 頂点グループを作成し、Data Transfer の制限グループに指定。
+       - 上半身（素体ウェイト追従）と裾（スカートボーン追従）を完全分離。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_21_rigging_skinning_skirt_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 8角形円柱プロキシ配置、ボーンチェーントップスナップ、AutoNameとSymmetrize、円柱プロキシ自動ウェイト、円柱トップHead 1.0固定、後ろ髪Data Transfer、不要ウェイト除去、円柱内側押し出し厚み化、Display as Wire内部確認、HeadへKeep Offset親子付け、ボーンレイヤー整理、裾複製スカートプロキシ作成、スカートボーンチェーンスナップ、スカートボーン左右対称化、ボーンLocal Axes表示、Recalculate Roll Cursor中心整列、Individual Origins RXX全周広がりテスト、With Empty Groups親子付け、ケージ表示1:1頂点アサイン、個別ボーン回転変形確認、Data Transfer素体アーマチュア統合、空グループSpine上書きトリック、裾マスクグループ上下分離、揺れ・全身モーション確認完了。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログを同期。
+
+**相手への申し送り**:
+- 後ろ髪の厚み付き円柱プロキシ転送法、スカートボーンロールの3Dカーソル中心再計算（Recalculate Roll > Cursor）、および空グループ上書きによる体幹ウェイト置換について、`docs/fusako_21_rigging_skinning_skirt_screenshots/README.md` および仕様書をご活用いただけます。
+- 続いてチャンネル自動追い学習として、リギング編 第4回（第22話）『髪や揺れ物のスキニング』（17分57秒、`https://www.youtube.com/watch?v=2B7ofTckPic`）へ順次進めます。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_rigging_skinning_skirt_21_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_21_rigging_skinning_skirt_screenshots/`
+- 画像カタログ: `docs/fusako_21_rigging_skinning_skirt_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_21_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_21_subtitles_raw.ja.vtt`
