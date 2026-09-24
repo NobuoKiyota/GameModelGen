@@ -1817,3 +1817,39 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 画像カタログ: `docs/fusako_16_penguin_pochette_screenshots/README.md`
 - 字幕テキスト: `.agents/handoffs/fusako_16_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_16_subtitles_raw.ja.vtt`
+
+---
+
+## [2026-09-24 17:00] Antigravity — 動画17（ポーチ・バッグのモデリング）仕様書＆スクショ集（22枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画17本目（ふさこ氏『Blenderでキャラクターモデル制作！17 | ポーチ・バッグのモデリング〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=tQy39wbZ138 ）について、これまでの情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。
+
+**分かったこと/やったこと**:
+- **動画17仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全75ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_bag_pouch_17_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_17_bag_pouch_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心トポロジー・小物設計技術**:
+    1. **Circle同心円インセットと `V` 切り離しによる持ち手/耳の一体成形**:
+       - 16頂点の円からインセットで幅を作り、上部エッジを `Subdivide` $\to$ `V`（Rip）切り離し $\to$ `E Z` 押し出しで持ち手・耳を一体成形。別パーツ化せずポリゴン数とトポロジー連続性を両立。
+    2. **面スナップ（Face Project）＋ `Align Rotation to Target` による金具吸着**:
+       - 3次曲面のバッグ側面にジッパー金具を配置する際、面スナップとターゲット回転整列をONにすることで、法線角度へ自動追従して一発吸着。
+    3. **ベジェカーブの捻れトラブル即時解決（`Switch Direction`）**:
+       - カーブハンドル操作時に帯全体が予期せず回転してしまうバグ挙動に対し、全選択 `A` $\to$ 右クリック `Switch Direction`（方向反転）で安定化。
+    4. **ポシェットとの干渉回避レイアウト**:
+       - 16話ペンギンポシェットと重ならないよう、腰回りでの前後オフセットと紐くぐらせ配置を行い、将来の揺れ物物理制御（Dynamic Bone/Spring Bone）時のめり込みを防止。
+- **高解像度スクリーンショット集（全22枚）配備**:
+  - 格納フォルダ: `docs/fusako_17_bag_pouch_screenshots/`（画像22枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: Circle 16頂点ベース、インセット持ち手幅確保、Subdivide/V切り離しEZ押し出し、Vertex Bevel丸み四角化、Auto Smoothマークシャープ、Circle 12頂点フラップ、ローカル座標系配置、Alt+S膨らみ出し、Bridge二重構造、Ctrl+J結合シャープ、Cube Subsurf底鋲、マチEY押し出し背面密閉、ジッパースライダー造形、引き手プレート作成、面スナップAlign Rotation吸着、Ctrl+P親子付け、ポシェット干渉回避、ベジェカーブExtrudeストラップ、Ctrl+T傾き調整、Switch Direction捻れ解消、フード非表示背面経路、ポシェット紐下くぐらせ完成。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログを同期。
+
+**相手への申し送り**:
+- キャラクターの腰回り小物（キャンティーンバッグ、ジッパー金具、ベジェショルダーストラップ）のモデリング、およびカーブ捻れ解消（Switch Direction）テクニック活用時、`docs/fusako_17_bag_pouch_screenshots/README.md` および仕様書をご活用いただけます。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_bag_pouch_17_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_17_bag_pouch_screenshots/`
+- 画像カタログ: `docs/fusako_17_bag_pouch_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_17_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_17_subtitles_raw.ja.vtt`
+
