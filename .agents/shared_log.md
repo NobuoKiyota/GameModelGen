@@ -1497,6 +1497,37 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_07_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_07_subtitles_raw.ja.vtt`
 
+---
+
+## [2026-09-24 15:20] Antigravity — 動画08（手足の接合＆ケモ耳モデリング）仕様書＆スクショ集（24枚）配備完了
+
+**状況**: ユーザーより、チュートリアル動画8本目（ふさこ氏『Blenderでキャラクターモデル制作！08 | 手足の接合＆ケモ耳のモデリング〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=t2Gsg-e0C18 ）について、これまでの情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。
+
+**分かったこと/やったこと**:
+- **動画08仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全82ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_body_integration_kemomimi_08_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_08_kemomimi_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心トポロジー・リギング技術**:
+    1. **手足の「8頂点LoopTools Bridge」完全統合**: 腕（8頂点）と手首（10頂点から不要辺を整理して8頂点化）、脚（8頂点）と足首（8頂点）を `LoopTools > Bridge` で四角面一発架橋。これで頭部を除く完全な一体型素体（Headless Body）が完成。
+    2. **アーマチュアの「Symmetrize」と「With Empty Groups連動」**: 左手（`.L`）ボーンチェーンを `AutoName Left/Right` → `Symmetrize`（対称化）で右手（`.R`）ボーンを自動生成。手メッシュにMirrorモディファイアをかけた際、`Ctrl + P` → `With Empty Groups` を再実行することで `.R` 側の頂点グループが一括自動追加され、両腕が完全対称駆動。
+    3. **Solidifyの「頂点ウェイトグラデーション制御」**: ケモ耳の厚みを均一にせず、頂点グループ `Ear_Weight` に「根元1.0 → 先端0.0」のグラデーション（Alt+左ドラッグ）を塗り、Solidifyの頂点グループに指定することで、根元が肉厚で先が薄い理想的な耳厚み変化を非破壊生成。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_08_kemomimi_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 手のSymmetrize（対称化）、手のMirrorモディファイア、空のグループでペアレント（With Empty Groups）、手首10頂点から8頂点への整流、LoopTools Bridge接合、脚と足首のBridge接合、膝裏・肘・脇下のトポロジー微調整、ケモ耳ベース面押し出し、耳の輪郭成形、ウェイトペイント（根元1.0〜先端0.0）、Solidifyモディファイア適用、素体＋ケモ耳完成プレビュー。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、画像全24枚を同期。
+
+**相手への申し送り**:
+- 素体の一体化（手・足・胴体の接合）、リグの左右対称化、およびケモ耳などのアクセサリーパーツの非破壊厚み付けを行う際、`docs/fusako_08_kemomimi_screenshots/README.md` および仕様書をご活用いただけます。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_body_integration_kemomimi_08_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_08_kemomimi_screenshots/`
+- 画像カタログ: `docs/fusako_08_kemomimi_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_08_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_08_subtitles_raw.ja.vtt`
+
+
 
 
 
