@@ -1,0 +1,56 @@
+{
+  "series_roadmap": [
+    {
+      "series": "リギング・スキニング編",
+      "status": "COMPLETED",
+      "videos": [
+        {"id": "DVbOQlF7VQg", "no": 19, "title": "01 | 素体のリギング&スキニング", "url": "https://www.youtube.com/watch?v=DVbOQlF7VQg", "status": "DONE"},
+        {"id": "APQgOHa1udo", "no": 20, "title": "02 | ウェイト転送で服や揺れ物をスキニング", "url": "https://www.youtube.com/watch?v=APQgOHa1udo", "status": "DONE"},
+        {"id": "et1L4Bsa8Rg", "no": 21, "title": "03 | スカートなどのスキニング・ウェイト転送！", "url": "https://www.youtube.com/watch?v=et1L4Bsa8Rg", "status": "DONE"},
+        {"id": "2B7ofTckPic", "no": 22, "title": "04 | 髪や揺れ物のスキニング！", "url": "https://www.youtube.com/watch?v=2B7ofTckPic", "status": "DONE"}
+      ]
+    },
+    {
+      "series": "UV展開編",
+      "status": "IN_PROGRESS",
+      "videos": [
+        {"id": "hwDyavPRVNE", "no": 23, "title": "01 | 顔・体のUV展開", "url": "https://www.youtube.com/watch?v=hwDyavPRVNE", "status": "NEXT"},
+        {"id": "caWYi7sJmrM", "no": 24, "title": "02 | 髪のUV展開", "url": "https://www.youtube.com/watch?v=caWYi7sJmrM", "status": "PENDING"},
+        {"id": "4EvrIHpTA2c", "no": 25, "title": "03 | 体・服・靴のUV展開", "url": "https://www.youtube.com/watch?v=4EvrIHpTA2c", "status": "PENDING"},
+        {"id": "pueKgjxwIyI", "no": 26, "title": "04 | アウターのUV展開", "url": "https://www.youtube.com/watch?v=pueKgjxwIyI", "status": "PENDING"},
+        {"id": "p4N6kfBLOVc", "no": 27, "title": "05 | ヘアアクセなど小物のUV展開", "url": "https://www.youtube.com/watch?v=p4N6kfBLOVc", "status": "PENDING"}
+      ]
+    },
+    {
+      "series": "Substance Painter テクスチャ編",
+      "status": "PENDING",
+      "videos": [
+        {"id": "RB9jILspXBk", "no": 28, "title": "01 | Substance Painter入門・基本操作", "url": "https://www.youtube.com/watch?v=RB9jILspXBk", "status": "PENDING"},
+        {"id": "tayBUmjCFt8", "no": 29, "title": "02 | 顔のペイント", "url": "https://www.youtube.com/watch?v=tayBUmjCFt8", "status": "PENDING"},
+        {"id": "3a7os-XHBTU", "no": 30, "title": "03 | 髪のペイント", "url": "https://www.youtube.com/watch?v=3a7os-XHBTU", "status": "PENDING"},
+        {"id": "QY0WSefAyKM", "no": 31, "title": "04 | ベイク方法とジェネレーター・フィルター", "url": "https://www.youtube.com/watch?v=QY0WSefAyKM", "status": "PENDING"},
+        {"id": "FbRFGbE8VdU", "no": 32, "title": "05 | アウターや肌のペイント", "url": "https://www.youtube.com/watch?v=FbRFGbE8VdU", "status": "PENDING"},
+        {"id": "MMP_BQJNKuc", "no": 33, "title": "06 | 服や小物のテクスチャ", "url": "https://www.youtube.com/watch?v=MMP_BQJNKuc", "status": "PENDING"},
+        {"id": "hApZwvlJO4s", "no": 34, "title": "07 | エクスポートと質感の調整", "url": "https://www.youtube.com/watch?v=hApZwvlJO4s", "status": "PENDING"}
+      ]
+    },
+    {
+      "series": "シェイプキー編",
+      "status": "PENDING",
+      "videos": [
+        {"id": "A6vy0tfvAzA", "no": 35, "title": "01 | あいうえお口の形のシェイプキー", "url": "https://www.youtube.com/watch?v=A6vy0tfvAzA", "status": "PENDING"},
+        {"id": "3oTySLvG9L8", "no": 36, "title": "02 | まばたき・笑顔・目線のシェイプキー", "url": "https://www.youtube.com/watch?v=3oTySLvG9L8", "status": "PENDING"},
+        {"id": "ZbrGz3ma19I", "no": 37, "title": "03 | 喜怒哀楽などの表情シェイプキー", "url": "https://www.youtube.com/watch?v=ZbrGz3ma19I", "status": "PENDING"},
+        {"id": "GC37bbvRjqU", "no": 38, "title": "04 | ハート目・キラキラ目・青ざめなどの特殊シェイプキー", "url": "https://www.youtube.com/watch?v=GC37bbvRjqU", "status": "PENDING"}
+      ]
+    },
+    {
+      "series": "エクスポート・法線調整編",
+      "status": "PENDING",
+      "videos": [
+        {"id": "twg9e8ySFss", "no": 39, "title": "01 | エクスポート前のオブジェクトとウェイト修正", "url": "https://www.youtube.com/watch?v=twg9e8ySFss", "status": "PENDING"},
+        {"id": "WtaMWiaDDLY", "no": 40, "title": "02 | 顔の法線調整と前髪の影つけ", "url": "https://www.youtube.com/watch?v=WtaMWiaDDLY", "status": "PENDING"}
+      ]
+    }
+  ]
+}
