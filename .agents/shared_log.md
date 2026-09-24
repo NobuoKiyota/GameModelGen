@@ -1629,12 +1629,41 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_11_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_11_subtitles_raw.ja.vtt`
 
+---
 
+## [2026-09-24 16:20] Antigravity — 動画12（ドロワーズ＆ワンピースのモデリング）仕様書＆スクショ集（26枚）配備完了
 
+**状況**: ユーザーより、チュートリアル動画12本目（ふさこ氏『Blenderでキャラクターモデル制作！12 | ドロワーズとワンピースのモデリング〜初級から中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=NLLfkYDR0_g ）について、これまでの情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を指示され、完了。
 
+**分かったこと/やったこと**:
+- **動画12仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全137ブロック）を抽出。
+  - 詳細仕様書 `2026-09-24_fusako_dress_drawers_12_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_12_dress_drawers_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **核心トポロジー・衣装モデリング技術**:
+    1. **素体面複製によるベース作成**:
+       - ゼロから作らず、素体の骨盤・太もも面を `Shift + D` 複製 $\to$ `P` 分離して `Alt + S` で外側に膨らませることで、体型と完全一致したドロワーズ（かぼちゃパンツ）を非破壊生成。
+    2. **配列（Array）＋カーブ（Curve）によるフリルの自動生成**:
+       - 平面から1周期分の波打つフリルを作成し、裾ループを分離して変換したカーブ（`Convert to Curve`）に `Curve` モディファイアで沿わせる。カーブ編集で `Ctrl + T`（ティルト）を行いフリルの広がり角度を制御。
+    3. **LoopTools Bridge によるゴムギャザー表現**:
+       - パンツ裾とフリル上端を `LoopTools > Bridge` で架橋。フリル側が外側に膨らんでいるため、キュッと絞られたリアルなギャザーしわが生成される。
+    4. **ワンピース本体（12頂点円柱ベース）と肌スナップ密閉**:
+       - 素体胴体の12頂点に合わせて `Circle`（12頂点）から開始。Aラインフレアスカートと胸元を押し出し。
+       - アームホールは側面4面を押し出し削除後、`Shift + Alt + S`（To Sphere: 1.0）で真円化。
+       - 首元とアームホールの奥側ループを素体頂点にスナップ（Snap to Vertex）させ、服と肌の貫通を完全防止。
+    5. **裾スカラップ（半円フリル12枚）の一体化**:
+       - 16頂点サークルから作った半円スカラップを、ワンピースの12辺に合わせて `Array(12)` ＋ `Curve` で裾に巻きつけ、確定後に `Merge by Distance` で完全溶接。
+- **高解像度スクリーンショット集（全26枚）配備**:
+  - 格納フォルダ: `docs/fusako_12_dress_drawers_screenshots/`（画像26枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 素体骨盤面複製・P分離、かぼちゃパンツAlt+S膨らみ、裾シアー傾斜、フリル平面作成、Vキー切り裂き、Array+Curve巻きつけ、ティルト広がり調整、Bridgeゴムギャザー、ワンピース12頂点円開始、Aラインスカート押し出し、胸元・肩紐押し出し、アームホール面削除、To Sphere真円化、襟インセット＆ベベル、肌スナップ密閉、スカラップ半円作成、裾巻きつけ、Merge by Distance溶接、ドロワーズ丈調整、完成プレビュー。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、画像全26枚を同期。
 
+**相手への申し送り**:
+- キャラクターの衣装（ドロワーズ・かぼちゃパンツ・ワンピース・フリル・スカラップ・ゴムギャザー）のモデリング、および素体と服の貫通防止トポロジー設計時、`docs/fusako_12_dress_drawers_screenshots/README.md` および仕様書をご活用いただけます。
 
-
-
-
-
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-24_fusako_dress_drawers_12_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_12_dress_drawers_screenshots/`
+- 画像カタログ: `docs/fusako_12_dress_drawers_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_12_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_12_subtitles_raw.ja.vtt`
