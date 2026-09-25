@@ -2652,3 +2652,48 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_34_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_34_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+---
+
+## [2026-09-25 12:15] Antigravity — ふさこ氏 #35『あいうえお口の形のシェイプキー』技術体系化・全24枚スクショ・仕様書完了【シェイプキー編 開幕】
+
+**状況**:
+- ユーザー指示「全4回順に全て進行して」に基づき、シェイプキー編 第1回（第35話: あいうえお口の形のシェイプキー）の技術体系化・高解像度スクショ24枚抽出・詳細仕様書配備・Drive保管を完了。
+
+**分かったこと/やったこと**:
+- **動画35仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全794ブロック）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_shapekey_mouth_35_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_35_shapekey_mouth_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **眉毛・開口黄金則・Mio3 Shapekey完全同期・Basis修正・New Shape from Mix派生技術**:
+    1. **【最重要鉄則】頂点数の増減厳禁とウィンドウ分割監視**:
+       - シェイプキー作成後の頂点増減はキー破壊を引き起こすため完全凍結。
+       - 左画面にソリッドビュー（ポリゴン交差・破綻診断）、右画面にマテリアルビュー（最終セルルック確認）を配置。
+    2. **眉毛シェイプキーと中間値（0.5）貫通テスト**:
+       - Subsurf適用前のローポリ状態で作成。`brow_angry`, `brow_sorrow`, `brow_joy`, `brow_surprise`。
+       - 0から1へのスライダー動作時、中間地点（0.5）で顔面にめり込まないかを動的検証。
+    3. **アニメ口の開口黄金則**:
+       - 真下に顎を下げるのではなく、顔の輪郭カーブに沿って「斜め上・斜め下」に広げるのがデフォルメ顔を崩さない秘訣。`G G`（エッジスライド）を活用。
+    4. **【神アドオン】Mio3 Shapekey による別オブジェクト（顔・歯・舌）完全自動連動**:
+       - 顔と歯が別オブジェクトの場合でも、同一キー名（`mth_A` 等）を付与し、アドオン側でコレクション（Head.001）を指定するだけで、顔のスライダーを動かすと口内も完全自動シンクロ！
+    5. **【神技】シェイプキー作成後のBasis（デフォルト形状）修正法**:
+       - 口を開けた後に口腔ソケットの小ささに気づいた場合、修正用キーで拡張 $\to$ Basis上で `Vertex > Blend From Shape`（Factor: 1.0）を実行。既存キーを一切壊さずにベース形状のみを安全修正。
+    6. **New Shape from Mix による「い・う・え・お」派生作成**:
+       - `mth_A` の半分開きから `New Shape from Mix` で複製。
+       - 「い」: 口角横引き、「う」: Active Elementピボットですぼめ、「え」: 中間開き、「お」: 縦長オーバル。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_35_shapekey_mouth_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: シェイプキー全体設計、頂点数不変・Basis事前確認、ウィンドウ分割二重監視、VRoid VRMリファレンス、眉毛ローポリ作成方針、Basis新規キー追加、brow_angryめり込み防止手前引き出し、中間値0.5貫通テスト、brow_sorrow困り眉、brow_surprise驚き眉、口の斜め開口理論、G Gエッジスライド開口、口内・歯シェイプキー、別オブジェクト非同期問題、神アドオンMio3 Shapekey設定、mth_A完全自動連動確認、Basis後修正ワークフロー、Select Loop Inner-Region口腔選択・Alt+S拡張、Vertex Blend From Shape統合、New Shape from Mix派生、mth_I横広げ、mth_Uおちょぼ口すぼめ、mth_Eピン留めプレビュー、mth_O完成あいうえお全完成。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- 口・あいうえおシェイプキーおよびMio3 Shapekey連動技術が体系化されました。
+- 続いて **シェイプキー編 第2回（第36話）『まばたき・笑顔・目線のシェイプキー』**（`https://www.youtube.com/watch?v=3oTySLvG9L8`）へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_shapekey_mouth_35_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_35_shapekey_mouth_screenshots/`
+- 画像カタログ: `docs/fusako_35_shapekey_mouth_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_35_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_35_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
