@@ -2562,3 +2562,44 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_32_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_32_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+---
+
+## [2026-09-25 12:05] Antigravity — ふさこ氏 #33『服や小物のテクスチャ』技術体系化・全24枚スクショ・仕様書完了
+
+**状況**:
+- ユーザー指示「クレジットが続く限り連続して学習を進めてください」に基づき、Substance Painter テクスチャ編 第6回（第33話: 服や小物のテクスチャ）の技術体系化・高解像度スクショ24枚抽出・詳細仕様書配備・Drive保管を完了。
+
+**分かったこと/やったこと**:
+- **動画33仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全186ブロック）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_sp_clothes_props_33_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_33_sp_clothes_props_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **マスクフォルダ化カラー乗算・Geometry Mask内部メッシュ単独表示・UV Borderジャギー根絶レシピ**:
+    1. **【神技】Copy mask / Paste into mask によるマスクのフォルダ昇格と影への環境光色乗算**:
+       - 影レイヤーの黒マスクを右クリック `Copy mask` $\to$ 新規フォルダを作成して `Paste into mask` で影の範囲とボケ階調をフォルダ全体に完全複製。
+       - 影レイヤー自身の個別マスクを削除し、フォルダ内にピンクや紫のFill Layerを追加することで、**影のグラデーション範囲内にだけ限定して絶妙なアニメ調ニュアンスカラー（反射光・透明感）を重ねる**ことが可能。
+    2. **【最重要機能】Geometry Mask（ジオメトリマスク）による遮蔽メッシュの一発非表示**:
+       - ワンピースやスカートが被さってドロワーズ（下着）や内部メッシュが見えない問題。
+       - レイヤーパネルの点線四角アイコン（Geometry Mask）をクリック $\to$ ドロワーズ以外をチェックOFF $\to$ 右上の「目のアイコン」をクリック。
+       - **ドロワーズ以外の邪魔なメッシュがビューポートから完全に非表示になり、内部メッシュ単独表示で快適ペイント**。終了後は目のアイコンをクリックするだけで一瞬で全体復帰！
+    3. **【神レシピ】小物フチ線の「UV Border ＋ Blur ＋ Histogram Scan」ジャギー根絶法**:
+       - 小物のフチ取りで `UV Border` を使った際、斜めエッジに生じるピクセルのギザギザ（階段状ジャギー）を解消。
+       - マスクに `Add filter > Blur`（事前平滑化） $\to$ 直上に `Add filter > Histogram Scan`（再引き締め）を追加。
+       - Contrastを上げてPositionを微調整することで、ジャギーのない超滑らかなセル調アウトラインが完成。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_33_sp_clothes_props_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: インナーワンピ柄ペイント、マフラー模様ストローク、ワンピ・マフラー完成、靴ペイント初期影、靴ソフト黒ブラシ階調、影マスクCopy mask、新規フォルダPaste into mask、個別マスクRemove mask、フォルダ内ピンク色ニュアンスカラー乗算、靴AOジェネレーター、靴底Polygon Fill、ドロワーズ視界遮蔽問題、Geometry Mask点線四角アイコン、メッシュリスト選択、ドロワーズ単独表示化、ドロワーズ快適ペイント、目のアイコンで全体復帰、小物・ポシェットペイント開始、UV Borderジャギー問題、Blurフィルター平滑化、Histogram Scanフィルター追加、Position/Contrast調整、滑らかアンチエイリアスフチ線完成、全ペイント完了Export Textures。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- マスクのフォルダ昇格とニュアンスカラー乗算、Geometry Maskによる内部メッシュ単独表示、UV Borderジャギー根絶レシピが体系化されました。
+- 続いて **Substance Painter テクスチャ編 最終回（第34話）『エクスポートと質感の調整』**（`https://www.youtube.com/watch?v=hApZwvlJO4s`）へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_sp_clothes_props_33_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_33_sp_clothes_props_screenshots/`
+- 画像カタログ: `docs/fusako_33_sp_clothes_props_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_33_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_33_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
