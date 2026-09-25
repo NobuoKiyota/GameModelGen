@@ -2890,6 +2890,62 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - VTT生データ: `.agents/handoffs/fusako_39_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
 
+---
+
+## [2026-09-25 12:45] Antigravity — ふさこ氏 #40『顔の法線調整と前髪の影つけ』技術体系化・全24枚スクショ・仕様書完了【全40話 完全走破達成・グランドフィナーレ！】
+
+**状況**:
+- ユーザー指示「yes」（連続進行）に基づき、エクスポート・法線調整編 第2回（第40話: 顔の法線調整と前髪の影つけ・チュートリアル最終回）の技術体系化・高解像度スクショ24枚抽出・詳細仕様書配備・Drive保管を完了。
+- これをもって、**ふさこ氏『Blenderでキャラクターモデル制作！』全40話（モデリング、リギング、UV展開、Substance Painter、シェイプキー、エクスポート・法線調整）が1話も欠かすことなく完全走破・技術体系化を達成！**
+
+**分かったこと/やったこと**:
+- **動画40仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全831行）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_face_normals_shadow_40_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_40_face_normals_shadow_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **前髪影・トゥーンマテリアル分割・球体法線転送・揺れ物階層・Save as Shape Key技術**:
+    1. **前髪の落ち影（板ポリ）メッシュ制作**:
+       - 前髪裏面を複製（`Shift+D`, `P` 分離） $\to$ `Alt+S` で収縮して前髪と額の隙間に挟み込み $\to$ 板ポリ化・ミラー適用 $\to$ 前髪下端からチラ見えする位置に調整 $\to$ 前髪に統合。
+    2. **Unityトゥーンシェーダー向けマテリアル分割**:
+       - 前髪透過・ステンシル・輪郭線制御のため、マテリアルを精密分割アサイン：
+         - `M_Hair_Bang`（前髪透過用） vs `M_Hair_Back`（後髪）
+         - `M_Brows`（前髪越し最前面描画用）
+         - `M_Eyes`（アウトライン消去・影無効化用）
+    3. **【超絶重要・セルルックの最高峰】顔の法線調整（球体法線転送パイプライン）**:
+       - 鼻や口の立体凹凸による汚い影の割れ目・ギザギザ影を消滅させる神技法：
+         1. 顔メッシュを横に複製（`Shift+D X`）。
+         2. **`Cast` モディファイア（Sphere, Factor 1.0）** を追加。
+         3. `Affect Only Origins` で原点を顔中心に移動し、顔を完全な球体に変形。
+         4. 元顔メッシュに **`Data Transfer` モディファイア** を追加（Source: 球体顔、Face Corner Data: `Custom Normals`、Mapping: `Topology`）。
+         5. 頂点グループ `Custom_Normal` で肌・白目のみに制限（耳やまつ毛の立体感を保護）。
+         6. 球体原点を微調整して最高のアニメ顔陰影（正面光で影なし、側面光で滑らかなグラデーション）を追い込み、確定適用！
+    4. **揺れ物ボーン統括親（PhysBone）セットアップ**:
+       - 裾揺れ物統括親 `Hem_Phys` をSpineボーンに、髪揺れ物統括親 `Hair_Phys` をHeadボーンにそれぞれ `Keep Offset` で親子付け。
+    5. **【神技】アーマチュアポーズのシェイプキー変換（Save as Shape Key）**:
+       - ボーンでポーズをつけた形状（羽が下がった/上がった姿勢）から、`Armature` モディファイアのメニューにある **`Save as Shape Key`** を実行。
+       - ボーン変形姿勢がそのまま表情・感情シェイプキー（`wing_down`, `wing_up`）として一発生成される！
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_40_face_normals_shadow_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、全編完了ロードマップを同期。
+
+**🎉 ふさこ氏『Blenderでキャラクターモデル制作！』全40話 完全走破総括**:
+1. **素体・頭部・服モデリング編（#01〜#18）**: 基礎トポロジー、輪郭吸着、ループカット必然性、パーツ分離
+2. **リギング・スキニング編（#19〜#22）**: ボーン構造、自動ウェイト、データ転送による服・スカート・髪追従
+3. **UV展開編（#23〜#27）**: シーム配置黄金則、テクセル密度統一、アトラスパッキング
+4. **Substance Painter テクスチャ編（#28〜#34）**: 分解ベイク、AO/Lightジェネレーター、セルルックチーク・陰影
+5. **シェイプキー編（#35〜#38）**: あいうえお開口則、まばたきハイライト連動、Keep Shapekeys、逆転Basis特殊キー
+6. **エクスポート・法線調整編（#39〜#40）**: オブジェクト統合、法線保持、球体法線転送、Save as Shape Key
+- **全40話・スクリーンショット総計960枚以上、詳細仕様書全40本が完璧に整備され、ゲーム・アニメ・VTuber向け3Dキャラクター制作の完全な技術体系が構築されました！**
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_face_normals_shadow_40_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_40_face_normals_shadow_screenshots/`
+- 画像カタログ: `docs/fusako_40_face_normals_shadow_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_40_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_40_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+
 
 
 

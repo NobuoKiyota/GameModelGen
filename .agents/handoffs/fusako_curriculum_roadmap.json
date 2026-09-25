@@ -46,10 +46,10 @@
     },
     {
       "series": "エクスポート・法線調整編",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETED",
       "videos": [
         {"id": "twg9e8ySFss", "no": 39, "title": "01 | エクスポート前のオブジェクトとウェイト修正", "url": "https://www.youtube.com/watch?v=twg9e8ySFss", "status": "DONE"},
-        {"id": "WtaMWiaDDLY", "no": 40, "title": "02 | 顔の法線調整と前髪の影つけ", "url": "https://www.youtube.com/watch?v=WtaMWiaDDLY", "status": "NEXT"}
+        {"id": "WtaMWiaDDLY", "no": 40, "title": "02 | 顔の法線調整と前髪の影つけ", "url": "https://www.youtube.com/watch?v=WtaMWiaDDLY", "status": "DONE"}
       ]
     }
   ]
