@@ -2739,3 +2739,47 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - VTT生データ: `.agents/handoffs/fusako_36_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
 
+---
+
+## [2026-09-25 12:25] Antigravity — ふさこ氏 #37『喜怒哀楽などの表情シェイプキー』技術体系化・全24枚スクショ・仕様書完了【シェイプキー編 第3回】
+
+**状況**:
+- ユーザー指示「全4回順に全て進行して」に基づき、シェイプキー編 第3回（第37話: 喜怒哀楽などの表情シェイプキー）の技術体系化・高解像度スクショ24枚抽出・詳細仕様書配備・Drive保管を完了。
+
+**分かったこと/やったこと**:
+- **動画37仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全889行）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_emotions_shapekey_37_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_37_emotions_shapekey_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **複合感情・モディファイア保持適用・非対称ウインク分割・耳感情連動技術**:
+    1. **口角上げ下げ基本キー**: `mth_smile`（Active Elementで口角引き上げ）、`mth_angry`（への字口引き下げ）。
+    2. **喜怒哀楽コンビネーション**: 眉・目・口の独立キーをスライダーで合成し、`New Shape from Mix` で複合キー（`all_joy`, `all_angry`, `all_sorrow`, `all_surprise`）を一括抽出。
+    3. **口内・歯・瞳ハイライト自動連動**: 歯・舌・ハイライトにも同名キーを配備し、Mio3 Shapekeyによる完全自動シンクロ駆動。
+    4. **【超絶重要アドオン】Apply Modifier Keep Shapekeys**:
+       - Blender標準の「シェイプキー付きメッシュへのモディファイア適用不可エラー」を突破し、シェイプキーを完全保持したままミラーやSubsurfを安全に確定適用。
+    5. **左右非対称分割（ウインク作成）の2大手法**:
+       - 標準4ステップ: `Select > Side of Active` で半身選択 $\to$ `Vertex > Blend From Shape`（Basis戻し）。
+       - 神アドオン: `Shape Keys Util`（BOOTH無料）による `Separate Shape Key Left and Right` ワンポチ自動分割。
+    6. **Subsurf確定適用後の高密度整地とUV補正**:
+       - 口角シワ・段差を `G G`（エッジスライド）で綺麗に整地し、修正形状を `Blend From Shape` で複合キーへ部分統合。
+       - 口を開けた際の輪郭テクスチャ途切れ・滲みを、UVエディター上で頂点微調整して美しく繋ぐ。
+    7. **【表現力爆上げ技】耳の感情連動シェイプキー**:
+       - 耳の付け根に3Dカーソルを配置（ピボット: 3D Cursor）。
+       - 喜び（`all_joy`）で耳がピョコんと跳ね上がり、悲しみ（`all_sorrow`）でタレ耳になる愛らしい感情表現を実装。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_37_emotions_shapekey_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- 喜怒哀楽表情・モディファイア保持適用・ウインク分割・耳感情連動技術が体系化されました。
+- 直ちに **シェイプキー編 最終回（第38話）『ハート目・キラキラ目・青ざめなどの特殊シェイプキー』**（`https://www.youtube.com/watch?v=GC37bbvRjqU`）の自動連続進行に着手します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_emotions_shapekey_37_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_37_emotions_shapekey_screenshots/`
+- 画像カタログ: `docs/fusako_37_emotions_shapekey_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_37_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_37_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+

@@ -40,8 +40,8 @@
       "videos": [
         {"id": "A6vy0tfvAzA", "no": 35, "title": "01 | あいうえお口の形のシェイプキー", "url": "https://www.youtube.com/watch?v=A6vy0tfvAzA", "status": "DONE"},
         {"id": "3oTySLvG9L8", "no": 36, "title": "02 | まばたき・笑顔・目線のシェイプキー", "url": "https://www.youtube.com/watch?v=3oTySLvG9L8", "status": "DONE"},
-        {"id": "ZbrGz3ma19I", "no": 37, "title": "03 | 喜怒哀楽などの表情シェイプキー", "url": "https://www.youtube.com/watch?v=ZbrGz3ma19I", "status": "NEXT"},
-        {"id": "GC37bbvRjqU", "no": 38, "title": "04 | ハート目・キラキラ目・青ざめなどの特殊シェイプキー", "url": "https://www.youtube.com/watch?v=GC37bbvRjqU", "status": "PENDING"}
+        {"id": "ZbrGz3ma19I", "no": 37, "title": "03 | 喜怒哀楽などの表情シェイプキー", "url": "https://www.youtube.com/watch?v=ZbrGz3ma19I", "status": "DONE"},
+        {"id": "GC37bbvRjqU", "no": 38, "title": "04 | ハート目・キラキラ目・青ざめなどの特殊シェイプキー", "url": "https://www.youtube.com/watch?v=GC37bbvRjqU", "status": "NEXT"}
       ]
     },
     {
