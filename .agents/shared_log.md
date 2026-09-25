@@ -2322,3 +2322,60 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 **状況**: 髪（H01/H02）で、手順書に実装用の数値・合格条件・自動化可否が無く、やり直しが多発した。
 
 **相手への申し送り**: `.agents/handoffs/2026-09-25_request_antigravity_hair_learning_notes.md` に、追記してほしい項目（完成形の構造、頭に対する比率、工程ごとの合格条件、操作の理由、失敗例、自動化可否のラベル、後工程からの逆算）と形式をまとめた。動画09→10→03の順に優先。置き場所は `.agents/handoffs/` で、完成したら本ログに追記してください。
+
+---
+
+## [2026-09-25 10:55] Antigravity — ふさこ氏『Blenderでキャラクターモデル制作！』第28話 (SP #01)『Substance Painter入門・基本操作』完了・高解像度スクショ・仕様書整備
+
+**状況**: チュートリアル動画28本目（ふさこ氏『Substance Painterでテクスチャペイント！01 | Substance Painter入門・基本操作 〜初中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=RB9jILspXBk ）について、情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を実施、完了。
+
+**分かったこと/やったこと**:
+- **動画28仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全700ブロック）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_sp_basics_28_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_28_sp_basics_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **Substance Painter入門・セルルックPBR無効化・ベイク＆透過連携技術**:
+    1. **Blender側の事前準備と配置最適化**:
+       - オブジェクト名・マテリアル名の命名整理（SPのメッシュマスクおよびテクスチャセットリストに直結）。
+       - 瞳ハイライトを「M_Face_Transparent」として分離マテリアル化。
+       - **【神Tips】口内パーツ・瞳の複製引き出し配置**: 口内の歯・舌や瞳を `Shift+D > Z` で上空に持ち上げ、塗り用とルック確認用の2箇所に配置。SP内でのペイント作業効率を劇的改善。
+    2. **SPプロジェクト作成とベイク診断**:
+       - `Head.fbx`（Selected Objects, Mesh）をインポート。
+       - セル調モデルでは不要な Normal / ID をオフにし、Anti-aliasing 4x4 でテストベイク（512） $\to$ 本番ベイク（2048）。
+       - `B` キーの `World Space Normal` 表示により、意図しないUV重なり（Overlapping）ミスを即座に検出可能。
+       - UV修正時は Blenderで修正 $\to$ SP側 `Edit > Project Configuration` で再読み込み（ペイント内容を非破壊で維持）。
+    3. **セルルック向けチャンネル整理とパディング設定**:
+       - Metallic, Roughness, Normal, Height を全削除し、**Base Color のみ** に統一。表示も `C` キーで Base Color に切り替え。
+       - UV Padding をデフォルトの「3D Space Neighbor」から **「UV Space Neighbor」** に変更し、輪郭線付近の不要色拾い込みを防止。
+    4. **SP基本ペイント構造とブラシ技法**:
+       - **Fill Layer ＋ Black Mask ＋ Paint Layer** を基本構成とし、非破壊で色管理。
+       - 画面外ウィンドウ（イラスト下絵等）からの直接スポイトカラーサンプリング。
+       - `L` キーで Symmetry、チークに `Add filter > Blur` を適用。
+       - メッシュワイヤーフレーム表示設定（水色カラー）。
+       - ポリゴンフィル（キーボード `4`）の **「UV Chunk Fill」** による島単位一発マスク。
+       - マスク塗り時の **`X` キー反転**（白と黒のトグル切替）。
+       - `D` キーによる手振れ補正（Lazy Mouse Distance）。
+       - 2Dビューでのブラシサイズ追従問題（`Size Space: Texture`）とガタつき対策（`Alignment: UV`）。
+       - ふんわりエアブラシ（Basic Super Soft）のカスタムと Preset 保存。
+    5. **透過テクスチャ作成とBlender再連携**:
+       - シェーダーを `pbr-metal-rough-with-alpha-blending` に変更し、`Opacity` チャンネルを追加。
+       - エクスポート設定で RGB(Base Color) ＋ A(Opacity) の **「Color with Alpha」** テンプレートを作成。
+       - **Blenderでの色味再現（最重要）**: レンダー設定の `Color Management > View Transform` を「Filmic」から **「Standard」** に変更（SPと完全に同一の発色に補正）。
+       - 透過ハイライト用の `Emission` ＋ `Transparent BSDF` ＋ `Mix Shader`（Alpha接続、Blend Mode: `Alpha Hashed`）ノード構築。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_28_sp_basics_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: オブジェクトリネーム・ラティス適用、瞳ハイライトマテリアル分離、口内・瞳の複製引き出し配置、頭部FBXエクスポート、SP新規プロジェクト作成、Bake Mesh Maps設定、ベイク確認・World Space Normal、Project Configuration再読み込み、2K本番ベイク、Base Color単一化、UV Space Neighbor設定、画面外スポイト、Fill Layer＋黒マスク＋ペイント、Symmetry・チークBlur、ワイヤーフレーム表示、UV Chunk Fill、ブラシツール・Xキー反転、Lazy Mouse手振れ補正、2Dブラシ設定（Texture/UV）、エアブラシプリセット保存、透過シェーダー・Opacityチャンネル、Color with Alphaテンプレート、テクスチャエクスポート、Blender Standardカラー・透過ノード構築。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- Substance Painter編の環境構築・初期設定・セル調特化チャンネル構成・Blender Standardカラー連携が完全に確立されました。
+- 続いて **Substance Painter テクスチャ編 第2回（第29話）『顔のペイント』**（`https://www.youtube.com/watch?v=tayBUmjCFt8`）へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_sp_basics_28_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_28_sp_basics_screenshots/`
+- 画像カタログ: `docs/fusako_28_sp_basics_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_28_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_28_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
