@@ -2430,4 +2430,51 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - VTT生データ: `.agents/handoffs/fusako_29_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
 
+---
+
+## [2026-09-25 11:50] Antigravity — ふさこ氏『Blenderでキャラクターモデル制作！』第30話 (SP #03)『髪のペイント』完了・高解像度スクショ・仕様書整備
+
+**状況**: チュートリアル動画30本目（ふさこ氏『Substance Painterでテクスチャペイント！03 | 髪のペイント 〜初中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=3a7os-XHBTU ）について、情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を実施、完了。
+
+**分かったこと/やったこと**:
+- **動画30仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全238ブロック）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_sp_hair_paint_30_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_30_sp_hair_paint_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **髪ペイント・3D空間球体グラデーション＆板ポリ線画ジャギー根絶技術**:
+    1. **【神技】Add generator > 3D Distance による球体立体グラデーション**:
+       - 3D空間上の中心球（Position XYZ, Radius, Contrast）を基準にプロシージャルなマスクグラデーションを生成。
+       - 頭頂部の天使の輪（トップライト）、毛先フェード、および手描き影マスクに対する `Invert: True` ＋ `Darken`（比較暗）合成による上部影の自然なフェードアウトを実現。
+    2. **【秘伝レシピ】板ポリ前髪のアウトライン線画ピクセルジャギー根絶**:
+       - 背面法アウトラインが使えない板ポリ前髪に対し、`UV Border`（0.04） $\to$ `Add filter > Blur` でわずかにぼかし $\to$ `Add filter > Histogram Scan` でエッジを滑らかに再引き締め！
+       - 手描き特有の歪みやピクセル階段（ジャギー）のない、極めて滑らかなアニメ輪郭線を実現。
+       - 上層レイヤーの Polygon Fill（UV Chunk Fill）で前髪以外の不要島を黒塗り除外（乗算合成）。
+    3. **髪の多層セルシェーディング構造**:
+       - ベースカラー（頭頂部ピンク〜毛先フェードの3D Distance）
+       - 1号影（毛束の大きな落ち影）
+       - 2号影（重なり合う奥深い溝の濃色影）
+       - 内側・頭皮側（裏面）の紫ベタ（Polygon FillのUV Chunk Fillで一括アサイン）
+       - ハイライト（ツヤと天使の輪）
+    4. **後ろ髪（資料のない部位）のペイント戦略**:
+       - 後頭部は左右独立展開だが、初期段階は `L`（Symmetry）で対称にベース影を配置し、後から非対称の毛流れやアクセントを加筆。
+    5. **Blenderへのテクスチャ再インポートとAuto Reloadアドオン**:
+       - SPエクスポート後、Blender側で複数画像をワンクリックまたはタイマーで自動更新。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_30_sp_hair_paint_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 髪ペイント全体設計、3D Distance球体マスク追加、3D Distanceパラメータ調整、頭頂部トップライト・毛先フェード概念、板ポリ前髪線画課題、1号影ざっくりストローク、ハイライト初期配置、髪裏面Polygon Fill、2号影追加、影マスク3D Distance Invert、Darken合成影フェード、板ポリUV Border線画、UV Border Blurフィルター、Histogram Scanジャギー引き締め、Polygon Fill不要線マスク除外、乗算合成線画抽出、手作業線画仕上げ・不要線消去、前髪ディテールアップ、ベース色3D Distanceグラデーション、前髪完成状態、後ろ髪Symmetryから非対称毛流れ、髪ペイント全体仕上げ、テクスチャエクスポート設定、Blender Auto Reloadアドオン一括更新。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- 3D Distanceジェネレーターによる立体グラデーション、板ポリ前髪の「UV Border ＋ Blur ＋ Histogram Scan」によるジャギーのない線画生成技術が確立されました。
+- 続いて **Substance Painter テクスチャ編 第4回（第31話）『ベイク方法とジェネレーター・フィルター』**（`https://www.youtube.com/watch?v=QY0WSefAyKM`）へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_sp_hair_paint_30_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_30_sp_hair_paint_screenshots/`
+- 画像カタログ: `docs/fusako_30_sp_hair_paint_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_30_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_30_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+
 
