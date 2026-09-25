@@ -2379,3 +2379,55 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - VTT生データ: `.agents/handoffs/fusako_28_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
 
+---
+
+## [2026-09-25 11:12] Antigravity — ふさこ氏『Blenderでキャラクターモデル制作！』第29話 (SP #02)『顔のペイント』完了・高解像度スクショ・仕様書整備
+
+**状況**: チュートリアル動画29本目（ふさこ氏『Substance Painterでテクスチャペイント！02 | 顔のペイント 〜初中級者向けチュートリアル〜』、https://www.youtube.com/watch?v=tayBUmjCFt8 ）について、情報精査・相互リンク反芻を踏まえた資料まとめおよび重要シーンのスクリーンショット保存を実施、完了。
+
+**分かったこと/やったこと**:
+- **動画29仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全471ブロック）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_sp_face_paint_29_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_29_sp_face_paint_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **顔パーツペイント・ハイブリッド瞳ハイライト＆方向性ブラー技術**:
+    1. **瞳ハイライトのハイブリッド設計（メッシュ ＋ 透過テクスチャ）**:
+       - 瞳テクスチャ自体はUVを左右対称で重ねて解像度を節約。
+       - 左右非対称の白丸ハイライトを別メッシュ（瞳面から `Shift+D` 複製、`G Y` 手前移動、`X > Dissolve Edges` 頂点削減、プロポーショナル変形、`P` 分離、ミラー適用・非対称配置）として作成。
+       - 空き領域にUV配置し、FBX再エクスポート $\to$ SP側 `Project Configuration` で再読み込み。
+    2. **瞳（Iris）の多層グラデーションペイント**:
+       - ベース深紫 $\to$ 明るい紫（Blurフィルターでふんわり下地） $\to$ 花びら放射パターン $\to$ スクリーン合成の大粒ハイライト。
+       - 消しゴムをエアブラシ（Basic Soft）化して光彩の端部を柔らかく削り込み。
+    3. **【神技】Add generator > UV Border による自動フチ取り**:
+       - 瞳外周やハイライトメッシュの輪郭線に対し、黒マスクに `UV Border` ジェネレーターを追加。Balance（幅）と Contrast を調整して均一なアニメ調フチを一発自動生成。
+    4. **透過ハイライトの描画とライティング設定**:
+       - Face_Transparent で通常ペイントレイヤー（1番ブラシ・2番消しゴム）による微細な星状・点状ハイライト描画。
+       - `Shift + 右ドラッグ` で環境ライト角度を回転調整。
+       - `Display Settings > Environment Map` を「Studio Automotive Neutral」に変更して白飛び・眩しさを抑制。
+    5. **まつ毛・アイラインのペイントと近接干渉防止**:
+       - `L` キーで Symmetry、`UV Border` でフチ取り後に上層ペイントで毛先を加筆。
+       - 3D空間の近接毛束への色飛びを防ぐため、ブラシの `Alignment` を「Tangent Wrap」から **`UV`** に変更。裏面は `4`（Polygon Fill）の UV Chunk Fill で最暗色塗りつぶし。
+    6. **【神技】Add filter > Blur Directional による口腔・舌の奥行き陰影**:
+       - 歯・舌・口腔（喉の奥）の陰影マスクに **`Blur Directional`（方向性ブラー・90°）** を適用。
+       - 手描きでは困難な滑らかで破綻のない一方向減衰グラデーションを一瞬で生成。
+    7. **2Dビュー回転スナップと耳ペイント**:
+       - `Alt + 左ドラッグ` で2Dビューを回転、`Alt + Shift` で水平垂直にスナップ復帰。
+       - 耳の内側ピンク、毛先白ハイライト、付け根の暗色を塗り分け、耳毛のストロークにも `Blur Directional`（90°）を活用。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_29_sp_face_paint_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 瞳ハイライトハイブリッド設計、ハイライトメッシュ複製、エッジ溶解・プロポーショナル変形、メッシュ分離・ミラー適用、UV配置・FBXエクスポート、SP再読み込み・マスク追加、瞳ベース暗色・ブラー下地、瞳階層レイヤー積層、UV Border自動フチ取り、透過テクスチャMキー確認、通常レイヤー点状ハイライト、瞳本体スクリーンハイライト、消しゴムエアブラシ削り込み、瞳下部スクリーン光彩、Environment Mapスタジオニュートラル変更、ハイライトメッシュUV Border・再ベイク、まつ毛Symmetry・UV Border、ブラシAlignment UV変更、まつ毛裏面UV Chunk Fill、舌の乗算陰影、Blur Directional（90°）喉の奥グラデーション、口腔内全体方向性ブラー完成、2Dビュー回転・Alt+Shiftスナップ、耳毛Blur Directional適用・顔ペイント完成状態。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- 瞳のハイブリッドハイライト構造、UV Borderジェネレーター、および口腔・耳のBlur Directionalによる美しいグラデーション表現が確立されました。
+- 続いて **Substance Painter テクスチャ編 第3回（第30話）『髪のペイント』**（`https://www.youtube.com/watch?v=3a7os-XHBTU`）へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_sp_face_paint_29_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_29_sp_face_paint_screenshots/`
+- 画像カタログ: `docs/fusako_29_sp_face_paint_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_29_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_29_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+
