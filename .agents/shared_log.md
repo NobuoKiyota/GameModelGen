@@ -2519,3 +2519,46 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_31_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_31_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+---
+
+## [2026-09-25 12:00] Antigravity — ふさこ氏 #32『アウターや肌のペイント』技術体系化・全24枚スクショ・仕様書完了
+
+**状況**:
+- ユーザー指示「クレジットが続く限り連続して学習を進めてください」に基づき、Substance Painter テクスチャ編 第5回（第32話: アウターや肌のペイント）の技術体系化・高解像度スクショ24枚抽出・詳細仕様書配備・Drive保管を完了。
+
+**分かったこと/やったこと**:
+- **動画32仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全508ブロック）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_sp_outer_skin_32_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_32_sp_outer_skin_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **肌の滑らかグラデーション・ストライプ＆セーター編み目プロシージャルガイド・平行線裏技**:
+    1. **【秘伝技法】肌の影・Darken（比較暗）レイヤーによる消しゴム的フェードアウト**:
+       - SPの標準「ぼかし（Blur）ブラシ」は濁りやすく綺麗なアニメ調グラデーションが作れない。
+       - **解決策**: ラフ塗りレイヤーの上に新規ペイントレイヤーを追加し、ブレンドモードを `Darken`（比較暗）に設定。柔らかい黒ブラシで境界を少しずつ削り込むように馴染ませることで、非破壊かつ極めてなめらかなセル階調グラデーションを実現。
+    2. **【プロシージャルガイド】アウター等間隔ストライプ線（Line Stripes）**:
+       - Fill Layer + 黒マスク + Fillエフェクトに `Line Stripes` を適用（Bend: 0, Rotation: 90度）。2Dビューのギズモで縦分割数に合わせてスケール。
+       - このガイドを下敷きにして、**`Shift`（点線ガイド）＋ `Ctrl`（角度スナップ固定）** で寸分違わぬ完全な直線を引く。余分な線は `Polygon Fill`（黒）で一発クリーンアップ。
+    3. **【プロシージャルガイド】セーターの三つ編み編み込み模様（Fabric）**:
+       - `Fabric` テクスチャをFillマスクに適用し、`Repeat Vertically`（縦のみ反復）＋ `Shift` 縦横比維持スケーリング ＋ 180度回転で編み目向きを整合。
+       - ガイドを薄く表示し、Basic Hardで下書き $\to$ 左右交互に絡み合う本番ラインを手描き清書。
+    4. **【超絶裏技】Stitches Smallブラシによる「平行3本実線」の一筆描画**:
+       - `Stitches Small` ブラシのオプションで `Lines: 3` にし、**`Spacing`（間隔）を極小（最小）に詰める**ことで、点線が連結して「完全に平行な3本の実線」を一発ストロークで描画可能。
+    5. **UV Border ＋ Darkenペイントによるフチ取りライン**:
+       - 裾や袖口のフチ線を `UV Border` で生成し、上層Darkenペイントレイヤーの黒ブラシで不要な襟元フチ線を消去。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_32_sp_outer_skin_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: テクスチャセットサイズ・Base Color単一化、資料スポイトによるパーツ別下地色塗り分け、全パーツベタ塗り完了、インナー準備・アウター非表示・LキーSymmetry、肌の影ラフ塗り、肌の影Darken比較暗・黒ブラシグラデーション、肌の影消しゴム的フェードアウト、ストライプ線の課題とガイド動機、Fill Layer + 黒マスク + Fillレイヤー構築、Line Stripes（Bend 0・Rot 90）、2Dビューギズモ操作・等間隔スケーリング、Shift+Ctrl完全直線描画、直線清書・Polygon Fill消去、セーター三つ編み模様イントロ、Fabricテクスチャ適用、Repeat Vertically・Shiftアスペクト比維持、ギズモ回転編み目向き合わせ、編み目下書きレイヤー、左右交互編み目清書、ガイド非表示・セーター模様完成、Stitches Smallブラシ、Stitches Lines 3本・Spacing極小平行実線化、UV Borderジェネレーター、Darkenマスク不要フチ線消去。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- 肌のDarkenフェード階調、プロシージャルテクスチャ（Line Stripes / Fabric）を活用した手描きガイド、Stitchesブラシの平行実線化裏技が体系化されました。
+- 続いて **Substance Painter テクスチャ編 第6回（第33話）『服や小物のテクスチャ』**（`https://www.youtube.com/watch?v=MMP_BQJNKuc`）へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_sp_outer_skin_32_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_32_sp_outer_skin_screenshots/`
+- 画像カタログ: `docs/fusako_32_sp_outer_skin_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_32_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_32_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
