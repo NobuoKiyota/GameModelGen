@@ -722,8 +722,51 @@ def main():
             if obj:
                 bpy.context.scene.collection.objects.link(obj)
                 
+        # コレクション整理（アウトライナーの構造化）
+        def get_or_create_col(name, parent_col=None):
+            col = bpy.data.collections.get(name)
+            if not col:
+                col = bpy.data.collections.new(name)
+                if parent_col:
+                    parent_col.children.link(col)
+                else:
+                    bpy.context.scene.collection.children.link(col)
+            return col
+
+        col_head = get_or_create_col('01_Head')
+        col_hair = get_or_create_col('Hair', col_head)
+        col_guides = get_or_create_col('Guides', col_head)
+        col_body = get_or_create_col('02_Body')
+        col_outfit = get_or_create_col('03_Outfit')
+        col_refs = get_or_create_col('04_References')
+        col_scene = get_or_create_col('05_Scene')
+
+        for obj in list(bpy.context.scene.collection.objects):
+            name = obj.name
+            target_col = None
+            if name.startswith('Hair_'):
+                target_col = col_hair
+            elif name.startswith('GUIDE_'):
+                target_col = col_guides
+            elif name in {'Face', 'Eye', 'Eyebrow', 'DoubleLid'} or name.startswith('Eyelash'):
+                target_col = col_head
+            elif name.startswith('Body_'):
+                target_col = col_body
+            elif name.startswith('Outfit_'):
+                target_col = col_outfit
+            elif name.startswith('REF_'):
+                target_col = col_refs
+            elif name.startswith('CAM_') or name.startswith('Sun_') or obj.type in {'CAMERA', 'LIGHT'}:
+                target_col = col_scene
+            else:
+                target_col = col_scene
+                
+            if target_col:
+                target_col.objects.link(obj)
+                bpy.context.scene.collection.objects.unlink(obj)
+
         bpy.ops.wm.save_as_mainfile(filepath=str(FULL_PREVIEW_BLEND))
-        print(f"[OK] Saved Full AC Preview scene to: {FULL_PREVIEW_BLEND}")
+        print(f"[OK] Saved Full AC Preview scene with Collections to: {FULL_PREVIEW_BLEND}")
         
         # レンダリング画像出力
         scene = bpy.context.scene
