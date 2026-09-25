@@ -2697,3 +2697,45 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_35_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_35_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+---
+
+## [2026-09-25 12:20] Antigravity — ふさこ氏 #36『まばたき・笑顔・目線のシェイプキー』技術体系化・全24枚スクショ・仕様書完了【シェイプキー編 第2回】
+
+**状況**:
+- ユーザー指示「全4回順に全て進行して」に基づき、シェイプキー編 第2回（第36話: まばたき・笑顔・目線のシェイプキー）の技術体系化・高解像度スクショ24枚抽出・詳細仕様書配備・Drive保管を完了。
+
+**分かったこと/やったこと**:
+- **動画36仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全509行）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_shapekey_eyes_36_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_36_shapekey_eyes_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **まばたき・ハイライト連動・笑顔まつ毛・目線制御技術**:
+    1. **まばたきの上下まぶたギャップ埋め**:
+       - 上まぶたを下げるだけでなく、ピボットを `Active Element` に設定し、`S` キーで下まぶたを前方に引き寄せて上下の隙間を完全に密着。
+    2. **中間値（0.5）の瞳漏れ根絶法**:
+       - スライダーを0.5にした際にまぶたの隙間から瞳が覗く現象を、まぶたラインを少し余分に下げることで根絶。
+    3. **【超絶神技】半目・まばたき時の「光消滅（闇落ち）防止」ハイライト連動**:
+       - 目を閉じる途中で上まぶたによって瞳のハイライトが隠れ、目が死んだ印象（闇落ち）になる現象を防止。
+       - ハイライトメッシュに同一キー名 `eye_blink` を作成し、わずかに下へ逃がすことで、半目でも光が残り生き生きとした生命感を維持。
+    4. **笑い目での小まつ毛リセット**:
+       - `Vertex -> Blend From Shape`（Basis）により、まばたきで下を向いた小まつ毛だけを一瞬で上向き初期形状にリセットして再配置。
+    5. **eye_surprise（見開き目）と瞳縮小連動**:
+       - 上まぶたの引き上げと、瞳メッシュの縮小（`Active Element` ピボット）を同一キーで連動させ、迫真の表情を実現。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_36_shapekey_eyes_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: まばたき・笑顔・目線概要、eye_blink上まぶた下げ、Active Elementピボットでの下まぶた密着、中間値0.5の瞳漏れ修正、半目時のハイライト消滅問題、ハイライト下げ連動、eye_smile笑い目作成、Blend From Shapeによる小まつ毛リセット、eye_winkウィンク作成、eye_surprise見開き目、瞳縮小連動、目線（上・下・左・右）シェイプキー、Mio3 Shapekey全表情連動テスト。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- まばたき・目・表情連動技術が体系化されました。
+- 続いて **シェイプキー編 第3回（第37話）『喜怒哀楽などの表情シェイプキー』**（`https://www.youtube.com/watch?v=ZbrGz3ma19I`）へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_shapekey_eyes_36_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_36_shapekey_eyes_screenshots/`
+- 画像カタログ: `docs/fusako_36_shapekey_eyes_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_36_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_36_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
