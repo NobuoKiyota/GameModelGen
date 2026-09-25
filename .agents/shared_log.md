@@ -2476,5 +2476,46 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - VTT生データ: `.agents/handoffs/fusako_30_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
 
+---
 
+## [2026-09-25 11:55] Antigravity — ふさこ氏 #31『ベイク方法とジェネレーター・フィルター』技術体系化・全24枚スクショ・仕様書完了
 
+**状況**:
+- ユーザー指示「クレジットが続く限り連続して学習を進めてください」に基づき、Substance Painter テクスチャ編 第4回（第31話: ベイク方法とジェネレーター・フィルター）の技術体系化・高解像度スクショ24枚抽出・詳細仕様書配備・Drive保管を完了。
+
+**分かったこと/やったこと**:
+- **動画31仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全282ブロック）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_sp_bake_generators_31_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_31_sp_bake_generators_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **Exploded Bake（分解ベイク）とイラスト調主要ジェネレーター＆フィルター技術**:
+    1. **【最重要】パーツ分離ベイク（Exploded Bake / 接触面影被り回避テクニック）**:
+       - 体・服・アウター・ポシェット・尻尾などの密接パーツをそのままベイクすると、AO計算により接触境界が真っ黒に沈み、左右対称UVに不要な影が焼き付く。
+       - **黄金の解決策**: Blender側でコレクション複製（Duplicate Collection）し、新規 `Bake` コレクションを作成。コレクションごと `G Z` 等で大きく引き離して配置した「爆発図（Exploded View）」の状態で `body.fbx` をエクスポート。
+       - Substance Painter側で `Edit > Project Configuration` から分離FBXを再読み込みし、Bake mesh maps を実行。
+       - 高解像度ベイク（4096 / Subsampling 4x4 / 不要なNormalとIDは除外）完了後、Blender側で元の通常配置コレクションを再FBXエクスポート $\to$ SP側で `Project Configuration` から通常FBXを再読み込み！
+       - **ベイクした綺麗なAOマップを保持したまま、元の通常ポーズでペイント作業が可能になる**。
+    2. **イラスト調・セルルックで使える主要ジェネレーター実践**:
+       - **Ambient Occlusion**: Fill Layer + 黒マスク + AOジェネレーター。`Global Invert: True`、Balance/Contrastで手軽な窪み影。※ブラー（Blur）は2D画像処理のためUVシームで境界が途切れる欠点があるため、ブラー過多に注意。
+       - **Light**: 一方向からの光源シミュレーション（アングル調整、Screen合成で前照灯・環境光）。
+       - **World Space Normal**: 上向き（Top to Bottom）や側面の面だけに光・影を通す立体マスク。
+       - **UV Border & Auto Stitch**: UVシーム境界に沿った線画・縫い目（ステッチ）の自動生成。
+       - **Curvature**: 尖ったエッジ部分のハイライトや擦れ表現。
+    3. **Pass ThroughブレンドモードとHSL Perspectiveフィルター**:
+       - 最上段レイヤーのブレンドモードを `Pass Through`（パススルー）に変更し、`Add filter > HSL Perspective` を適用することで、テクスチャ全体の一括カラーグレーディング（彩度・色相・明度調整）が可能。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_31_sp_bake_generators_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: 体・服・アクセサリーのメッシュ初回エクスポート、SP初期読み込み、近接パーツAO真っ黒問題、左右対称影被り問題、Blenderコレクション複製、Bake用階層整理、G Zオフセット分離、アウター・尻尾の干渉回避、ミラー原点維持、Exploded Bake配置完成、SP分離FBX再読み込み、Bake mesh maps実行と影解消確認、Bキーマップ診断（WSN等）、4096高解像度ベイク設定、アンチエイリアシング4x4・不要マップ除外、Blender通常配置再エクスポート、SP通常モデル復元とベイク結果保持、アウター下地色設定、AOジェネレーターGlobal Invert、AOブラーのUVシーム切れ注意点、LightジェネレーターScreen合成、World Space Normalジェネレーター、UV Border & Auto Stitch、Pass Through + HSL Perspectiveグレーディング。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- Exploded Bake（分解ベイクによる干渉回避と通常モデル復元）およびセルルック向け主要ジェネレーター（AO, Light, WSN, UV Border）とPass Throughフィルターのワークフローが体系化されました。
+- 続いて **Substance Painter テクスチャ編 第5回（第32話）『アウターや肌のペイント』**（`https://www.youtube.com/watch?v=FbRFGbE8VdU`）へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_sp_bake_generators_31_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_31_sp_bake_generators_screenshots/`
+- 画像カタログ: `docs/fusako_31_sp_bake_generators_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_31_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_31_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
