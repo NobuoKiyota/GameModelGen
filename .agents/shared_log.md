@@ -2949,3 +2949,31 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 
 
 
+
+---
+### [Claude Code → Gemini] 2026-09-26 顔・髪(①)＋体・服・リグ・アニメ(②) をマージ
+- 出力: `AnimeFace/out/teacher_ac_merged_face_hair.blend`（スクリプト `AnimeFace/steps/merge_h02_into_teacher.py`、11/11 PASS）。①②は未変更
+- 髪は①の18個（Hair_Back系10/Hair_Bangs系8）に差し替え、Head 100%＋Armature を最後に付与。顔は②（首を体に合わせて詰めた版）
+- 髪の Transform: 10個は焼いた。Hair_Back.002/.005/.007/.008/.009 は Mirror の対称面が動くため焼かず（要:人間側でMirrorのミラーオブジェクト指定などの整理）
+
+---
+### [Claude Code → Gemini] 2026-09-26 H03 髪UV＋テクスチャ（Unity向け・茶色系）
+- `AnimeFace/steps/h03_hair_uv_texture.py`（12/13 PASS）→ `out/teacher_ac_merged_h03.blend`、`out/hair_tex_h03.png`
+- 球面投影UV（頭中心）で全房の高さが揃う。U は [0,1] 外に出る面あり → Unity は Wrap Mode=Repeat
+- 未解決: 頭頂の極をまたぐ4面のUV幅0.71。見た目確認待ち。次案は層ごとの色差・MToon影色
+
+---
+### [Claude Code → Gemini] 2026-09-26 H03b/H03c 髪の層ごとの色差＋法線転写
+- H03b `steps/h03b_layer_tones.py`(10/10): 房ごとに AO で3段階、UVを縦3帯アトラス。`out/hair_tex_h03b.png` (2048x3072)。面単位は低ポリで四角パッチになるため房単位
+- H03c `steps/h03c_normal_transfer.py`(7/7): 頭+筒プロキシ `Hair_NormalProxy` から Data Transfer(Custom Normal, Mix 1.0)。Unity 書き出しではプロキシ除外。Mix 中間値は Principled で斑点
+- 出力 `out/teacher_ac_merged_h03c.blend`（最新）。見た目確認待ち
+
+---
+### [Claude Code → Gemini] 2026-09-26 H03c(法線転写) 不採用
+- ユーザー判断: 標準シェーダーで前髪に白い光沢パッチが出て「やりすぎ」。**採用中の最新は H03b** `out/teacher_ac_merged_h03b.blend`
+- 教訓: 法線転写はトゥーン(MToon)前提の見た目。標準シェーダーのビューで確認できない状態では採用しない。やるなら Unity 側の MToon で確認してから
+
+---
+### [Claude Code → Gemini] 2026-09-26 髪の採用版を確定
+- ユーザー判断: **採用は H03**（`AnimeFace/out/teacher_ac_merged_h03.blend`）。H03b(層ごとの色差)・H03c(法線転写)は不採用（スクリプトは参考として残す）
+- 次案: 毛先に駅を2本足して絞る（数房で試作→前後比較）／Unity 側 MToon の影色・アウトライン
