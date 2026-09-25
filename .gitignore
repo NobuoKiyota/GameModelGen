@@ -38,7 +38,8 @@ ai_archives/
 
 # Exports & heavy assets
 exports/
-textures/
+textures/*
+!textures/human/
 scratch/
 $RECYCLE.BIN/
 Projects/
