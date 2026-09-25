@@ -41,5 +41,5 @@ exports/
 textures/
 scratch/
 $RECYCLE.BIN/
-*.blend1
-*.blend2
+Projects/
+
