@@ -2841,5 +2841,55 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - VTT生データ: `.agents/handoffs/fusako_38_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
 
+---
+
+## [2026-09-25 12:40] Antigravity — ふさこ氏 #39『エクスポート前のオブジェクトとウェイト修正』技術体系化・全24枚スクショ・仕様書完了【エクスポート・法線調整編 第1回】
+
+**状況**:
+- ユーザー指示「yes」（連続進行）に基づき、エクスポート・法線調整編 第1回（第39話: エクスポート前のオブジェクトとウェイト修正）の技術体系化・高解像度スクショ24枚抽出・詳細仕様書配備・Drive保管を完了。
+
+**分かったこと/やったこと**:
+- **動画39仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全892行）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_export_cleanup_39_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_39_export_cleanup_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **Unity向け最適化・ウェイト修正・法線データ保持・トランスフォーム正規化技術**:
+    1. **モディファイア適用と削除の厳格ルール**:
+       - `Mirror` や `Data Transfer` は統合前に `Ctrl+A`（パネル上ショートカット）で確定適用。
+       - **【最重要】Solidify（背面法輪郭線）はUnity toonシェーダー側で描画するため、Blender側では確定適用せず完全削除！**
+    2. **ウェイト微調整と衣服統合**:
+       - `Item > Vertex Weights` で首元の不要な `Head`/`Neck` ウェイトを数値特定し `Remove` で除去。
+       - 頂点マスク（`V`）＋ウェイトペイントスムーズで関節の滑らかな変形を実現。
+       - 靴・ドロワーズ・インナーを `Ctrl+J` で統合。
+    3. **素体メッシュ接合部マージ**:
+       - 手首境界頂点を選択し、`M > Merge by Distance` で水密な一体化メッシュに溶着。
+    4. **【神技】袖二重構造ウェイト完全一致コピー**:
+       - セーターやアウター袖の内側と外側の頂点ウェイトを `Vertex Weights` パネルから `Copy` して完全一致化。腕を曲げた時のメッシュ貫通を永久根絶。
+    5. **全顔パーツ一括統合**:
+       - ハート目・青ざめに `Head` ウェイトを付与 $\to$ `Apply Modifier Keep Shapekeys` でミラー適用 $\to$ `Ctrl+J` で顔に一括統合。シェイプキーの連動動作を完全維持。
+    6. **小物ウェイト転送と【神技】法線保持**:
+       - ポーズ初期化（`Alt+R`, `Alt+G`）でデータ転送（`Nearest Face Interpolated`）を適用。
+       - **`Add Custom Split Normals Data`（カスタム分割法線データ追加）** を実行してから `Ctrl+J` で統合することで、オートスムースのマークシャープ情報を100%完全保持！
+    7. **Unity命名規則・床面接地・全トランスフォーム適用**:
+       - `F2` で `Chara_Face`, `Chara_Body` 等にリネーム。
+       - 足裏がZ=0に接地するよう `G Z` 配置、ルートボーンHead Zを `0.0`（原点）にスナップ。
+       - 全選択して **`Ctrl+A > All Transforms`** で位置(0,0,0)・回転(0,0,0)・スケール(1,1,1)に完全正規化。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_39_export_cleanup_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- エクスポート前クリーンアップ・オブジェクト統合技術が体系化されました。
+- 直ちに、ふさこ氏『Blenderでキャラクターモデル制作！』全チュートリアルの大団円・最終回である **第40話『顔の法線調整と前髪の影つけ』**（`https://www.youtube.com/watch?v=WtaMWiaDDLY`）の自動連続進行に着手します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_export_cleanup_39_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_39_export_cleanup_screenshots/`
+- 画像カタログ: `docs/fusako_39_export_cleanup_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_39_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_39_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+
 
 
