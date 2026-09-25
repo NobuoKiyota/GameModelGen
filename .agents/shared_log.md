@@ -2603,3 +2603,52 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - 字幕テキスト: `.agents/handoffs/fusako_33_subtitles_timestamped.txt`
 - VTT生データ: `.agents/handoffs/fusako_33_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+---
+
+## [2026-09-25 12:10] Antigravity — ふさこ氏 #34『エクスポートと質感の調整』技術体系化・全24枚スクショ・仕様書完了【Substance Painter テクスチャ編 全7回 完結】
+
+**状況**:
+- ユーザー指示「クレジットが続く限り連続して学習を進めてください」に基づき、Substance Painter テクスチャ編 最終回（第34話: エクスポートと質感の調整）の技術体系化・高解像度スクショ24枚抽出・詳細仕様書配備・Drive保管を完了。
+- **これにて『Substance Painter テクスチャ編（全7回: 第28話〜第34話）』が完全制覇・コンプリートとなりました**。
+
+**分かったこと/やったこと**:
+- **動画34仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全534ブロック）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_sp_export_materials_34_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_34_sp_export_materials_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **テクスチャエクスポート・背面法アウトライン・髪線画ノイズ対策・プロポーション最終調整技術**:
+    1. **SPエクスポートとBlenderノード直結表示**:
+       - SPの `File > Export textures`（PNG形式）で一括出力。
+       - Blenderのマテリアルで Image Texture ノードを開き、`Shift + Ctrl + 左クリック`（Node Wrangler）で Material Output の Surface に直結。ライティング依存のないセル画本来の発色で確認。
+    2. **【安全運用】Duplicate Collectionによるモデル退避**:
+       - テクスチャ再出力やベイク差し替えの可能性に備え、ベースモデルをコレクション複製し、複製側でアウトラインやモディファイア編集を行う。
+    3. **背面法（Solidifyモディファイア）によるセルルック・アウトライン構築**:
+       - アウトライン用マテリアル: Principled BSDF を `Emission`（放射）に変更、濃い紫などのカラー、**`Backface Culling`（裏面非表示）チェック必須**。
+       - Solidifyモディファイア: `Thickness` 負値（-0.005等）、`Normals: Flip` チェック、`Material Offset: 1`。
+       - 頂点グループ `edge_scale` によるマスク制御: 目の白目メッシュを除外（Remove）、口内ループ選択（`Select > Select Loops > Select Loop Inner-Region` で口の奥を一発選択）して除外。
+    4. **Copy Attributes Menu（Ctrl+L / Ctrl+C）による一括展開**:
+       - 複数選択 $\to$ `Ctrl + L`（Link Materials）でアウトラインマテリアル共有。
+       - `Ctrl + C` $\to$ Copy Selected Modifiers（Solidify）で全身パーツに一瞬でアウトラインを展開。
+    5. **髪の枝分かれ（毛先交差部）の線画ノイズ解消**:
+       - 枝分かれする谷間の頂点ウェイトを小さく/ゼロに設定し、重なり合う汚い黒い塊を綺麗に解消。
+    6. **テクスチャ反映後のプロポーション・ポーズ最終調整**:
+       - 原画リファレンスを真横に配置し、アーマチュアのポーズモード（X軸対称）で元絵と同じポーズを取らせる。
+       - プロポーショナル編集で足の長さ、萌え袖の長さ・ボリューム、首元の開き、ポシェットの角度（ローカル軸回転 `Orientation: Normal`、肩紐を `P` で分離して本体のみ回転）を徹底調整。
+       - **重要**: 足の位置変更に伴い、ウェイト転送用素体メッシュも同期修正すること。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_34_sp_export_materials_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+  - 主な収録内容: SPエクスポートPNG設定、Blender画像テクスチャノード割り当て、Node Wrangler直結接続、ビューポート塗りチェック、コレクション複製安全退避、アウトラインEmissionマテリアル、Backface Culling必須設定、Solidifyモディファイア設定、頂点グループedge_scale、白目の線画除外、Select Loop Inner-Region口内一発除外、Ctrl+Lマテリアルリンク、Ctrl+Cモディファイアコピー、全パーツアウトライン展開、Scene World背景調整、髪アウトライン交差ノイズ、髪頂点グループノイズ解消、プロポーション見直し元絵配置、アーマチュアポーズX軸対称、プロポーショナル編集足の長さ調整、袖ボリューム手先隠れ調整、ポシェット肩紐P分離・ローカル回転、ウェイト転送素体同期注意点、SPテクスチャ編完結・シェイプキー編予告。
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**相手への申し送り**:
+- **『Substance Painter テクスチャ編（全7回）』がすべて完了し、モデリング・リギング・UV・テクスチャ・セル画アウトライン・プロポーション調整までの一連のパイプラインが完全に体系化されました**。
+- 続いて **『シェイプキー編（全4回）』第1回（第35話）『あいうえお口の形のシェイプキー』**（`https://www.youtube.com/watch?v=A6vy0tfvAzA`）へ順次自動進行します。
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_sp_export_materials_34_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_34_sp_export_materials_screenshots/`
+- 画像カタログ: `docs/fusako_34_sp_export_materials_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_34_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_34_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`

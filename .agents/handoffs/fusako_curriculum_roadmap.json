@@ -23,7 +23,7 @@
     },
     {
       "series": "Substance Painter テクスチャ編",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETED",
       "videos": [
         {"id": "RB9jILspXBk", "no": 28, "title": "01 | Substance Painter入門・基本操作", "url": "https://www.youtube.com/watch?v=RB9jILspXBk", "status": "DONE"},
         {"id": "tayBUmjCFt8", "no": 29, "title": "02 | 顔のペイント", "url": "https://www.youtube.com/watch?v=tayBUmjCFt8", "status": "DONE"},
@@ -31,14 +31,14 @@
         {"id": "QY0WSefAyKM", "no": 31, "title": "04 | ベイク方法とジェネレーター・フィルター", "url": "https://www.youtube.com/watch?v=QY0WSefAyKM", "status": "DONE"},
         {"id": "FbRFGbE8VdU", "no": 32, "title": "05 | アウターや肌のペイント", "url": "https://www.youtube.com/watch?v=FbRFGbE8VdU", "status": "DONE"},
         {"id": "MMP_BQJNKuc", "no": 33, "title": "06 | 服や小物のテクスチャ", "url": "https://www.youtube.com/watch?v=MMP_BQJNKuc", "status": "DONE"},
-        {"id": "hApZwvlJO4s", "no": 34, "title": "07 | エクスポートと質感の調整", "url": "https://www.youtube.com/watch?v=hApZwvlJO4s", "status": "NEXT"}
+        {"id": "hApZwvlJO4s", "no": 34, "title": "07 | エクスポートと質感の調整", "url": "https://www.youtube.com/watch?v=hApZwvlJO4s", "status": "DONE"}
       ]
     },
     {
       "series": "シェイプキー編",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "videos": [
-        {"id": "A6vy0tfvAzA", "no": 35, "title": "01 | あいうえお口の形のシェイプキー", "url": "https://www.youtube.com/watch?v=A6vy0tfvAzA", "status": "PENDING"},
+        {"id": "A6vy0tfvAzA", "no": 35, "title": "01 | あいうえお口の形のシェイプキー", "url": "https://www.youtube.com/watch?v=A6vy0tfvAzA", "status": "NEXT"},
         {"id": "3oTySLvG9L8", "no": 36, "title": "02 | まばたき・笑顔・目線のシェイプキー", "url": "https://www.youtube.com/watch?v=3oTySLvG9L8", "status": "PENDING"},
         {"id": "ZbrGz3ma19I", "no": 37, "title": "03 | 喜怒哀楽などの表情シェイプキー", "url": "https://www.youtube.com/watch?v=ZbrGz3ma19I", "status": "PENDING"},
         {"id": "GC37bbvRjqU", "no": 38, "title": "04 | ハート目・キラキラ目・青ざめなどの特殊シェイプキー", "url": "https://www.youtube.com/watch?v=GC37bbvRjqU", "status": "PENDING"}
