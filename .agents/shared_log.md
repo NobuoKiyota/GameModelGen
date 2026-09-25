@@ -2782,4 +2782,64 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 - VTT生データ: `.agents/handoffs/fusako_37_subtitles_raw.ja.vtt`
 - マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
 
+---
+
+## [2026-09-25 12:30] Antigravity — ふさこ氏 #38『ハート目・キラキラ目・青ざめなどの特殊シェイプキー』技術体系化・全24枚スクショ・仕様書完了【シェイプキー編 全4回 完全完結！】
+
+**状況**:
+- ユーザー指示「全4回順に全て進行して」に基づき、シェイプキー編 最終回（第38話: ハート目・キラキラ目・青ざめなどの特殊シェイプキー）の技術体系化・高解像度スクショ24枚抽出・詳細仕様書配備・Drive保管を完了。
+- これをもって、**『シェイプキー編』（全4回: 第35話〜第38話）が完全走破・完結！**
+
+**分かったこと/やったこと**:
+- **動画38仕様書配備**:
+  - 字幕生データ（VTT）および重複除去タイムスタンプ付き字幕テキスト（全969行）を抽出。
+  - 詳細仕様書 `2026-09-25_fusako_special_shapekey_38_steps.md` を作成・配備。
+  - **各手順ステップ直下に対応するスクリーンショットへの相対リンク `[📸 参考: 画像名](../../docs/fusako_38_special_shapekey_screenshots/画像名.jpg)` を最初から網羅配置**。
+  - **ハート目・キラキラ目・青ざめ板ポリ・逆転Basis・Unity運用設計思想**:
+    1. **特殊アセットのテクスチャアトラス配置**:
+       - Inkscape等のベクターツールで描いたハート・星・青ざめグラデーション（濃青〜透明フェード）を透過PNGとして顔マテリアルに差し替え。
+    2. **ハート目・キラキラ目のメッシュとUVマッピング**:
+       - 平面（Plane）追加 $\to$ UVエディター上でハート領域にフィット $\to$ 中央頂点マージ（`S 0`）で歪み解消 $\to$ 瞳直前配置（`RX 90`, `S`） $\to$ ミラー設定（顔参照）。
+    3. **【超絶神技】「縮小隠蔽 $\to$ 逆転Basis」による出現シェイプキー作成法**:
+       - 通常時（Basis）は非表示、キーONで拡大出現させるBlender標準ワークフロー：
+         1. 標準出現状態でBasis作成 $\to$ Key 1作成。
+         2. Key 1でメッシュを `G Y` で瞳の裏側（頭部奥）へ引き込み、`S` で極小サイズに縮小。
+         3. 縮小状態で新規キー `Key 2` を作成。
+         4. **元の `Basis` を削除する！**
+         5. 縮小状態が新たなBasisへと昇格し、`Key 2`（＝元の出現サイズ、キー名: `eye_heart`, `eye_star`）をONにした時に瞳からピュッと拡大出現する完璧な出現シェイプキーが完成！
+    4. **青ざめメッシュ（おでこ板ポリ）の抽出・作成**:
+       - 顔メッシュから額の肌面を選択（`Shift+Ctrl+M` ミラー選択Extend ON） $\to$ `Shift+D` 複製 $\to$ `P` 分離。
+       - `Delete All Shape Keys` で既存キー全消去 $\to$ `Face_Transparent` マテリアル割り当て。
+       - `Alt+S` で法線方向に微小浮かせ（Zファイト防止） $\to$ 目の上まで下方に押し出し。
+       - マテリアルのブレンドモードを `Alpha Hashed` に設定 $\to$ テンキー1正面から `Project from View`（ビューから投影展開）。
+    5. **【業界標準思想】Unity / VRM 向け0/1瞬時切替（Constant）設計**:
+       - 青ざめメッシュも逆転Basisで頭部奥に隠蔽（`extra_aozame`）。
+       - 中間値（0.5）の突き破り貫通は、Unity/VRM側でアニメーションカーブを0/1ステップ（Constant）瞬時切り替えで運用するため実用上全く問題とならない。
+    6. **【付録】Inkscapeベクターアセット制作ノウハウ**:
+       - ノードスムーズによるハートパス作成、線形グラデーション（90度回転・透明フェード）による青ざめテクスチャ制作を網羅。
+- **高解像度スクリーンショット集（全24枚）配備**:
+  - 格納フォルダ: `docs/fusako_38_special_shapekey_screenshots/`（画像24枚 + クリッカブル相対リンク付きカタログ `README.md`）
+- Google Drive（`D:\マイドライブ\GeminiChatLog\MeshCreator\`）へ仕様書、画像カタログ、更新ロードマップを同期。
+
+**シェイプキー編（全4回）の完全走破総括**:
+- 第35話: あいうえお口・Mio3 Shapekey連動・Basis後修正
+- 第36話: まばたき・光消滅防止ハイライト連動・笑顔まつ毛
+- 第37話: 喜怒哀楽合成・Keep Shapekeysモディファイア適用・左右ウインク分割・耳感情連動
+- 第38話: ハート目・キラキラ目・青ざめ板ポリ・逆転Basis出現技法
+- これにより、業界標準のキャラクター表情・シェイプキー制作パイプラインが100%完全に技術資産化されました。
+
+**相手への申し送り**:
+- 次のシリーズは、ふさこ氏『Blenderでキャラクターモデル制作！』の集大成である **『エクスポート・法線調整編』（全2回: 第39話〜第40話）** となります。
+- 第39話: `01 | エクスポート前のオブジェクトとウェイト修正`（`https://www.youtube.com/watch?v=twg9e8ySFss`）
+- 第40話: `02 | 顔の法線調整と前髪の影つけ`（`https://www.youtube.com/watch?v=WtaMWiaDDLY`）
+
+**参照**:
+- 仕様書: `.agents/handoffs/2026-09-25_fusako_special_shapekey_38_steps.md`
+- スクリーンショット集フォルダ: `docs/fusako_38_special_shapekey_screenshots/`
+- 画像カタログ: `docs/fusako_38_special_shapekey_screenshots/README.md`
+- 字幕テキスト: `.agents/handoffs/fusako_38_subtitles_timestamped.txt`
+- VTT生データ: `.agents/handoffs/fusako_38_subtitles_raw.ja.vtt`
+- マスターロードマップ: `.agents/handoffs/fusako_curriculum_roadmap.json`
+
+
 
