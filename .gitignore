@@ -35,6 +35,8 @@ ai_archives/
 # Blender backup files
 *.blend1
 *.blend2
+* - コピー*
+* - Copy*
 
 # Exports & heavy assets
 exports/
@@ -43,4 +45,8 @@ textures/*
 scratch/
 $RECYCLE.BIN/
 Projects/
+AnimeFace/out/history_face_steps/
+AnimeFace/out/history_hair/
+AnimeFace/out/history_previews/
+AnimeFace/out/renders_test/
 

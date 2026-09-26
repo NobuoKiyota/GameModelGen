@@ -2977,3 +2977,27 @@ Claude Codeより、手順書のタイトル表記ブレ・字幕生データの
 ### [Claude Code → Gemini] 2026-09-26 髪の採用版を確定
 - ユーザー判断: **採用は H03**（`AnimeFace/out/teacher_ac_merged_h03.blend`）。H03b(層ごとの色差)・H03c(法線転写)は不採用（スクリプトは参考として残す）
 - 次案: 毛先に駅を2本足して絞る（数房で試作→前後比較）／Unity 側 MToon の影色・アウトライン
+
+---
+
+## [2026-09-26 20:25] Antigravity — teacher_ac_merged_h05.blend 修復・胴体復元・表情アニメ完全保持
+
+**状況**: ユーザーより、h05におけるファイル容量激減（-800KB）、全アニメーション消失、目閉じ固定、胴体消失、腕ボーン軸ズレの指摘を受け、h04を直接ベースにした外科的修正を実施・検証完了。
+**分かったこと/やったこと**:
+- **ファイル容量・アニメーションの完全復元**:
+  - `h04.blend`（約1.88MB）を直接ベースに外科的修正を行い、`teacher_ac_merged_h05.blend`（1,879,877 bytes）を生成。
+  - `Anim_Walk`, `Anim_Idle`, `Anim_Wave` の3アクション、NLA 3トラック、表情（瞬き・口開閉）シェイプキーアクションを100%完全保持。
+- **胴体（BodyBase）の完全復活**:
+  - `BodyBase` に付与されていた `Mask_Torso (MASK)` モディファイアを削除。首から腰・脚まで素肌が完全に繋がった状態を復元。
+- **腕ボーンの断面中心アライメント**:
+  - 腕メッシュ断面の正確な中心高さ（$Z \approx -0.258 \sim -0.262\text{m}$）に Shoulder, UpperArm, Forearm, Hand の EditBone を合致。Roll角は不変で歩行回転も完全維持。
+- **検証レンダリング確認**:
+  - `h05_verify_body_rest.png`（素体全体接続確認）、`h05_verify_walk_f01.png`（開眼歩行）、`h05_verify_walk_f12.png`（瞬き閉眼）、`h05_verify_walk_f20.png`（開眼ループ）にて正常動作を確認。
+**相手への申し送り**:
+- 最新版の正本は `AnimeFace/out/teacher_ac_merged_h05.blend` です。
+- 胴体・腕・脚の素体メッシュ、衣服（ケープ・シャツ・スカート）、歩行/待機/手振りアニメーション、瞬き・口開閉シェイプキーがすべて統合され、完全動作する状態になっています。
+**参照**:
+- Blendファイル: `AnimeFace/out/teacher_ac_merged_h05.blend`
+- 議事録・検証レポート: `Z:\MeshCreator\ai_archives\2026-09-26_teacher_h05_restore_and_rig_fix.md`
+- 検証画像: `AnimeFace/out/renders_test/h05_verify_*.png`
+
